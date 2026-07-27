@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>픽셀 케어 (PixelCare) - 레트로 봉사 & 기부 커뮤니티</title>
+  <title>픽셀 케어 (Pixel Care) - 레트로 AI 기부 & 봉사 커뮤니티</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DungGeunMo&family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     /* ==========================================
-       1. CSS RESET & PIXEL ART GLOBAL SYSTEM
+       1. GLOBAL RESET & PIXEL DESIGN SYSTEM
        ========================================== */
     :root {
       --bg-grass: #55c54f;
@@ -18,7 +18,7 @@
       --road-border: #23242b;
       --road-line: #e4e2d4;
       --pin-red: #e52521;
-      --card-bg: #f5f2e6;
+      --card-bg: #f6f3e7;
       --card-border: #23242b;
       --brick-red: #c84c31;
       --brick-mortar: #8b2c19;
@@ -29,6 +29,8 @@
       --text-dark: #1a1a24;
       --heart-pink: #ff477e;
       --blue-accent: #3a86ff;
+      --ai-purple: #8a2be2;
+      --ai-chat-bg: #ffffff;
     }
 
     * {
@@ -70,12 +72,12 @@
       border: 3px solid var(--btn-green-border);
       box-shadow: 3px 3px 0px #1a1a24;
       padding: 10px 16px;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       transition: transform 0.05s, box-shadow 0.05s;
       user-select: none;
       text-decoration: none;
@@ -104,31 +106,42 @@
     }
     .pixel-btn-blue:hover { background-color: #4d92ff; }
 
+    .pixel-btn-purple {
+      background-color: var(--ai-purple);
+      border-color: #b36bff;
+    }
+    .pixel-btn-purple:hover { background-color: #9d4edd; }
+
     .pixel-tag {
       display: inline-block;
       padding: 4px 8px;
       font-size: 11px;
       background: #23242b;
       color: #ffffff;
-      border-radius: 0;
       border: 1px solid #ffffff;
     }
 
-    /* App Container */
+    .pixel-tag-gov {
+      background: #005f73;
+      color: #e0fbfc;
+      border: 1px solid #94d2bd;
+    }
+
+    /* Container */
     .app-container {
       width: 100%;
-      max-width: 840px;
+      max-width: 860px;
       margin: 0 auto;
       padding: 16px;
     }
 
     /* ==========================================
-       2. HEADER & STATS BAR
+       2. HEADER, THERMOMETER & STATS BAR
        ========================================== */
     header {
       text-align: center;
       margin-top: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .main-title {
@@ -146,12 +159,11 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
-      flex-wrap: wrap;
     }
 
     .subtitle {
       margin-top: 8px;
-      font-size: 14px;
+      font-size: 13px;
       color: #1a1a24;
       background: #ffffff;
       display: inline-block;
@@ -160,26 +172,72 @@
       box-shadow: 2px 2px 0px #000;
     }
 
+    /* Pixel Warmth Thermometer */
+    .thermometer-card {
+      background: #ffffff;
+      border: 4px solid #23242b;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .thermo-label {
+      font-size: 13px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .thermo-bar-outer {
+      flex: 1;
+      min-width: 180px;
+      height: 20px;
+      background: #e0e0e0;
+      border: 3px solid #23242b;
+      position: relative;
+    }
+
+    .thermo-bar-inner {
+      height: 100%;
+      width: 78.4%;
+      background: linear-gradient(90deg, #ff9900, #ff477e);
+      transition: width 0.8s ease;
+    }
+
+    .thermo-value {
+      font-size: 15px;
+      font-weight: bold;
+      color: var(--heart-pink);
+      white-space: nowrap;
+    }
+
+    /* Stats Bar */
     .stats-bar {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .stat-card {
-      padding: 12px;
+      padding: 10px;
       text-align: center;
     }
 
     .stat-card .label {
-      font-size: 12px;
-      color: #555;
+      font-size: 11px;
+      color: #666;
       margin-bottom: 4px;
     }
 
     .stat-card .value {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: bold;
       color: #e52521;
     }
@@ -187,20 +245,22 @@
     /* Navigation Tabs */
     .nav-tabs {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 20px;
       overflow-x: auto;
     }
 
     .tab-btn {
       flex: 1;
-      min-width: 120px;
-      padding: 12px;
+      min-width: 130px;
+      padding: 12px 8px;
       font-weight: bold;
+      font-size: 13px;
       background: #d8d4c5;
       border: 3px solid #23242b;
       cursor: pointer;
       text-align: center;
+      user-select: none;
     }
 
     .tab-btn.active {
@@ -208,37 +268,238 @@
       border-bottom: 3px solid var(--card-bg);
       box-shadow: 0px 4px 0px var(--card-bg);
       transform: translateY(-2px);
+      color: var(--ai-purple);
     }
 
     /* ==========================================
-       3. ROADMAP JOURNEY SECTION (PIXEL MAP)
+       3. CENTERPIECE: CUTE PIXEL AI CHAT WINDOW
        ========================================== */
-    .roadmap-section {
+    .ai-chat-section {
+      background: #ffffff;
+      border: 4px solid #23242b;
+      box-shadow: 6px 6px 0px rgba(0,0,0,0.4);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .ai-chat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px dashed #23242b;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ai-avatar-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ai-avatar {
+      width: 44px;
+      height: 44px;
+      background: #9d4edd;
+      border: 3px solid #23242b;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 2px 2px 0px #000;
+      animation: float 2s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .ai-title {
+      font-size: 16px;
+      color: var(--ai-purple);
+    }
+
+    .ai-subtitle {
+      font-size: 11px;
+      color: #666;
+    }
+
+    /* Chat Messages Box */
+    .chat-messages {
+      background: #f8f6f0;
+      border: 3px solid #23242b;
+      height: 320px;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 12px 14px;
+      border: 3px solid #23242b;
+      font-size: 13px;
+      line-height: 1.5;
       position: relative;
+    }
+
+    .chat-bubble.ai {
+      background: #ffffff;
+      align-self: flex-start;
+      border-radius: 0 12px 12px 12px;
+      box-shadow: 3px 3px 0px #23242b;
+    }
+
+    .chat-bubble.user {
+      background: #e2f1ff;
+      align-self: flex-end;
+      border-radius: 12px 0 12px 12px;
+      box-shadow: -3px 3px 0px #23242b;
+    }
+
+    /* Prompt Chips */
+    .prompt-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .chip-btn {
+      background: #ffffff;
+      border: 2px solid #23242b;
+      padding: 6px 12px;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 2px 2px 0px #000;
+    }
+
+    .chip-btn:hover {
+      background: #e2f1ff;
+      transform: translateY(-1px);
+    }
+
+    /* Chat Input Form */
+    .chat-input-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .pixel-input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 3px solid #23242b;
+      background: #ffffff;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .pixel-input:focus {
+      border-color: var(--ai-purple);
+    }
+
+    /* ==========================================
+       4. OTHER TAB SECTIONS
+       ========================================== */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .mission-card {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .mission-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .progress-bar-outer {
+      width: 100%;
+      height: 14px;
+      background: #dcd7c9;
+      border: 2px solid #23242b;
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      background: var(--btn-green);
+      width: 0%;
+    }
+
+    .progress-text {
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Diary Post Item */
+    .diary-card {
+      background: #ffffff;
+      border: 3px solid #23242b;
+      box-shadow: 4px 4px 0px #000;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .diary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px dashed #ccc;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .diary-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: var(--blue-accent);
+    }
+
+    .diary-meta {
+      font-size: 11px;
+      color: #777;
+    }
+
+    .diary-body {
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .diary-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    /* Roadmap Viewport */
+    .roadmap-section {
       background: #64d15e;
       border: 4px solid #23242b;
       box-shadow: 6px 6px 0px rgba(0,0,0,0.4);
-      padding: 24px 16px 40px;
-      margin-bottom: 30px;
-      overflow: hidden;
+      padding: 20px 16px;
+      position: relative;
     }
 
-    .section-title {
-      font-size: 18px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #ffffff;
-      padding: 8px 12px;
-      border: 2px solid #000;
-      width: fit-content;
-    }
-
-    /* SVG Road Canvas Overlay */
     .road-viewport {
       position: relative;
-      min-height: 540px;
+      min-height: 480px;
       width: 100%;
     }
 
@@ -251,64 +512,46 @@
       pointer-events: none;
     }
 
-    /* Milestone Cards Positioning on Road */
     .milestone-node {
       position: absolute;
       transform: translate(-50%, -50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       z-index: 5;
-      width: 220px;
+      width: 200px;
     }
 
     .pin-icon {
-      width: 28px;
-      height: 36px;
+      width: 26px;
+      height: 32px;
       background: var(--pin-red);
       clip-path: polygon(50% 100%, 0% 40%, 0% 0%, 100% 0%, 100% 40%);
       border: 2px solid #000;
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      margin: 0 auto 4px;
       color: #fff;
       font-size: 10px;
       font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       animation: bounce 1.5s infinite ease-in-out;
     }
 
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+      50% { transform: translateY(-5px); }
     }
 
     .node-card {
       background: #ffffff;
       border: 3px solid #23242b;
       box-shadow: 3px 3px 0px #000;
-      padding: 10px;
+      padding: 8px;
       text-align: center;
-      width: 100%;
     }
 
-    .node-card h4 {
-      font-size: 13px;
-      color: #1a1a24;
-      margin-bottom: 4px;
-    }
-
-    .node-card p {
-      font-size: 11px;
-      color: #666;
-      margin-bottom: 8px;
-    }
-
-    /* Player Avatar Sprite */
     .player-sprite {
       position: absolute;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       background: #ffbc42;
       border: 3px solid #000;
       border-radius: 50%;
@@ -318,129 +561,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      box-shadow: 0px 4px 0px rgba(0,0,0,0.3);
-    }
-
-    /* Goal Trophy */
-    .trophy-goal {
-      position: absolute;
-      top: 20px;
-      right: 30px;
-      text-align: center;
-      z-index: 6;
-    }
-
-    .trophy-icon {
-      font-size: 44px;
-      filter: drop-shadow(3px 3px 0px #000);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
+      font-size: 18px;
     }
 
     /* ==========================================
-       4. MISSION LIST & COMMUNITY POSTS
-       ========================================== */
-    .content-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-
-    .mission-card {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .mission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
-    .mission-title {
-      font-size: 16px;
-      color: #1a1a24;
-    }
-
-    .mission-desc {
-      font-size: 13px;
-      color: #444;
-      line-height: 1.5;
-    }
-
-    .progress-bar-outer {
-      width: 100%;
-      height: 16px;
-      background: #dcd7c9;
-      border: 2px solid #23242b;
-      position: relative;
-    }
-
-    .progress-bar-inner {
-      height: 100%;
-      background: var(--btn-green);
-      width: 0%;
-      transition: width 0.4s ease;
-    }
-
-    .progress-text {
-      font-size: 11px;
-      display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-    }
-
-    /* Community Post Item */
-    .post-item {
-      padding: 14px;
-      background: #ffffff;
-      border: 2px solid #23242b;
-      margin-bottom: 12px;
-    }
-
-    .post-author {
-      font-size: 12px;
-      font-weight: bold;
-      color: var(--blue-accent);
-      margin-bottom: 4px;
-    }
-
-    .post-content {
-      font-size: 13px;
-      margin-bottom: 8px;
-    }
-
-    .post-footer {
-      font-size: 11px;
-      color: #777;
-      display: flex;
-      gap: 12px;
-    }
-
-    /* Form Input */
-    .pixel-input {
-      width: 100%;
-      padding: 10px;
-      border: 3px solid #23242b;
-      background: #ffffff;
-      font-size: 13px;
-      margin-bottom: 10px;
-      outline: none;
-    }
-
-    .pixel-input:focus {
-      border-color: var(--blue-accent);
-    }
-
-    /* ==========================================
-       5. BOTTOM BRICK BASELINE & MODAL
+       5. BASELINE, MODAL & TOAST
        ========================================== */
     .brick-baseline {
       width: 100%;
@@ -478,7 +603,7 @@
 
     .modal-content {
       width: 90%;
-      max-width: 440px;
+      max-width: 460px;
       padding: 20px;
     }
 
@@ -486,12 +611,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       border-bottom: 2px dashed #23242b;
       padding-bottom: 8px;
     }
 
-    /* Toast Notification */
     .toast {
       position: fixed;
       bottom: 30px;
@@ -520,8 +644,19 @@
       <h1 class="main-title">
         <span>🚩</span> PIXEL CARE <span>❤️</span>
       </h1>
-      <div class="subtitle">레트로 픽셀 기부 & 봉사 커뮤니티 타운</div>
+      <div class="subtitle">레트로 AI 기부 & 봉사 커뮤니티 타운</div>
     </header>
+
+    <!-- Warmth Thermometer Card -->
+    <div class="thermometer-card">
+      <div class="thermo-label">
+        <span>🌡️</span> 우리 동네 픽셀 온기
+      </div>
+      <div class="thermo-bar-outer">
+        <div class="thermo-bar-inner" id="thermo-bar"></div>
+      </div>
+      <div class="thermo-value" id="thermo-val">78.4 °C</div>
+    </div>
 
     <!-- Stats Bar -->
     <div class="stats-bar">
@@ -534,101 +669,68 @@
         <div class="value" id="stat-hours" style="color: var(--blue-accent);">1,280 시간</div>
       </div>
       <div class="pixel-box stat-card">
-        <div class="label">참여 픽셀 히어로</div>
+        <div class="label">참여 픽셀 영웅</div>
         <div class="value" id="stat-members" style="color: var(--btn-green);">342 명</div>
       </div>
     </div>
 
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('roadmap')">🗺️ 성장의 길</button>
-      <button class="tab-btn" onclick="switchTab('missions')">🎯 봉사/기부 참가</button>
-      <button class="tab-btn" onclick="switchTab('community')">💬 커뮤니티 게시판</button>
+      <button class="tab-btn active" onclick="switchTab('aichat')">🤖 AI 대화창 (메인)</button>
+      <button class="tab-btn" onclick="switchTab('missions')">🤝 봉사 & 기부</button>
+      <button class="tab-btn" onclick="switchTab('diary')">📖 픽셀 일기장</button>
+      <button class="tab-btn" onclick="switchTab('roadmap')">🗺️ 성장의 길</button>
     </div>
 
-    <!-- TAB 1: ROADMAP JOURNEY -->
-    <div id="tab-roadmap" class="roadmap-section">
-      <div class="section-title">
-        <span>📍</span> 나의 봉사 픽셀 로드맵 (레벨 단계)
+    <!-- TAB 1: CUTE PIXEL AI CHAT WINDOW (CENTERPIECE) -->
+    <div id="tab-aichat" class="ai-chat-section">
+      <div class="ai-chat-header">
+        <div class="ai-avatar-box">
+          <div class="ai-avatar">🤖</div>
+          <div>
+            <div class="ai-title">픽셀 AI 메이트 (Upstage Solar LLM)</div>
+            <div class="ai-subtitle">당신만을 위한 나눔 & 봉사 맞춤 조력자입니다.</div>
+          </div>
+        </div>
+        <span class="pixel-tag" style="background: var(--ai-purple); color: #fff;">LIVE AI</span>
       </div>
 
-      <div class="road-viewport">
-        <!-- SVG Winding Road Path -->
-        <svg class="road-svg" viewBox="0 0 800 540" preserveAspectRatio="none">
-          <!-- Road Border -->
-          <path d="M 120 480 C 350 480, 700 420, 680 320 C 660 200, 150 250, 160 140 C 170 40, 550 80, 680 40" 
-                stroke="#23242b" stroke-width="64" fill="none" stroke-linecap="round" />
-          <!-- Road Surface -->
-          <path d="M 120 480 C 350 480, 700 420, 680 320 C 660 200, 150 250, 160 140 C 170 40, 550 80, 680 40" 
-                stroke="#383944" stroke-width="50" fill="none" stroke-linecap="round" />
-          <!-- Dashed Centerline -->
-          <path d="M 120 480 C 350 480, 700 420, 680 320 C 660 200, 150 250, 160 140 C 170 40, 550 80, 680 40" 
-                stroke="#e4e2d4" stroke-width="4" stroke-dasharray="12 12" fill="none" />
-        </svg>
-
-        <!-- Player Sprite -->
-        <div class="player-sprite" id="player-sprite" style="left: 15%; top: 88%;">🏃</div>
-
-        <!-- Trophy Goal -->
-        <div class="trophy-goal">
-          <div class="trophy-icon">🏆</div>
-          <span class="pixel-tag" style="background:#f4c542; color:#000;">레전드 전당</span>
+      <!-- Messages Box -->
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-bubble ai">
+          안녕하세요! 당신의 픽셀 AI 조력자입니다. 🤖<br>
+          어떤 나눔이나 봉사활동을 찾고 계신가요? 조건이나 관심 분야를 말씀해 주시면 딱 맞는 미션을 추천해 드릴게요!
         </div>
-
-        <!-- Node 1 -->
-        <div class="milestone-node" style="left: 20%; top: 86%;">
-          <div class="pin-icon">LV1</div>
-          <div class="node-card">
-            <h4>🌱 플로깅 해변 정화</h4>
-            <p>쓰레기 5kg 줍기 미션</p>
-            <button class="pixel-btn" onclick="moveToNode(1, 20, 86, '플로깅 해변 정화')">참가 완료</button>
-          </div>
-        </div>
-
-        <!-- Node 2 -->
-        <div class="milestone-node" style="left: 80%; top: 60%;">
-          <div class="pin-icon">LV2</div>
-          <div class="node-card">
-            <h4>🐾 유기동물 돌봄</h4>
-            <p>보호소 사료 전달 & 봉사</p>
-            <button class="pixel-btn" onclick="moveToNode(2, 80, 60, '유기동물 돌봄')">참가 완료</button>
-          </div>
-        </div>
-
-        <!-- Node 3 -->
-        <div class="milestone-node" style="left: 25%; top: 32%;">
-          <div class="pin-icon">LV3</div>
-          <div class="node-card">
-            <h4>🍲 따뜻한 무료급식</h4>
-            <p>어르신 온기 배식 봉사</p>
-            <button class="pixel-btn" onclick="moveToNode(3, 25, 32, '따뜻한 무료급식')">참가 완료</button>
-          </div>
-        </div>
-
-        <!-- Node 4 -->
-        <div class="milestone-node" style="left: 78%; top: 12%;">
-          <div class="pin-icon">LV4</div>
-          <div class="node-card">
-            <h4>🎨 마을 벽화 그리기</h4>
-            <p>알록달록 픽셀 벽화 완성</p>
-            <button class="pixel-btn" onclick="moveToNode(4, 78, 12, '마을 벽화 그리기')">참가 완료</button>
-          </div>
-        </div>
-
       </div>
+
+      <!-- Prompt Chips -->
+      <div class="prompt-chips">
+        <button class="chip-btn" onclick="sendPrompt('🐾 주말 유기동물 봉사 추천해줘')">🐾 주말 유기동물 봉사</button>
+        <button class="chip-btn" onclick="sendPrompt('🌊 부산 해변 플로깅 추천해줘')">🌊 부산 해변 플로깅</button>
+        <button class="chip-btn" onclick="sendPrompt('🍲 독거어르신 도시락 전달 미션')">🍲 독거어르신 도시락</button>
+        <button class="chip-btn" onclick="sendPrompt('❤️ 1만원 기부 펀딩 프로젝트')">❤️ 1만원 기부 펀딩</button>
+      </div>
+
+      <!-- Chat Input Form -->
+      <form class="chat-input-form" onsubmit="handleChatSubmit(event)">
+        <input type="text" id="chat-input" class="pixel-input" placeholder="예: 부산 해운대 근처 환경 봉사 알려줘..." autocomplete="off">
+        <button type="submit" class="pixel-btn pixel-btn-purple">🚀 전송</button>
+      </form>
     </div>
 
-    <!-- TAB 2: MISSIONS & DONATIONS -->
+    <!-- TAB 2: VOLUNTEER & DONATION MISSIONS (HYBRID) -->
     <div id="tab-missions" class="content-grid" style="display: none;">
+      <!-- Volunteer Mission 1 -->
       <div class="pixel-box mission-card">
         <div class="mission-header">
           <div>
-            <span class="pixel-tag">봉사 모집</span>
-            <h3 class="mission-title" style="margin-top: 6px;">[서울/강남] 주말 독거어르신 도시락 전달 봉사자 모집</h3>
+            <span class="pixel-tag">🤝 봉사 모집</span>
+            <span class="pixel-tag pixel-tag-gov">1365 연동 | 부산 자원봉사센터</span>
+            <h3 style="font-size: 15px; margin-top: 6px;">[부산/강남] 독거어르신 주말 따뜻한 도시락 전달</h3>
           </div>
           <span style="font-size: 24px;">🍱</span>
         </div>
-        <p class="mission-desc">이번 주 토요일 오전 10시, 홀로 계신 어르신들께 따뜻한 도시락을 전달해 드립니다. 함께 발걸음을 옮길 영웅을 찾습니다!</p>
+        <p style="font-size: 12px; color: #444;">이번 주 토요일 오전 10시, 홀로 계신 어르신들께 온기가 담긴 도시락을 전달해 드립니다. (4시간 인정)</p>
         <div class="progress-bar-outer">
           <div class="progress-bar-inner" style="width: 70%;"></div>
         </div>
@@ -636,18 +738,23 @@
           <span>모집 인원: 7명 / 10명</span>
           <span>70% 달성</span>
         </div>
-        <button class="pixel-btn" onclick="openModal('주말 도시락 전달 봉사', 'volunteer')">✋ 봉사 참가 신청하기</button>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button class="pixel-btn" style="flex:1;" onclick="openModal('독거어르신 도시락 전달 봉사', 'volunteer')">⚡ 1초 간편 봉사 신청</button>
+          <a href="https://www.1365.go.kr" target="_blank" class="pixel-btn pixel-btn-blue" style="font-size:11px;">↗️ 1365 원문보기</a>
+        </div>
       </div>
 
+      <!-- Donation Funding Mission 2 -->
       <div class="pixel-box mission-card">
         <div class="mission-header">
           <div>
-            <span class="pixel-tag" style="background: var(--heart-pink);">기부 펀딩</span>
-            <h3 class="mission-title" style="margin-top: 6px;">[긴급 펀딩] 유기견 보육원 겨울 난방비 모금</h3>
+            <span class="pixel-tag" style="background: var(--heart-pink);">❤️ 기부 펀딩</span>
+            <span class="pixel-tag pixel-tag-gov">VMS 검증 | 동물보호 연대</span>
+            <h3 style="font-size: 15px; margin-top: 6px;">[긴급 펀딩] 유기견 보육원 겨울 난방비 펀딩</h3>
           </div>
           <span style="font-size: 24px;">🐶</span>
         </div>
-        <p class="mission-desc">올겨울 유기견 아이들이 따뜻하게 지낼 수 있도록 픽셀 온기 펀딩에 함께해 주세요. 1,000원부터 자유롭게 기부 가능합니다.</p>
+        <p style="font-size: 12px; color: #444;">올겨울 유기견 아이들이 따뜻하게 지낼 수 있도록 픽셀 마음 펀딩에 함께해 주세요. 1,000원부터 가능합니다.</p>
         <div class="progress-bar-outer">
           <div class="progress-bar-inner" style="width: 85%; background: var(--heart-pink);"></div>
         </div>
@@ -659,32 +766,103 @@
       </div>
     </div>
 
-    <!-- TAB 3: COMMUNITY BOARD -->
-    <div id="tab-community" style="display: none;">
-      <!-- Post Form -->
-      <div class="pixel-box" style="padding: 16px; margin-bottom: 20px;">
-        <h3 style="font-size: 14px; margin-bottom: 10px;">✍️ 봉사 후기 & 소통 글쓰기</h3>
-        <input type="text" id="author-input" class="pixel-input" placeholder="닉네임 (예: 픽셀용사)" value="레트로봉사자">
-        <textarea id="content-input" class="pixel-input" rows="3" placeholder="오늘 어떤 봉사나 기부를 하셨나요? 자유롭게 소식을 전해 주세요!"></textarea>
-        <button class="pixel-btn pixel-btn-blue" onclick="createPost()">🚀 게시글 등록</button>
+    <!-- TAB 3: VOLUNTEER DIARY COMMUNITY -->
+    <div id="tab-diary" style="display: none;">
+      <!-- Post Form Frame -->
+      <div class="pixel-box" style="padding: 16px; margin-bottom: 20px; background: #fff8eb;">
+        <h3 style="font-size: 14px; margin-bottom: 10px;">📖 오늘의 픽셀 봉사 일기 쓰기</h3>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+          <input type="text" id="diary-author" class="pixel-input" placeholder="닉네임 (예: 픽셀영웅)" value="레트로봉사자" style="flex:1; min-width: 140px;">
+          <select id="diary-emotion" class="pixel-input" style="flex:1; min-width: 140px;">
+            <option value="😊 뿌듯함">😊 감정: 뿌듯함</option>
+            <option value="🥰 따뜻함">🥰 감정: 따뜻함</option>
+            <option value="🌱 희망찬">🌱 감정: 희망찬</option>
+            <option value="🔥 열정적인">🔥 감정: 열정적인</option>
+          </select>
+        </div>
+        <textarea id="diary-content" class="pixel-input" rows="3" placeholder="오늘 어떤 나눔과 봉사활동을 하셨나요? 마음을 나누어 보세요!"></textarea>
+        <button class="pixel-btn pixel-btn-blue" onclick="createDiaryPost()">📝 일기장 저장 및 공유</button>
       </div>
 
-      <!-- Post Feed -->
-      <div id="post-feed">
-        <!-- Initial Demo Posts -->
-        <div class="post-item">
-          <div class="post-author">🎮 픽셀마스터</div>
-          <div class="post-content">오늘 유기동물 보호소 봉사 다녀왔습니다! 아이들이 너무 순하고 반겨줘서 힐링하고 왔네요. 다음에도 같이 가요!</div>
-          <div class="post-footer">
-            <span>방금 전</span> • <span>❤️ 응원 12개</span>
+      <!-- Diary Feed -->
+      <div id="diary-feed">
+        <div class="diary-card">
+          <div class="diary-header">
+            <span class="diary-title">🎮 픽셀마스터의 일기장</span>
+            <span class="diary-meta">오늘 • 😊 감정: 뿌듯함</span>
+          </div>
+          <div class="diary-body">
+            오늘 유기동물 보호소 봉사활동을 다녀왔습니다! 사료 청소와 보육원 정리를 도왔는데 아이들이 좋아하는 모습을 보니 마음이 따뜻해졌습니다. 작은 픽셀 하나가 모여 큰 온도가 되네요!
+          </div>
+          <div class="diary-footer">
+            <span class="pixel-tag" style="background:#55c54f;">🐾 유기동물 미션</span>
+            <button class="pixel-btn pixel-btn-red" style="font-size:11px; padding:4px 8px;" onclick="sendHeart(this)">❤️ 픽셀 온기 12</button>
           </div>
         </div>
 
-        <div class="post-item">
-          <div class="post-author">🌱 새싹히어로</div>
-          <div class="post-content">해변 정화 플로깅 미션 완료하고 LV1 핀 달성했습니다 🏃‍♂️ 픽셀 로드맵 따라 올라가니 게임하는 것 같아서 재밌어요!</div>
-          <div class="post-footer">
-            <span>10분 전</span> • <span>❤️ 응원 8개</span>
+        <div class="diary-card">
+          <div class="diary-header">
+            <span class="diary-title">🌱 새싹히어로의 일기장</span>
+            <span class="diary-meta">어제 • 🌱 감정: 희망찬</span>
+          </div>
+          <div class="diary-body">
+            부산 해운대 해변 플로깅 참가 완료! 5kg 마대자루 가득 해양 쓰레기를 수거했습니다. 픽셀 온도계가 올라갈 때마다 정말 보람을 느낍니다! 🌊
+          </div>
+          <div class="diary-footer">
+            <span class="pixel-tag" style="background:var(--blue-accent);">🌊 해변 플로깅</span>
+            <button class="pixel-btn pixel-btn-red" style="font-size:11px; padding:4px 8px;" onclick="sendHeart(this)">❤️ 픽셀 온기 19</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ROADMAP JOURNEY -->
+    <div id="tab-roadmap" class="roadmap-section" style="display: none;">
+      <h3 style="font-size: 15px; margin-bottom: 12px; color: #fff; text-shadow: 2px 2px 0px #000;">🗺️ 픽셀 히어로 성장의 길 (Roadmap)</h3>
+
+      <div class="road-viewport">
+        <svg class="road-svg" viewBox="0 0 800 480" preserveAspectRatio="none">
+          <path d="M 100 420 C 350 420, 700 360, 680 260 C 660 160, 150 200, 160 100 C 170 20, 550 40, 680 20" 
+                stroke="#23242b" stroke-width="56" fill="none" stroke-linecap="round" />
+          <path d="M 100 420 C 350 420, 700 360, 680 260 C 660 160, 150 200, 160 100 C 170 20, 550 40, 680 20" 
+                stroke="#383944" stroke-width="44" fill="none" stroke-linecap="round" />
+          <path d="M 100 420 C 350 420, 700 360, 680 260 C 660 160, 150 200, 160 100 C 170 20, 550 40, 680 20" 
+                stroke="#e4e2d4" stroke-width="4" stroke-dasharray="10 10" fill="none" />
+        </svg>
+
+        <!-- Player Sprite -->
+        <div class="player-sprite" id="player-sprite" style="left: 14%; top: 86%;">🏃</div>
+
+        <!-- Nodes -->
+        <div class="milestone-node" style="left: 18%; top: 84%;">
+          <div class="pin-icon">LV1</div>
+          <div class="node-card">
+            <h4>🌱 플로깅 해변 정화</h4>
+            <button class="pixel-btn" style="font-size:10px; padding:4px;" onclick="moveToNode(1, 18, 84, '플로깅 해변 정화')">이동 완료</button>
+          </div>
+        </div>
+
+        <div class="milestone-node" style="left: 80%; top: 54%;">
+          <div class="pin-icon">LV2</div>
+          <div class="node-card">
+            <h4>🐾 유기동물 돌봄</h4>
+            <button class="pixel-btn" style="font-size:10px; padding:4px;" onclick="moveToNode(2, 80, 54, '유기동물 돌봄')">이동 완료</button>
+          </div>
+        </div>
+
+        <div class="milestone-node" style="left: 22%; top: 26%;">
+          <div class="pin-icon">LV3</div>
+          <div class="node-card">
+            <h4>🍲 따뜻한 무료급식</h4>
+            <button class="pixel-btn" style="font-size:10px; padding:4px;" onclick="moveToNode(3, 22, 26, '따뜻한 무료급식')">이동 완료</button>
+          </div>
+        </div>
+
+        <div class="milestone-node" style="left: 78%; top: 8%;">
+          <div class="pin-icon">🏆</div>
+          <div class="node-card">
+            <h4>🏆 레전드 전당</h4>
+            <button class="pixel-btn pixel-btn-red" style="font-size:10px; padding:4px;" onclick="moveToNode(4, 78, 8, '레전드 전당')">목표 달성</button>
           </div>
         </div>
       </div>
@@ -695,23 +873,23 @@
   <!-- Bottom Brick Baseline -->
   <div class="brick-baseline"></div>
 
-  <!-- PARTICIPATION MODAL -->
+  <!-- HYBRID APPLICATION MODAL -->
   <div class="modal-overlay" id="modal">
     <div class="pixel-box modal-content">
       <div class="modal-header">
-        <h3 id="modal-title">봉사/기부 신청</h3>
+        <h3 id="modal-title">⚡ 1초 픽셀 간편 신청</h3>
         <button onclick="closeModal()" style="background:none; border:none; font-size:18px; cursor:pointer;">✖</button>
       </div>
       <div id="modal-body">
-        <label style="font-size: 12px; display: block; margin-bottom: 4px;">참가자 이름</label>
-        <input type="text" id="modal-name" class="pixel-input" value="홍길동">
-        <label style="font-size: 12px; display: block; margin-bottom: 4px;">연락처 / 이메일</label>
-        <input type="text" id="modal-contact" class="pixel-input" value="010-1234-5678">
+        <label style="font-size: 11px; display: block; margin-bottom: 4px;">신청자 성함</label>
+        <input type="text" id="modal-name" class="pixel-input" value="홍길동" style="margin-bottom:8px;">
+        <label style="font-size: 11px; display: block; margin-bottom: 4px;">연락처 / 이메일</label>
+        <input type="text" id="modal-contact" class="pixel-input" value="010-1234-5678" style="margin-bottom:8px;">
         <div id="donate-amount-field" style="display: none;">
-          <label style="font-size: 12px; display: block; margin-bottom: 4px;">기부 금액 (원)</label>
-          <input type="number" id="modal-amount" class="pixel-input" value="10000" step="1000">
+          <label style="font-size: 11px; display: block; margin-bottom: 4px;">기부 마음 금액 (원)</label>
+          <input type="number" id="modal-amount" class="pixel-input" value="10000" step="1000" style="margin-bottom:8px;">
         </div>
-        <button class="pixel-btn" style="width: 100%; margin-top: 10px;" onclick="submitAction()">확인 및 참가 완료</button>
+        <button class="pixel-btn" style="width: 100%; margin-top: 6px;" onclick="submitAction()">⚡ 1초 간편 신청 완료 및 뱃지 발급</button>
       </div>
     </div>
   </div>
@@ -721,41 +899,111 @@
 
   <!-- JAVASCRIPT LOGIC -->
   <script>
-    // Tab Switcher Logic
+    // Tab Navigation
     function switchTab(tabName) {
-      document.getElementById('tab-roadmap').style.display = 'none';
+      document.getElementById('tab-aichat').style.display = 'none';
       document.getElementById('tab-missions').style.display = 'none';
-      document.getElementById('tab-community').style.display = 'none';
+      document.getElementById('tab-diary').style.display = 'none';
+      document.getElementById('tab-roadmap').style.display = 'none';
 
       const buttons = document.querySelectorAll('.tab-btn');
       buttons.forEach(btn => btn.classList.remove('active'));
 
-      if (tabName === 'roadmap') {
-        document.getElementById('tab-roadmap').style.display = 'block';
+      if (tabName === 'aichat') {
+        document.getElementById('tab-aichat').style.display = 'block';
         buttons[0].classList.add('active');
       } else if (tabName === 'missions') {
         document.getElementById('tab-missions').style.display = 'grid';
         buttons[1].classList.add('active');
-      } else if (tabName === 'community') {
-        document.getElementById('tab-community').style.display = 'block';
+      } else if (tabName === 'diary') {
+        document.getElementById('tab-diary').style.display = 'block';
         buttons[2].classList.add('active');
+      } else if (tabName === 'roadmap') {
+        document.getElementById('tab-roadmap').style.display = 'block';
+        buttons[3].classList.add('active');
       }
-      playBeep();
+      playBeep(480, 0.08);
     }
 
-    // Move Player Character on Roadmap
-    function moveToNode(level, leftPercent, topPercent, name) {
-      const sprite = document.getElementById('player-sprite');
-      sprite.style.left = leftPercent + '%';
-      sprite.style.top = topPercent + '%';
-      showToast(`🎉 [LV${level} ${name}] 노드로 이동했습니다!`);
-      playBeep(440, 0.15);
+    // AI Chat Handler
+    function handleChatSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('chat-input');
+      const query = input.value.trim();
+      if (!query) return;
+
+      appendChatMessage('user', query);
+      input.value = '';
+
+      // Simulate Solar LLM Response
+      setTimeout(() => {
+        generateAiReply(query);
+      }, 600);
+    }
+
+    function sendPrompt(promptText) {
+      appendChatMessage('user', promptText);
+      setTimeout(() => {
+        generateAiReply(promptText);
+      }, 600);
+    }
+
+    function appendChatMessage(sender, text) {
+      const chatBox = document.getElementById('chat-messages');
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${sender}`;
+      bubble.innerHTML = text;
+      chatBox.appendChild(bubble);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      playBeep(sender === 'user' ? 540 : 640, 0.1);
+    }
+
+    function generateAiReply(query) {
+      let replyHtml = "";
+      if (query.includes('유기동물') || query.includes('동물')) {
+        replyHtml = `
+          🐾 <b>추천 봉사 미션: 유기견 보육원 주말 돌봄 봉사</b><br>
+          요청하신 동물 관련 따뜻한 미션을 찾았습니다!<br>
+          📍 장소: 부산 동물보호 센터 (4시간 인정)<br>
+          <div style="margin-top:8px;">
+            <button class="pixel-btn" onclick="openModal('유기견 보육원 돌봄 봉사', 'volunteer')">⚡ 바로 참가 신청하기</button>
+          </div>
+        `;
+      } else if (query.includes('플로깅') || query.includes('해변') || query.includes('환경')) {
+        replyHtml = `
+          🌊 <b>추천 봉사 미션: 부산 해운대 해변 플로깅 정화</b><br>
+          바다를 깨끗하게 만드는 주말 환경 미션입니다!<br>
+          📍 장소: 해운대 해수욕장 광장 (3시간 인정)<br>
+          <div style="margin-top:8px;">
+            <button class="pixel-btn" onclick="openModal('부산 해운대 해변 플로깅', 'volunteer')">⚡ 바로 참가 신청하기</button>
+          </div>
+        `;
+      } else if (query.includes('어르신') || query.includes('도시락') || query.includes('급식')) {
+        replyHtml = `
+          🍲 <b>추천 봉사 미션: 독거어르신 온기 도시락 전달</b><br>
+          어르신들께 따뜻한 한 끼와 안부를 전하는 감동 미션입니다.<br>
+          📍 장소: 부산 자원봉사센터 (4시간 인정)<br>
+          <div style="margin-top:8px;">
+            <button class="pixel-btn" onclick="openModal('독거어르신 도시락 전달', 'volunteer')">⚡ 바로 참가 신청하기</button>
+          </div>
+        `;
+      } else {
+        replyHtml = `
+          ❤️ <b>추천 기부 프로젝트: 유기견 겨울 난방비 모금</b><br>
+          작은 마음 하나로 픽셀 온도를 올려주세요!<br>
+          📍 기부 목표: 1,000,000원 (85% 달성 중)<br>
+          <div style="margin-top:8px;">
+            <button class="pixel-btn pixel-btn-red" onclick="openModal('유기견 난방비 기부', 'donate')">❤️ 픽셀 마음 기부하기</button>
+          </div>
+        `;
+      }
+      appendChatMessage('ai', replyHtml);
     }
 
     // Modal Control
-    let currentActionType = 'volunteer';
+    let currentType = 'volunteer';
     function openModal(title, type) {
-      currentActionType = type;
+      currentType = type;
       document.getElementById('modal-title').innerText = title;
       document.getElementById('donate-amount-field').style.display = (type === 'donate') ? 'block' : 'none';
       document.getElementById('modal').classList.add('active');
@@ -768,54 +1016,89 @@
 
     function submitAction() {
       const name = document.getElementById('modal-name').value || '익명';
-      if (currentActionType === 'donate') {
+      if (currentType === 'donate') {
         const amt = parseInt(document.getElementById('modal-amount').value || 10000);
-        showToast(`❤️ ${name}님, ${amt.toLocaleString()}원 기부 감사합니다!`);
-        // Update Stat
+        showToast(`❤️ ${name}님, ${amt.toLocaleString()}원 기부 완료! 뱃지를 획득하셨습니다!`);
+        // Stat update
         const statDonation = document.getElementById('stat-donation');
         let currentAmt = parseInt(statDonation.innerText.replace(/[^0-9]/g, ''));
         statDonation.innerText = '₩' + (currentAmt + amt).toLocaleString();
       } else {
-        showToast(`✋ ${name}님, 봉사 활동 신청이 완료되었습니다!`);
+        showToast(`⚡ ${name}님, 간편 봉사 신청이 완료되었습니다! 뱃지 발급!`);
         const statMembers = document.getElementById('stat-members');
         let currentMembers = parseInt(statMembers.innerText.replace(/[^0-9]/g, ''));
         statMembers.innerText = (currentMembers + 1) + ' 명';
       }
+
+      // Increase Thermometer
+      increaseThermometer(0.8);
       closeModal();
       playBeep(660, 0.2);
     }
 
-    // Community Posts Logic
-    function createPost() {
-      const author = document.getElementById('author-input').value.trim();
-      const content = document.getElementById('content-input').value.trim();
+    function increaseThermometer(val) {
+      const bar = document.getElementById('thermo-bar');
+      const txt = document.getElementById('thermo-val');
+      let curr = parseFloat(txt.innerText.replace('°C', ''));
+      let next = Math.min(99.9, curr + val).toFixed(1);
+      txt.innerText = next + ' °C';
+      bar.style.width = Math.min(100, next) + '%';
+    }
+
+    // Diary Functions
+    function createDiaryPost() {
+      const author = document.getElementById('diary-author').value.trim() || '익명용사';
+      const emotion = document.getElementById('diary-emotion').value;
+      const content = document.getElementById('diary-content').value.trim();
 
       if (!content) {
-        showToast('⚠️ 내용글을 입력해 주세요!');
+        showToast('⚠️ 오늘 봉사 일기 내용을 적어주세요!');
         return;
       }
 
-      const postFeed = document.getElementById('post-feed');
-      const newPost = document.createElement('div');
-      newPost.className = 'post-item';
-      newPost.innerHTML = `
-        <div class="post-author">🎮 ${escapeHtml(author || '익명용사')}</div>
-        <div class="post-content">${escapeHtml(content)}</div>
-        <div class="post-footer">
-          <span>방금 전</span> • <span>❤️ 응원 1개</span>
+      const feed = document.getElementById('diary-feed');
+      const diaryCard = document.createElement('div');
+      diaryCard.className = 'diary-card';
+      diaryCard.innerHTML = `
+        <div class="diary-header">
+          <span class="diary-title">🎮 ${escapeHtml(author)}의 일기장</span>
+          <span class="diary-meta">방금 전 • ${escapeHtml(emotion)}</span>
+        </div>
+        <div class="diary-body">
+          ${escapeHtml(content)}
+        </div>
+        <div class="diary-footer">
+          <span class="pixel-tag" style="background:#55c54f;">🤝 봉사 일기</span>
+          <button class="pixel-btn pixel-btn-red" style="font-size:11px; padding:4px 8px;" onclick="sendHeart(this)">❤️ 픽셀 온기 1</button>
         </div>
       `;
-      postFeed.prepend(newPost);
-      document.getElementById('content-input').value = '';
-      showToast('🚀 성취글이 게시되었습니다!');
+      feed.prepend(diaryCard);
+      document.getElementById('diary-content').value = '';
+      showToast('📖 오늘의 봉사 일기가 일기장에 남겨졌습니다!');
+      increaseThermometer(0.4);
       playBeep(580, 0.15);
+    }
+
+    function sendHeart(btn) {
+      let count = parseInt(btn.innerText.replace(/[^0-9]/g, '')) || 0;
+      btn.innerText = `❤️ 픽셀 온기 ${count + 1}`;
+      showToast('❤️ 응원 픽셀 온기를 보냈습니다!');
+      increaseThermometer(0.1);
+      playBeep(700, 0.1);
+    }
+
+    function moveToNode(level, left, top, title) {
+      const sprite = document.getElementById('player-sprite');
+      sprite.style.left = left + '%';
+      sprite.style.top = top + '%';
+      showToast(`🏃 LV${level} [${title}] 위치로 이동했습니다!`);
+      playBeep(440, 0.15);
     }
 
     function escapeHtml(text) {
       return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // Toast Notification System
     function showToast(msg) {
       const toast = document.getElementById('toast');
       toast.innerText = msg;
@@ -825,7 +1108,6 @@
       }, 3000);
     }
 
-    // Simple Web Audio API Synthesizer Sound FX
     function playBeep(freq = 440, duration = 0.1) {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -833,14 +1115,12 @@
         const gain = audioCtx.createGain();
         osc.type = 'square';
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start();
         osc.stop(audioCtx.currentTime + duration);
-      } catch (e) {
-        // Audio fallback
-      }
+      } catch (e) {}
     }
   </script>
 </body>
