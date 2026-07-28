@@ -26,7 +26,7 @@
 - **CSS Architecture**: CSS Custom Properties (`--pixel-primary`, `--pixel-bg`) 기반 시스템 설계.
 
 ---
-
+ddddddd
 ## 🤖 3. Upstage AI 파이프라인 가이드라인 (AI Integration)
 
 - **API 연동**: `src/js/upstageApi.js` 내 Upstage Solar LLM API 호출 구현.
