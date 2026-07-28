@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Header } from './components/Header';
-import { PixelAiMate } from './components/PixelAiMate';
-import { VolunteerCatalog } from './components/VolunteerCatalog';
-import { PixelDiary } from './components/PixelDiary';
-import { RoadmapMap } from './components/RoadmapMap';
-import { Modal } from './components/Modal';
-import { Toast } from './components/Toast';
+import { Header } from './components/common/Header';
+import { Modal } from './components/common/Modal';
+import { Toast } from './components/common/Toast';
+import { PixelAiMate } from './components/ai/PixelAiMate';
+import { VolunteerCatalog } from './components/volunteer/VolunteerCatalog';
+import { PixelDiary } from './components/diary/PixelDiary';
+import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { playBeep } from './services/soundFx';
 
 export function App() {
@@ -75,7 +75,9 @@ export function App() {
 
       <main>
         {activeTab === 'ai' && <PixelAiMate onOpenModal={handleOpenModal} />}
-        {activeTab === 'volunteer' && <VolunteerCatalog onOpenModal={handleOpenModal} />}
+        {activeTab === 'volunteer' && (
+          <VolunteerCatalog onOpenModal={handleOpenModal} showToast={triggerToast} />
+        )}
         {activeTab === 'diary' && (
           <PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />
         )}

@@ -7,5 +7,9 @@ interface ToastProps {
 export const Toast: React.FC<ToastProps> = ({ message }) => {
   if (!message) return null;
 
-  return <div className="toast-msg show">{message}</div>;
+  return (
+    <div className="pixel-box toast active">
+      <span>🎉</span> {message}
+    </div>
+  );
 };
