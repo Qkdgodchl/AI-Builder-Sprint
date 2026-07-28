@@ -17,9 +17,12 @@
 ## 🌿 2. Git 브랜치 전략
 
 - **`main`**: 배포용 메인 브랜치 (PR 후 Merge)
-- **`feature/community-user`**: 커뮤니티 게시판 & 내 기록/센터 관리자 신청 (팀원 A)
-- **`feature/center-operator`**: 센터 관리 & 운영진 관리 시스템 (팀원 B)
-- **`feature/ai-volunteer`**: Upstage AI 챗봇 & 봉사/기부 선행하기 목록 (팀원 C)
+- **`feature/volunteer-donation`**: 🎁 봉사 & 기부 카탈로그/상세 탭
+- **`feature/center-manager`**: 🏢 센터 관리자 탭 (센터 대시보드, 모집글 작성, 신청자 승인)
+- **`feature/operator`**: 🛡️ 운영진 탭 (관리자/센터 승인 처리, 게시물 소프트 삭제, 감사 로그)
+- **`feature/ai-chat`**: 🤖 Upstage Solar AI 챗봇 탭 (`Pixel AI Mate`)
+- **`feature/community`**: 💬 픽셀 커뮤니티 탭 (선행 인증 후기 & 동행 모집)
+- **`feature/my-records`**: 📜 내 기록 탭 (내 이력, 온기 온도계, 뱃지 도감, 센터 관리자 신청)
 
 ---
 
