@@ -1,90 +1,88 @@
-# 🏗️ Pixel Care 시스템 아키텍처 (ARCHITECTURE.md)
+# 🏗️ Pixel Care CLM 시스템 아키텍처 (ARCHITECTURE.md)
 
-픽셀 케어(Pixel Care) 시스템 전체의 기술 아키텍처 및 계층별 폴더 구조 명세서입니다.
+선행 약정 CLM (Contract Lifecycle Management) 플랫폼의 기술 아키텍처, 데이터 모델 ERD, 백엔드/프론트엔드 시스템 레이어 명세서입니다.
 
 ---
 
-## 🛠️ 1. 전체 기술 아키텍처 (Overall Architecture)
+## 🛠️ 1. 전체 CLM 시스템 아키텍처
 
 ```
-[ Client (Browser) ]
+[ Client (React + Vite) ]
      │
-     ├── React 18 (TypeScript + Vite)
-     ├── Pixel Aesthetics (Vanilla CSS & Web Audio API)
-     └── REST Client (fetch API)
+     ├── 🏠 홈 (Solar LLM 대화 UI)
+     ├── 🎁 선행하기 (5대 카탈로그)
+     ├── 💬 커뮤니티 (인증된 선행 공유)
+     └── ❤️ 내 기록 (서명 완료 PDF & 증빙)
             │
-            ▼ (HTTP / REST API - Port 8080)
-[ Spring Boot Backend Server ]
+            ▼ (HTTP REST API / JSON)
+[ Spring Boot Backend (CLM Engine) ]
      │
-     ├── Volunteer Domain (com.pixelcare.volunteer) ───► 1365 Open API Gateway
-     ├── Community Domain (com.pixelcare.community)
-     └── AI Domain (com.pixelcare.ai) ────────────────► Upstage Solar LLM API
+     ├── 🤖 Upstage API (Solar LLM + Information Extract + Document Parse)
+     ├── 📜 CLM State Machine (Draft ➔ Signed ➔ Active ➔ Renewal)
+     └── ✒️ Modusign API (전자서명 요청 & Webhook 수신)
             │
-            ▼ (Spring Data JPA)
+            ▼ (Spring Data JPA + Flyway)
 [ Database Layer ]
-     ├── Flyway DB Migration (db/migration/V1__...)
-     └── MySQL 8.0 / H2 In-Memory DB
+     ├── MySQL 8.0 / H2 In-Memory DB
+     └── Flyway Migration (V1__init_schema.sql, V2__add_clm_tables.sql)
 ```
 
 ---
 
-## 📂 2. 백엔드 패키지 구조 (`backend/src/main/java/com/pixelcare/`)
+## 🗄️ 2. 핵심 데이터 구조 & ERD (Domain Entities)
+
+### 2.1 사용자 & 단체 (User & Organization)
+- **`User`**: `userId`, `name`, `email`, `phone`, `role` (USER | ADMIN), `region`, `interests`, `createdAt`
+- **`Organization`**: `organizationId`, `name`, `type`, `managerId`, `contact`, `verificationStatus`
+
+### 2.2 선행 기회 & 약정 (Opportunity & Commitment)
+- **`Opportunity`**: `opportunityId`, `organizationId`, `type` (VOLUNTEER | DONATION | GOHYANG | CULTURAL_HERITAGE | HERITAGE_WILL), `category`, `title`, `description`, `region`, `startDate`, `endDate`, `status`
+- **`Commitment`**: `commitmentId`, `userId`, `organizationId`, `opportunityId`, `commitmentType`, `status` (DRAFT ~ COMPLETED 11개 상태), `amount`, `paymentCycle`, `startDate`, `endDate`, `specialConditions`, `currentVersion`, `createdAt`
+
+### 2.3 전자서명 & 문서 (ContractDocument & SignatureRequest)
+- **`ContractDocument`**: `documentId`, `commitmentId`, `documentType`, `version`, `fileUrl`, `extractedFields` (JSON), `documentHash`, `status`, `createdAt`
+- **`SignatureRequest`**: `signatureRequestId`, `commitmentId`, `modusignDocumentId`, `signerId`, `status`, `requestedAt`, `completedAt`, `failureReason`
+- **`Consent`**: `consentId`, `commitmentId`, `consentType`, `agreed`, `agreedAt`, `version`
+
+### 2.4 활동 기록 & 커뮤니티 (ActivityRecord & CommunityPost)
+- **`ActivityRecord`**: `activityRecordId`, `userId`, `opportunityId`, `commitmentId`, `status`, `verificationFileUrl`, `verifiedAt`
+- **`CommunityPost`**: `postId`, `userId`, `activityRecordId`, `content`, `imageUrl`, `visibility`, `createdAt`
+
+---
+
+## 📂 3. 백엔드 패키지 구조 (`backend/src/main/java/com/pixelcare/`)
 
 ```
 backend/src/main/java/com/pixelcare/
-├── PixelCareApplication.java         # 메인 애플리케이션 실행 파일
-├── config/                           # 공통 설정 클래스
-│   ├── CorsConfig.java               # 프론트엔드 CORS 허용 설정
-│   └── DataLoader.java               # 초기 시딩 데이터 자동 생성
-├── volunteer/                        # [팀원 B 담당] 봉사 & 기부 도메인
-│   ├── Volunteer.java                # JPA 엔티티
-│   ├── VolunteerRequestDto.java      # 요청 DTO
-│   ├── VolunteerResponseDto.java     # 응답 DTO
-│   ├── VolunteerRepository.java      # JPA 리포지토리
-│   ├── VolunteerService.java         # 봉사 서비스
-│   ├── Gov1365ApiService.java       # 1365 공공데이터 XML 파서
-│   └── VolunteerController.java      # REST 컨트롤러 (/api/volunteers)
-├── community/                        # [팀원 A 담당] 커뮤니티 게시판 도메인
-│   ├── Post.java                     # 게시글 JPA 엔티티
-│   ├── PostRequestDto.java           # 게시글 요청 DTO
-│   ├── PostResponseDto.java          # 게시글 응답 DTO
-│   ├── PostRepository.java           # 게시글 JPA 리포지토리
-│   ├── PostService.java              # 게시글 서비스
-│   └── PostController.java           # REST 컨트롤러 (/api/posts)
-└── ai/                               # [팀원 C 담당] Upstage AI 도메인
-    ├── UpstageApiService.java        # Upstage Solar LLM API 파이프라인
-    └── AiController.java             # REST 컨트롤러 (/api/ai)
+├── PixelCareApplication.java         # 메인 실행 파일
+├── config/                           # CorsConfig, DataLoader, FlywayConfig
+├── user/                             # 회원 & 역할 관리 (User, Organization)
+├── opportunity/                      # 봉사/기부 카탈로그 (Opportunity)
+├── commitment/                       # CLM 약정 & 전자서명 (Commitment, ContractDocument, SignatureRequest)
+├── ai/                               # Upstage Solar LLM & Information Extract
+├── webhook/                          # 모두싸인 (Modusign) Webhook 수신기
+└── community/                        # 선행 인증 커뮤니티 (CommunityPost, ActivityRecord)
 ```
 
 ---
 
-## 📂 3. 프론트엔드 폴더 구조 (`frontend/src/`)
+## 📂 4. 프론트엔드 폴더 구조 (`frontend/src/`)
 
 ```
 frontend/src/
-├── App.tsx                           # 메인 애플리케이션 탭 조율
-├── App.css / index.css               # 레트로 픽셀 디자인 시스템 & 토큰
-├── main.tsx                          # React 엔트리포인트
-├── components/                       # 화면 컴포넌트
-│   ├── common/                       # 공통 컴포넌트 (Header, Modal, Toast)
-│   ├── volunteer/                    # 봉사/기부 (VolunteerCatalog, RegisterVolunteerModal)
-│   ├── diary/                        # 커뮤니티 (PixelDiary - 피드, 댓글, 검색)
-│   ├── ai/                           # AI 챗봇 (PixelAiMate)
-│   └── roadmap/                      # 로드맵 (RoadmapMap - S자 도감, 뱃지)
-├── services/                         # REST API 통신 모듈
-│   ├── volunteerApi.ts               # 봉사 API 서비스
-│   ├── communityApi.ts               # 커뮤니티 API 서비스
-│   └── soundFx.ts                    # Web Audio API 8-bit 효과음
-└── types/                            # 공통 TypeScript 타입 인터페이스
-    └── index.ts
+├── App.tsx                           # 4대 탭 (홈, 선행하기, 커뮤니티, 내 기록)
+├── components/
+│   ├── home/                         # AI 대화 & 빠른 메뉴 & 서명 대기 알림
+│   ├── catalog/                      # 5대 선행 카탈로그 & 상세 신청 모달
+│   ├── commitment/                   # 약정서 미리보기 & 모두싸인 서명 웹뷰
+│   ├── community/                    # 인증된 선행 후기 & 인증 배지 게시글
+│   ├── myrecords/                    # 서명 완료 PDF 증빙 & 감사추적서 조회
+│   └── admin/                        # 단체 대시보드 (약정 승인 & 템플릿 관리)
+├── services/
+│   ├── aiApi.ts                      # Upstage Solar LLM 대화 API
+│   ├── commitmentApi.ts              # CLM 약정 & 모두싸인 서명 API
+│   ├── opportunityApi.ts             # 카탈로그 조회 API
+│   └── communityApi.ts               # 커뮤니티 API
+└── types/
+    └── index.ts                      # CLM 인터페이스 정의
 ```
-
----
-
-## 🗄️ 4. 데이터베이스 ERD & Flyway 마이그레이션
-
-- **`volunteers` 테이블**: 봉사 공고 및 기부 펀딩 프로젝트 저장.
-- **`volunteer_tags` 테이블**: 봉사 관련 태그 (1365 연동, 시간 인정 등).
-- **`posts` 테이블**: 커뮤니티 게시글 (제목, 내용, 작성자, 카테고리, 좋아요, 조회수).
-- **`comments` 테이블**: 게시글 연동 소통 댓글 (`post_id` FK).
-- **Flyway 마이그레이션**: `backend/src/main/resources/db/migration/`에 버전별 DDL 관리.
