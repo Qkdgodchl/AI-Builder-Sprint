@@ -1,45 +1,34 @@
-# 🤝 Pixel Care CLM 팀 기능별 협업 가이드라인 (TEAM_CONVENTIONS.md)
+# 🤝 Pixel Care 팀 기능별 협업 가이드라인 (TEAM_CONVENTIONS.md)
 
-이 가이드라인은 팀원 3명이 **CLM 선행 약정 플랫폼의 핵심 기능별(Vertical Slice / Feature-Driven)**로 구역을 나누어 풀스택 개발할 때 준수해야 하는 규약입니다.
+이 가이드라인은 팀원 3명이 **Phase 1 최우선 메인 기능(봉사/기부, 커뮤니티, Upstage AI, 로드맵)**을 분담하여 풀스택으로 완성하기 위한 협업 규약입니다.
 
 ---
 
-## 👥 1. 기능별 담당 분담표 (Feature Ownership)
+## 👥 1. Phase 1 기능별 담당 분담표 (Feature Ownership)
 
-| 팀원 | 담당 모듈 | 개발 영역 (FE UI + BE Domain + DB) |
+| 팀원 | 담당 기능 모듈 | 개발 영역 (FE UI + BE Controller/Service + DB) |
 | :--- | :--- | :--- |
-| **팀원 A (리더)** | **📜 CLM 약정 & 모두싸인 전자서명 & 내 기록** | - BE: `com.pixelcare.commitment` (Commitment, SignatureRequest, Webhook)<br>- FE: `components/myrecords`, `components/commitment`, `commitmentApi.ts` |
-| **팀원 B** | **🎁 5대 선행 카탈로그 & 🏢 단체 대시보드** | - BE: `com.pixelcare.opportunity` (1365 연동, Opportunity, Organization)<br>- FE: `components/catalog`, `components/admin`, `opportunityApi.ts` |
-| **팀원 C** | **🤖 Upstage AI (Solar LLM + Extract) & 💬 커뮤니티** | - BE: `com.pixelcare.ai`, `com.pixelcare.community` (AI Chat, Post, Certificate)<br>- FE: `components/home`, `components/community`, `aiApi.ts` |
+| **팀원 A (리더)** | **💬 커뮤니티 & 📖 일기 모듈** | - BE: `com.pixelcare.community` (`Post`, 댓글 API, Flyway)<br>- FE: `components/diary/`, `services/communityApi.ts` |
+| **팀원 B** | **🤝 봉사/기부 & 1365 공공 API** | - BE: `com.pixelcare.volunteer` (`Volunteer`, 1365 연동, REST API)<br>- FE: `components/volunteer/`, `services/volunteerApi.ts` |
+| **팀원 C** | **🤖 Upstage AI 챗봇 & 🗺️ 성장의 길** | - BE: `com.pixelcare.ai` (Upstage Solar LLM 연동)<br>- FE: `components/ai/`, `components/roadmap/` |
 
 ---
 
-## 🌿 2. Git 브랜치 전략 (Feature Branch Workflow)
+## 🌿 2. Git 브랜치 전략
 
-- **`main`**: 배포용 안정 브랜치 (직접 Push 금지, PR 필수)
-- **`feature/clm-signature`**: CLM 약정서 생성 & 모두싸인 연동 & 내 기록 (팀원 A)
-- **`feature/catalog-admin`**: 5대 선행 카탈로그 & 단체 대시보드 (팀원 B)
-- **`feature/ai-community`**: Upstage Solar AI 대화 & 인증 커뮤니티 (팀원 C)
+- **`main`**: 최종 발표 및 배포용 안정 브랜치 (직접 Push 금지, PR 필수)
+- **`feature/community`**: 커뮤니티 게시판 & 댓글 풀스택 개발 (팀원 A)
+- **`feature/volunteer`**: 봉사/기부 카탈로그 & 1365 API 풀스택 개발 (팀원 B)
+- **`feature/ai-mate`**: Upstage AI 챗봇 & 로드맵 풀스택 개발 (팀원 C)
 
 ---
 
 ## 📝 3. Commit 메시지 컨벤션
 
 ```
-feat(clm): 모두싸인 전자서명 요청 API 및 Webhook 구현
-feat(catalog): 5대 선행 신청 유형(고향사랑기부/문화유산/유산기부) 카탈로그 연동
-feat(ai): Solar LLM 선행 의향 JSON 구조화 프롬프트 구현
-fix(clm): 약정 상태 변경(SIGN_REQUESTED -> SIGNED) Webhook 오류 수정
-docs: CLM 기획서 PLAN.md 및 API_SPEC.md 업데이트
+feat(community): 게시글 댓글 작성 및 검색 REST API 구현
+feat(volunteer): 1365 공공데이터 XML 파싱 및 봉사 카탈로그 연동
+feat(ai): Upstage Solar LLM 프롬프트 추천 파이프라인 연동
+fix(community): 응원 하트 수 실시간 상승 오차 수정
+docs: Phase 1 핵심 개발 로드맵 PLAN.md 및 API_SPEC.md 업데이트
 ```
-
----
-
-## 🔒 4. Flyway 버저닝 & 충돌 방지 규칙
-
-1. **Flyway DB 마이그레이션 파일 버저닝**:
-   - 팀원 A (CLM 약정): `V2__add_clm_commitments.sql`
-   - 팀원 B (카탈로그/단체): `V3__add_opportunities.sql`
-   - 팀원 C (AI/커뮤니티): `V4__add_ai_and_community.sql`
-
-2. **공통 파일 수정을 원할 경우 사전 커뮤니케이션 필수** (`App.tsx`, `application.yml`, `build.gradle`).
