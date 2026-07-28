@@ -1,92 +1,75 @@
 ---
 name: pixel-roadmap-design
-description: Editorial Art Magazine & Modern Minimalist Grid UI Design System for Pixel Care platform. Defines high-impact editorial typography, 3-column grid layouts, thin architectural borders, pill category filters, and clean card components based on modern magazine aesthetics.
+description: Master Synthesized Multi-Aesthetic Design System for Pixel Care platform. Combines Editorial Art Magazine, Terrava Green Organic Bento Grid, ArteDante Dark Glow Mesh, and GlowGarden Glassmorphism custom-tailored for each tab (Volunteer, Community, AI Mate, Roadmap).
 ---
 
-# Editorial Art Magazine UI Design System (에디토리얼 매거진 디자인 시스템)
+# Master Synthesized UI Design System (픽셀 케어 탭별 맞춤 융합 디자인 시스템)
 
-이 디자인 스킬은 감각적인 **에디토리얼 아키텍처 매거진 스타일(Editorial Art Magazine Aesthetic)**의 모던 미니멀 UI 디자인 토큰, 컴포넌트 명세, 그리고 CSS/JS 구현 가이드를 정의합니다.
-
----
-
-## 1. Visual Theme & Aesthetic Principles (디자인 철학)
-
-1. **High-Impact Editorial Typography (압도적인 메인 타이포그래피)**
-   - 페이지 상단에 거대하고 대담한 센스리프/에디토리얼 대형 타이틀(**PIXEL CARE MAGAZINE**) 배치.
-   - 높은 대비와 명확한 시각적 위계 질서 형성.
-
-2. **Clean 3-Column Architectural Grid (3열 모던 아키텍처 그리드)**
-   - 얇고 정교한 검은색 외곽선(`1px solid #111111` 또는 `#e5e5e5`)으로 분할된 3열 카드 그리드.
-   - 여백(Whitespace)과 미니멀한 여백 레이아웃 강조.
-
-3. **Pill Category Filters (타원형 카테고리 필터 알약)**
-   - 상단 카테고리 필터: `ALL`, `VOLUNTEER`, `DONATION`, `COMMUNITY`, `AI MATE`, `ROADMAP`.
-   - 활성 상태: 단단한 솔리드 블랙 배경 (`#111111`) + 흰색 텍스트.
-   - 비활성 상태: 투명/라이트 베이지 배경 + 얇은 픽셀 보더 외곽선.
-
-4. **Magazine-Style Content Cards (매거진 카드 스펙)**
-   - 상단 좌측: 작성일/등록일 (`2026.07.28`).
-   - 상단 우측: 둥근 타원형 카테고리 뱃지 태그 (`VOLUNTEER`, `DONATION`, `COMMUNITY`).
-   - 중앙: 썸네일 이미지/일러스트 뷰.
-   - 타이틀: 검은색 Bold 제목.
-   - 설명: 명확하고 읽기 쉬운 요약 텍스트.
-   - 하단 버튼: `READ MORE →`, `신청하기 →`, `자세히 보기 →`.
+이 디자인 스킬은 현대 웹 디자인의 4대 트렌드(**에디토리얼 매거진, 내추럴 그린 벤토 그리드, 다크 아비에이트 엠비언트 글로우, 글로스모피즘**)를 융합하여 픽셀 케어의 탭별 핵심 기능에 맞게 통합한 마스터 디자인 시스템입니다.
 
 ---
 
-## 2. Color Palette & Tokens (디자인 토큰)
+## 🎨 탭별 1:1 맞춤 디자인 컨셉 (Tab-Specific Aesthetic Guidelines)
 
-| 토큰명 | 색상 코드 | 설명 & 용도 |
-| :--- | :--- | :--- |
-| `--magazine-bg` | `#FFFFFF` | 깨끗하고 깔끔한 순백색 메인 배경 |
-| `--magazine-text` | `#111111` | 고대비 메인 텍스트 및 헤더 |
-| `--magazine-muted` | `#666666` | 날짜, 작성자, 보조 요약 텍스트 |
-| `--magazine-border` | `#111111` | 모던 얇은 아키텍처 테두리 선 (1px) |
-| `--magazine-border-light` | `#E5E5E5` | 카드 분할선 및 내비게이션 라인 |
-| `--magazine-accent` | `#FF3B30` | 픽셀 온기 및 하트 포인트 컬러 |
-| `--magazine-pill-active` | `#111111` | 활성화된 카테고리 필터 알약 |
-| `--magazine-pill-text` | `#FFFFFF` | 활성화 필터 알약 텍스트 |
+### 1. 🤝 봉사 & 기부 탭 (`Volunteer & Donation`)
+- **디자인 모티브**: `Terrava Green Infrastructure` & `Nucleate Minimal` (자연친화적 산뜻한 에코 벤토)
+- **비주얼 스펙**:
+  - 배경: 상쾌한 클린 그린 에코 노드 (`#f4f8f3` / `#ffffff`)
+  - 카드: 둥근 모서리(`border-radius: 12px`), 연한 잎새 그린 테두리, 목표 달성률 프로그레스 바.
+  - 알약 태그: 1365 연동 그린 뱃지 (`#2d6a4f` 배경 + 흰색 텍스트).
+
+### 2. 💬 픽셀 커뮤니티 탭 (`Pixel Community`)
+- **디자인 모티브**: `Editorial Art Magazine` & `GlowGarden Bento Grid` (에디토리얼 매거진 + 벤토 그리드)
+- **비주얼 스펙**:
+  - 대형 에디토리얼 타이포그래피, 정교한 1px 테두리 서체 분할.
+  - 상단 타원형 알약 필터 (`ALL`, `REVIEW`, `RECRUIT`, `GENERAL`).
+  - 인기글 TOP 3 황금 픽셀 트로피 배너 및 댓글 오버레이 소통 영역.
+
+### 3. 🤖 AI 픽셀 메이트 탭 (`Pixel AI Mate`)
+- **디자인 모티브**: `ArteDante Dark Glow` & `Glassmorphism Mesh` (다크 아비에이트 엠비언트 글로우)
+- **비주얼 스펙**:
+  - 배경: 고풍스러운 다크 모드 (`#121218` 배경 + 주황/보라 태양광 메시 그래디언트 글로우 `radial-gradient`).
+  - 채팅창: 유선형 프론트엔드 프롬프트 버블, 유리질 투명 엠보싱 (`backdrop-filter: blur(16px)`).
+  - 응답 카드: 픽셀 마스코트 Solar LLM 추천 카드.
+
+### 4. 🗺️ 성장의 길 & 뱃지 도감 탭 (`Roadmap Tab`)
+- **디자인 모티브**: `GlowGarden Trophy Grid` (트로피 벤토 그리드 + 네온 해금)
+- **비주얼 스펙**:
+  - LV1~LV5 레벨별 트로피 카드 그리드.
+  - 해금 완료 시 골드 엠비언트 광원 효과, 미해금 시 반투명 다크 락(Lock) 처리.
 
 ---
 
-## 3. Key CSS Implementation (주요 CSS 패턴)
+## 🎨 마스터 디자인 토큰 (Design Tokens)
 
 ```css
-/* Editorial Magazine Title Header */
-.magazine-header-title {
-  font-size: 64px;
-  font-weight: 900;
-  letter-spacing: -2px;
-  text-align: center;
-  text-transform: uppercase;
-  margin: 20px 0 30px;
-  color: var(--magazine-text);
-  border-bottom: 2px solid var(--magazine-text);
-  padding-bottom: 20px;
-}
+:root {
+  /* Common Palette */
+  --pc-dark: #111111;
+  --pc-white: #ffffff;
+  --pc-muted: #666666;
+  --pc-border: #e2e8f0;
 
-/* 3-Column Magazine Grid */
-.magazine-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  border-top: 1px solid var(--magazine-border);
-  padding-top: 24px;
-}
+  /* Volunteer Tab (Terrava Green) */
+  --tab-volunteer-bg: #f4f8f3;
+  --tab-volunteer-card: #ffffff;
+  --tab-volunteer-primary: #2d6a4f;
+  --tab-volunteer-accent: #52b788;
 
-/* Magazine Card Item */
-.magazine-card {
-  border: 1px solid var(--magazine-border);
-  padding: 20px;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+  /* Community Tab (Editorial Art Magazine) */
+  --tab-community-bg: #ffffff;
+  --tab-community-border: #111111;
+  --tab-community-pill-active: #111111;
 
-.magazine-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  /* AI Mate Tab (ArteDante Dark Glow) */
+  --tab-ai-bg: #121218;
+  --tab-ai-glow-warm: radial-gradient(circle at 80% 20%, rgba(255, 120, 40, 0.25) 0%, transparent 60%);
+  --tab-ai-glow-purple: radial-gradient(circle at 20% 80%, rgba(138, 43, 226, 0.25) 0%, transparent 60%);
+  --tab-ai-glass-card: rgba(255, 255, 255, 0.06);
+  --tab-ai-glass-border: rgba(255, 255, 255, 0.12);
+
+  /* Roadmap Tab (GlowGarden Trophy Grid) */
+  --tab-roadmap-bg: #fafafa;
+  --tab-roadmap-gold: #ffb703;
 }
 ```

@@ -1,25 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=DungGeunMo&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=DungGeunMo&display=swap');
 
 :root {
+  /* Master Synthesized Color Tokens */
+  --pc-dark: #111111;
+  --pc-white: #ffffff;
+  --pc-muted: #666666;
+  --pc-border: #e2e8f0;
+
+  /* Volunteer Tab (Terrava Green) */
+  --tab-volunteer-bg: #f4f8f3;
+  --tab-volunteer-card: #ffffff;
+  --tab-volunteer-primary: #2d6a4f;
+  --tab-volunteer-accent: #52b788;
+
+  /* Community Tab (Editorial Art Magazine) */
+  --tab-community-bg: #ffffff;
+  --tab-community-border: #111111;
+  --tab-community-pill-active: #111111;
+
+  /* AI Mate Tab (ArteDante Dark Glow) */
+  --tab-ai-bg: #121218;
+  --tab-ai-glass-card: rgba(255, 255, 255, 0.06);
+  --tab-ai-glass-border: rgba(255, 255, 255, 0.15);
+
+  /* Roadmap Tab (GlowGarden Gold) */
+  --tab-roadmap-gold: #ffb703;
+
+  /* Compatibility Fallbacks */
   --magazine-bg: #f9f9f8;
-  --magazine-card-bg: #ffffff;
   --magazine-text: #111111;
   --magazine-muted: #666666;
   --magazine-border: #111111;
-  --magazine-border-light: #e5e5e5;
   --magazine-accent: #ff3b30;
-  --magazine-pill-active: #111111;
-  --magazine-pill-text: #ffffff;
-  --magazine-pill-bg: #ffffff;
-
-  /* Legacy pixel tokens mapped for compatibility */
-  --bg-grass: #f9f9f8;
-  --text-dark: #111111;
-  --card-bg: #ffffff;
-  --card-border: #111111;
   --btn-green: #111111;
   --btn-green-hover: #333333;
-  --btn-green-border: #111111;
 }
 
 * {
@@ -31,12 +45,18 @@
 
 body {
   background-color: var(--magazine-bg);
-  color: var(--magazine-text);
+  color: var(--pc-dark);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding-bottom: 60px;
+  transition: background-color 0.3s ease;
+}
+
+body.theme-ai {
+  background-color: var(--tab-ai-bg);
+  color: #ffffff;
 }
 
 .app-container {
@@ -47,7 +67,7 @@ body {
 
 /* Editorial Magazine Header */
 .magazine-header {
-  border-bottom: 2px solid var(--magazine-border);
+  border-bottom: 2px solid var(--pc-dark);
   padding-bottom: 24px;
   margin-bottom: 30px;
   text-align: center;
@@ -58,11 +78,11 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 16px;
-  color: var(--magazine-muted);
+  color: var(--pc-muted);
 }
 
 .magazine-title {
@@ -72,36 +92,38 @@ body {
   text-transform: uppercase;
   line-height: 1;
   margin: 16px 0 24px;
-  color: var(--magazine-text);
+  color: var(--pc-dark);
 }
 
 /* Category Filter Pill Navigation */
 .magazine-pills-nav {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 32px;
 }
 
 .magazine-pill {
-  padding: 6px 14px;
+  padding: 8px 18px;
   border-radius: 20px;
-  border: 1px solid var(--magazine-border);
-  font-size: 11px;
+  border: 1px solid var(--pc-dark);
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
-  background: var(--magazine-pill-bg);
-  color: var(--magazine-text);
-  transition: all 0.2s ease;
+  background: #ffffff;
+  color: var(--pc-dark);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .magazine-pill.active,
 .magazine-pill:hover {
-  background: var(--magazine-pill-active);
-  color: var(--magazine-pill-text);
+  background: var(--pc-dark);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* 3-Column Magazine Grid */
@@ -133,102 +155,59 @@ body {
   }
 }
 
-/* Editorial Magazine Card Container */
+/* Card Container (Clean Editorial & Bento Blend) */
 .pixel-box,
 .magazine-card {
-  background-color: var(--magazine-card-bg);
-  border: 1px solid var(--magazine-border);
-  padding: 20px;
+  background-color: #ffffff;
+  border: 1px solid var(--pc-dark);
+  border-radius: 12px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
   position: relative;
 }
 
 .pixel-box:hover,
 .magazine-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
 }
 
-/* Card Header (Date + Category Pill) */
-.magazine-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  font-size: 11px;
-  color: var(--magazine-muted);
-}
-
-.magazine-card-date {
-  font-size: 11px;
-  color: var(--magazine-muted);
-  font-weight: 500;
-}
-
-.magazine-card-tag,
-.pixel-tag {
-  border: 1px solid var(--magazine-border);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  background: #ffffff;
-  color: var(--magazine-text);
-}
-
-/* Card Title & Content */
-.magazine-card-title {
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.35;
-  color: var(--magazine-text);
-  margin-bottom: 10px;
-}
-
-.magazine-card-desc {
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--magazine-muted);
-  margin-bottom: 20px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Card Footer Action Link */
-.magazine-card-action {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--magazine-text);
-  text-decoration: underline;
-  cursor: pointer;
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-}
-
-.magazine-card-action:hover {
-  color: var(--magazine-accent);
-}
-
-/* Editorial Button & Form Controls */
-.pixel-btn {
-  background-color: var(--magazine-text);
+/* ArteDante Dark Glow Style for AI Tab */
+.ai-dark-container {
+  background: #121218;
+  background-image: 
+    radial-gradient(circle at 80% 20%, rgba(255, 120, 40, 0.18) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(138, 43, 226, 0.18) 0%, transparent 50%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 28px;
   color: #ffffff;
-  border: 1px solid var(--magazine-border);
+  backdrop-filter: blur(12px);
+}
+
+.ai-glass-card {
+  background: var(--tab-ai-glass-card);
+  border: 1px solid var(--tab-ai-glass-border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  backdrop-filter: blur(16px);
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+/* Buttons & Inputs */
+.pixel-btn {
+  background-color: var(--pc-dark);
+  color: #ffffff;
+  border: 1px solid var(--pc-dark);
+  border-radius: 8px;
   padding: 10px 18px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -239,12 +218,12 @@ body {
 
 .pixel-btn:hover {
   background-color: #333333;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .pixel-btn-red {
-  background-color: var(--magazine-accent);
-  border-color: var(--magazine-accent);
+  background-color: #ff3b30;
+  border-color: #ff3b30;
 }
 
 .pixel-btn-red:hover {
@@ -252,30 +231,31 @@ body {
 }
 
 .pixel-input {
-  border: 1px solid var(--magazine-border);
-  padding: 10px 14px;
+  border: 1px solid var(--pc-border);
+  border-radius: 8px;
+  padding: 11px 16px;
   font-size: 13px;
   outline: none;
   background: #ffffff;
-  color: var(--magazine-text);
+  color: var(--pc-dark);
   width: 100%;
 }
 
 .pixel-input:focus {
-  border-color: var(--magazine-accent);
+  border-color: var(--pc-dark);
 }
 
-/* Toast Message Overlay */
+/* Toast Overlay */
 .toast-container {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: var(--magazine-text);
+  background: var(--pc-dark);
   color: #ffffff;
   padding: 14px 22px;
   font-size: 13px;
   font-weight: 600;
-  border-radius: 4px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.25);
   z-index: 9999;
 }
