@@ -45,7 +45,6 @@ export const fetchPosts = async (category?: string, sort: string = 'latest'): Pr
 
     const result = await response.json();
     
-    // 백엔드 ApiResponse { success: true, data: { content: [...] } } 언패킹
     if (result.success && result.data) {
       if (Array.isArray(result.data.content)) {
         return result.data.content;
@@ -88,6 +87,7 @@ export const createPost = async (payload: CreatePostPayload): Promise<PostItem |
         title: payload.title,
         content: payload.content,
         category: payload.category || 'FREE',
+        authorNickname: payload.author || '부산 픽셀용사',
         imageUrl: payload.imageUrl || '',
       }),
     });
@@ -101,6 +101,30 @@ export const createPost = async (payload: CreatePostPayload): Promise<PostItem |
   } catch (error) {
     console.error('게시글 작성 오류:', error);
     return null;
+  }
+};
+
+/**
+ * 게시글 소프트 삭제 API 호출
+ */
+export const deletePost = async (id: number): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`게시글 삭제 실패: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.success ?? true;
+  } catch (error) {
+    console.error('게시글 삭제 오류:', error);
+    return false;
   }
 };
 

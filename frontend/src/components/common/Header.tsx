@@ -1,12 +1,11 @@
 import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface HeaderProps {
   temperature: number;
   totalDonation: number;
   totalHours: number;
   totalMembers: number;
-  activeTab: 'ai' | 'volunteer' | 'diary' | 'roadmap';
-  setActiveTab: (tab: 'ai' | 'volunteer' | 'diary' | 'roadmap') => void;
   currentUser: string | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -18,39 +17,53 @@ export const Header: React.FC<HeaderProps> = ({
   totalDonation,
   totalHours,
   totalMembers,
-  activeTab,
-  setActiveTab,
   currentUser,
   onLogin,
   onLogout,
   onAdminApply,
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path.startsWith('/community')) return 'community';
+    if (path.startsWith('/ai')) return 'ai';
+    if (path.startsWith('/roadmap')) return 'roadmap';
+    return 'volunteer';
+  };
+
+  const activeTab = getActiveTab();
+
   const navigation = [
-    { label: 'HOME', tab: 'ai' },
-    { label: 'VOLUNTEER / DONATION', tab: 'volunteer' },
-    { label: 'COMMUNITY', tab: 'diary' },
-    { label: 'MY PAGE', tab: 'roadmap' },
-  ] as const;
+    { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
+    { label: 'COMMUNITY', path: '/community' },
+    { label: 'AI MATE', path: '/ai' },
+    { label: 'MY PAGE / ROADMAP', path: '/roadmap' },
+  ];
 
   return (
     <header className={`magazine-header ${activeTab === 'volunteer' ? 'flush-content' : ''}`}>
       {/* Top Header Bar */}
       <div className="magazine-header-top">
-        <button className="brand-button" type="button" onClick={() => setActiveTab('ai')}>
+        <button className="brand-button" type="button" onClick={() => navigate('/volunteer')}>
           PIXEL CARE STUDIO
         </button>
 
         <nav className="primary-navigation" aria-label="주요 메뉴">
-          {navigation.map((item) => (
-            <button
-              key={item.tab}
-              type="button"
-              className={`primary-nav-item ${activeTab === item.tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.tab)}
-            >
-              {item.label}
-            </button>
-          ))}
+          {navigation.map((item) => {
+            const isActive = location.pathname.startsWith(item.path) || (item.path === '/volunteer' && location.pathname === '/');
+            return (
+              <button
+                key={item.path}
+                type="button"
+                className={`primary-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="header-account-actions">
@@ -72,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Magazine Title */}
-      <h1 className="magazine-title">
+      <h1 className="magazine-title" style={{ cursor: 'pointer' }} onClick={() => navigate('/volunteer')}>
         PIXEL CARE MAGAZINE
       </h1>
 
@@ -95,7 +108,6 @@ export const Header: React.FC<HeaderProps> = ({
           <strong className="magazine-stat-value">{totalMembers}</strong>
         </div>
       </div>
-
     </header>
   );
 };
