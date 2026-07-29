@@ -7,6 +7,10 @@ interface HeaderProps {
   totalMembers: number;
   activeTab: 'ai' | 'volunteer' | 'diary' | 'roadmap';
   setActiveTab: (tab: 'ai' | 'volunteer' | 'diary' | 'roadmap') => void;
+  currentUser: string | null;
+  onLogin: () => void;
+  onLogout: () => void;
+  onAdminApply: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,25 +20,54 @@ export const Header: React.FC<HeaderProps> = ({
   totalMembers,
   activeTab,
   setActiveTab,
+  currentUser,
+  onLogin,
+  onLogout,
+  onAdminApply,
 }) => {
+  const navigation = [
+    { label: 'HOME', tab: 'ai' },
+    { label: 'VOLUNTEER / DONATION', tab: 'volunteer' },
+    { label: 'COMMUNITY', tab: 'diary' },
+    { label: 'MY PAGE', tab: 'roadmap' },
+  ] as const;
+
   return (
-    <header className="magazine-header">
+    <header className={`magazine-header ${activeTab === 'volunteer' ? 'flush-content' : ''}`}>
       {/* Top Header Bar */}
       <div className="magazine-header-top">
-        <div style={{ fontSize: '13px', fontWeight: '800', letterSpacing: '1px' }}>
+        <button className="brand-button" type="button" onClick={() => setActiveTab('ai')}>
           PIXEL CARE STUDIO
-        </div>
-        <div style={{ display: 'flex', gap: '20px', fontSize: '11px', color: '#555' }}>
-          <span>HOME</span>
-          <span>VOLUNTEER</span>
-          <span>DONATION</span>
-          <span>COMMUNITY</span>
-          <span>AI MATE</span>
-        </div>
-        <div>
-          <button className="pixel-btn" style={{ fontSize: '10px', padding: '4px 10px', borderRadius: '14px' }}>
-            GET STARTED NOW
-          </button>
+        </button>
+
+        <nav className="primary-navigation" aria-label="주요 메뉴">
+          {navigation.map((item) => (
+            <button
+              key={item.tab}
+              type="button"
+              className={`primary-nav-item ${activeTab === item.tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.tab)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="header-account-actions">
+          {currentUser ? (
+            <>
+              <button className="admin-apply-button" type="button" onClick={onAdminApply}>
+                ADMIN APPLY
+              </button>
+              <button className="header-login-button" type="button" onClick={onLogout}>
+                LOGOUT
+              </button>
+            </>
+          ) : (
+            <button className="header-login-button" type="button" onClick={onLogin}>
+              LOGIN
+            </button>
+          )}
         </div>
       </div>
 
@@ -43,45 +76,26 @@ export const Header: React.FC<HeaderProps> = ({
         PIXEL CARE MAGAZINE
       </h1>
 
-      {/* Thermometer & Stats Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0 28px', padding: '14px 20px', borderTop: '1px solid #111', borderBottom: '1px solid #111', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700' }}>
-          🌡️ 온기 온도계: <span style={{ color: 'var(--magazine-accent)', fontSize: '15px' }}>{temperature.toFixed(1)}°C</span>
+      {/* Editorial Stats Banner */}
+      <div className="magazine-stats" aria-label="픽셀 케어 누적 현황">
+        <div className="magazine-stat">
+          <span className="magazine-stat-label">WARMTH</span>
+          <strong className="magazine-stat-value accent">{temperature.toFixed(1)}°C</strong>
         </div>
-        <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#444' }}>
-          <span>❤️ 기부금: <b>₩{totalDonation.toLocaleString()}</b></span>
-          <span>⚡ 봉사시간: <b>{totalHours} 시간</b></span>
-          <span>🏆 참여인원: <b>{totalMembers} 명</b></span>
+        <div className="magazine-stat">
+          <span className="magazine-stat-label">DONATION</span>
+          <strong className="magazine-stat-value">₩{totalDonation.toLocaleString()}</strong>
+        </div>
+        <div className="magazine-stat">
+          <span className="magazine-stat-label">VOLUNTEER</span>
+          <strong className="magazine-stat-value">{totalHours} HOURS</strong>
+        </div>
+        <div className="magazine-stat">
+          <span className="magazine-stat-label">MEMBERS</span>
+          <strong className="magazine-stat-value">{totalMembers}</strong>
         </div>
       </div>
 
-      {/* Pill Filter Navigation (Matching Reference Image) */}
-      <div className="magazine-pills-nav">
-        <button
-          className={`magazine-pill ${activeTab === 'volunteer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('volunteer')}
-        >
-          🤝 봉사 & 기부 (1365 연동)
-        </button>
-        <button
-          className={`magazine-pill ${activeTab === 'diary' ? 'active' : ''}`}
-          onClick={() => setActiveTab('diary')}
-        >
-          💬 픽셀 커뮤니티
-        </button>
-        <button
-          className={`magazine-pill ${activeTab === 'ai' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ai')}
-        >
-          🤖 AI 픽셀 메이트 (Upstage)
-        </button>
-        <button
-          className={`magazine-pill ${activeTab === 'roadmap' ? 'active' : ''}`}
-          onClick={() => setActiveTab('roadmap')}
-        >
-          🗺️ 성장의 길 (뱃지 도감)
-        </button>
-      </div>
     </header>
   );
 };

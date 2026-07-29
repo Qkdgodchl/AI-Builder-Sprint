@@ -6,14 +6,22 @@ import { PixelAiMate } from './components/ai/PixelAiMate';
 import { VolunteerCatalog } from './components/volunteer/VolunteerCatalog';
 import { PixelDiary } from './components/diary/PixelDiary';
 import { RoadmapMap } from './components/roadmap/RoadmapMap';
+import { AuthModal } from './components/auth/AuthModal';
 import { playBeep } from './services/soundFx';
 
+type ActiveTab = 'ai' | 'volunteer' | 'diary' | 'roadmap';
+type AuthModalMode = 'login' | 'admin';
+
 export function App() {
-  const [activeTab, setActiveTab] = useState<'ai' | 'volunteer' | 'diary' | 'roadmap'>('ai');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('ai');
   const [temperature, setTemperature] = useState<number>(78.4);
   const [totalDonation, setTotalDonation] = useState<number>(1250000);
   const [totalHours, setTotalHours] = useState<number>(342);
   const [totalMembers, setTotalMembers] = useState<number>(128);
+  const [currentUser, setCurrentUser] = useState<string | null>(
+    () => localStorage.getItem('pixel-care-user'),
+  );
+  const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -62,6 +70,25 @@ export function App() {
     setTemperature((prev) => Math.min(99.9, prev + val));
   };
 
+  const handleLogin = (email: string) => {
+    localStorage.setItem('pixel-care-user', email);
+    setCurrentUser(email);
+    setAuthModalMode(null);
+    triggerToast(`반가워요! ${email} 계정으로 로그인했습니다.`);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('pixel-care-user');
+    setCurrentUser(null);
+    setActiveTab('ai');
+    triggerToast('로그아웃되었습니다.');
+  };
+
+  const handleAdminApplication = (organizationName: string) => {
+    setAuthModalMode(null);
+    triggerToast(`${organizationName} 관리자 계정 신청이 접수되었습니다.`);
+  };
+
   return (
     <div className="app-container">
       <Header
@@ -71,12 +98,16 @@ export function App() {
         totalMembers={totalMembers}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        onLogin={() => setAuthModalMode('login')}
+        onLogout={handleLogout}
+        onAdminApply={() => setAuthModalMode('admin')}
       />
 
       <main>
         {activeTab === 'ai' && <PixelAiMate onOpenModal={handleOpenModal} />}
         {activeTab === 'volunteer' && (
-          <VolunteerCatalog onOpenModal={handleOpenModal} showToast={triggerToast} />
+          <VolunteerCatalog />
         )}
         {activeTab === 'diary' && (
           <PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />
@@ -93,6 +124,14 @@ export function App() {
       />
 
       <Toast message={toastMessage} />
+
+      <AuthModal
+        mode={authModalMode}
+        currentUser={currentUser}
+        onClose={() => setAuthModalMode(null)}
+        onLogin={handleLogin}
+        onAdminApply={handleAdminApplication}
+      />
     </div>
   );
 }
