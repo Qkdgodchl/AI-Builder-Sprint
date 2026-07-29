@@ -52,13 +52,13 @@ public class AiMateService {
 
         for (Post post : dbPosts) {
             dbContextBuilder.append(String.format("- [ID: %d] %s (카테고리: %s, 작성자: %s, 뱃지: %s)\n",
-                    post.getId(), post.getTitle(), post.getCategory().name(), post.getAuthorNickname(), post.getAuthorBadge()));
+                    post.getId(), post.getTitle(), post.getCategory(), post.getAuthorNickname(), post.getAuthorBadge()));
 
             candidateCards.add(new RecommendedCardDto(
                     post.getId(),
                     post.getTitle(),
                     "부산 지역",
-                    post.getCategory().name(),
+                    post.getCategory(),
                     post.getAuthorBadge()
             ));
         }
