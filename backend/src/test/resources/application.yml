@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: false
+
+upstage:
+  api:
+    key: up_WwkZ8YuhJL8dfPo6dBZYU0ff7Orqa
+    base-url: https://api.upstage.ai/v1/solar
+
+gov1365:
+  api:
+    end-point: https://apis.data.go.kr/1741000/VolunteerPartcptnService
+    service-key-encoding: testKeyEncoding
+    service-key-decoding: testKeyDecoding
