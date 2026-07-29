@@ -1,8 +1,10 @@
 package com.pixelcare.domain.community.service;
 
 import com.pixelcare.domain.community.dto.PostCreateRequest;
+import com.pixelcare.domain.community.dto.PostListItemResponse;
 import com.pixelcare.domain.community.dto.PostResponse;
 import com.pixelcare.domain.community.entity.Post;
+import com.pixelcare.domain.community.entity.PostCategory;
 import com.pixelcare.domain.community.repository.PostRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,19 +22,34 @@ public class PostService {
         this.postRepository = postRepository;
     }
 
-    public Page<PostResponse> getPosts(String category, String sort, int page, int size) {
-        Sort sortOption = "likes".equalsIgnoreCase(sort) 
-                ? Sort.by(Sort.Direction.DESC, "likeCount") 
-                : Sort.by(Sort.Direction.DESC, "createdAt");
+    /**
+     * 커뮤니티 게시글 목록 조회 (카테고리 필터, 정렬, 페이징)
+     */
+    public Page<PostListItemResponse> getPosts(String category, String sort, int page, int size) {
+        Sort sortOption;
+        if ("likes".equalsIgnoreCase(sort)) {
+            sortOption = Sort.by(Sort.Direction.DESC, "likeCount")
+                    .and(Sort.by(Sort.Direction.DESC, "createdAt"));
+        } else {
+            sortOption = Sort.by(Sort.Direction.DESC, "createdAt");
+        }
 
         PageRequest pageRequest = PageRequest.of(page, size, sortOption);
 
         if (category != null && !"ALL".equalsIgnoreCase(category)) {
-            return postRepository.findByCategoryAndIsDeletedFalse(category, pageRequest)
-                    .map(PostResponse::new);
+            try {
+                PostCategory postCategory = PostCategory.valueOf(category.toUpperCase());
+                return postRepository.findByCategoryAndIsDeletedFalse(postCategory, pageRequest)
+                        .map(PostListItemResponse::new);
+            } catch (IllegalArgumentException e) {
+                // 잘지 않은 카테고리 문자열이 올 경우 전체 목록 반환
+                return postRepository.findByIsDeletedFalse(pageRequest)
+                        .map(PostListItemResponse::new);
+            }
         }
+
         return postRepository.findByIsDeletedFalse(pageRequest)
-                .map(PostResponse::new);
+                .map(PostListItemResponse::new);
     }
 
     @Transactional
@@ -44,13 +61,21 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponse createPost(PostCreateRequest request, String authorNickname, String authorBadge) {
+    public PostResponse createPost(PostCreateRequest request, Long authorId, String authorNickname, String authorBadge) {
+        PostCategory category = PostCategory.FREE;
+        if (request.getCategory() != null) {
+            try {
+                category = PostCategory.valueOf(request.getCategory().toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
         Post post = new Post(
-                request.getTitle(),
-                request.getContent(),
+                authorId,
                 authorNickname,
                 authorBadge,
-                request.getCategory(),
+                category,
+                request.getTitle(),
+                request.getContent(),
                 request.getImageUrl()
         );
         Post savedPost = postRepository.save(post);

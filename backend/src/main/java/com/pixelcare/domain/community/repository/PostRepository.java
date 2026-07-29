@@ -1,6 +1,7 @@
 package com.pixelcare.domain.community.repository;
 
 import com.pixelcare.domain.community.entity.Post;
+import com.pixelcare.domain.community.entity.PostCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +14,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByIsDeletedFalse(Pageable pageable);
 
-    Page<Post> findByCategoryAndIsDeletedFalse(String category, Pageable pageable);
+    Page<Post> findByCategoryAndIsDeletedFalse(PostCategory category, Pageable pageable);
 
     Optional<Post> findByIdAndIsDeletedFalse(Long id);
 }

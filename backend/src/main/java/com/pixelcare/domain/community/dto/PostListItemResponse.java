@@ -3,31 +3,29 @@ package com.pixelcare.domain.community.dto;
 import com.pixelcare.domain.community.entity.Post;
 import java.time.LocalDateTime;
 
-public class PostResponse {
+public class PostListItemResponse {
 
     private Long id;
     private AuthorResponse author;
     private String category;
     private String title;
-    private String content;
+    private String contentSnippet;
     private String imageUrl;
     private Integer likeCount;
     private Integer commentCount;
-    private Integer viewCount;
     private LocalDateTime createdAt;
 
-    public PostResponse() {}
+    public PostListItemResponse() {}
 
-    public PostResponse(Post post) {
+    public PostListItemResponse(Post post) {
         this.id = post.getId();
         this.author = new AuthorResponse(post.getAuthorId(), post.getAuthorNickname(), post.getAuthorBadge());
         this.category = post.getCategory().name();
         this.title = post.getTitle();
-        this.content = post.getContent();
+        this.contentSnippet = post.getContentSnippet();
         this.imageUrl = post.getImageUrl();
         this.likeCount = post.getLikeCount();
         this.commentCount = post.getCommentCount();
-        this.viewCount = post.getViewCount();
         this.createdAt = post.getCreatedAt();
     }
 
@@ -35,10 +33,9 @@ public class PostResponse {
     public AuthorResponse getAuthor() { return author; }
     public String getCategory() { return category; }
     public String getTitle() { return title; }
-    public String getContent() { return content; }
+    public String getContentSnippet() { return contentSnippet; }
     public String getImageUrl() { return imageUrl; }
     public Integer getLikeCount() { return likeCount; }
     public Integer getCommentCount() { return commentCount; }
-    public Integer getViewCount() { return viewCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
