@@ -37,3 +37,34 @@ feat(운영진): 센터 관리자 및 센터 등록 요청 승인/거절 및 게
 feat(AI): Upstage Solar LLM 파이프라인 의향 상담 및 맞춤 봉사 추천 연동
 docs: 3-Role 계정 권한 및 역할별 가변 탭 아키텍처 문서 업데이트
 ```
+
+---
+
+## 🗄️ 4. DB 스키마 협업 규칙
+
+팀원별 DB 서버와 데이터는 공유하지 않아도 됩니다. Git에 포함된 Flyway Migration을 각자 로컬 DB에 적용해 **스키마 버전만 동일하게 유지**합니다.
+
+### 관리 위치
+
+- 사람이 읽는 전체 설계: `docs/DB_SCHEMA.md`
+- 실제 스키마 변경 SQL: `backend/src/main/resources/db/migration/`
+- 적용 이력: 각 DB의 `flyway_schema_history`
+
+### 작업 규칙
+
+1. DB 작업 전 `main`의 최신 Migration 목록을 확인합니다.
+2. 사용할 Migration 버전을 팀 채널에 먼저 공유합니다.
+3. 기존 Migration은 수정하지 않고 새 파일을 추가합니다.
+4. Entity 변경과 Migration SQL을 같은 PR에 포함합니다.
+5. PR에서 MySQL과 테스트 환경의 Migration 성공 여부를 기록합니다.
+6. Merge 후 다른 팀원은 `git pull`하고 백엔드를 실행해 새 Migration을 적용합니다.
+
+파일명 예:
+
+```text
+V2__create_clm_schema.sql
+V3__add_opportunity_search_indexes.sql
+V4__create_opportunity_and_application_tables.sql
+```
+
+한 버전을 여러 브랜치에서 동시에 사용하지 않습니다. 이미 적용된 Migration을 변경해야 한다면 기존 파일을 고치지 않고 다음 번호의 보정 Migration을 추가합니다.
