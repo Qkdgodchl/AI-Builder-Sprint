@@ -129,7 +129,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
   const safePosts = Array.isArray(posts) ? posts : [];
 
-  // [상세 보기 UI 전면 개편] opportunity-detail 잡지형 전용 CSS 클래스 사용
+  // [상세 보기 UI]
   if (selectedPost) {
     const likesCount = selectedPost.likeCount ?? (selectedPost as any).likes ?? 0;
     const viewsCount = selectedPost.viewCount ?? (selectedPost as any).views ?? 0;
@@ -147,11 +147,11 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
         <header className="detail-hero">
           <div style={{ marginBottom: '10px' }}>
-            <span className="opportunity-type" style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '4px' }}>
+            <span className="opportunity-type" style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '4px' }}>
               {getCategoryLabel(selectedPost.category)}
             </span>
           </div>
-          <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#111', lineHeight: 1.3, marginBottom: '12px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '900', color: '#111', lineHeight: 1.3, marginBottom: '12px' }}>
             {selectedPost.title}
           </h2>
           <div className="detail-inline-keywords" aria-label="관련 키워드">
@@ -161,7 +161,6 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           </div>
         </header>
 
-        {/* 게시글 핵심 팩트 정보 (주관/작성자, 뱃지, 작성일, 조회수) */}
         <dl className="detail-facts">
           <div>
             <dt>작성자</dt>
@@ -170,7 +169,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           <div>
             <dt>픽셀 레벨 뱃지</dt>
             <dd>
-              <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 10px', borderRadius: '12px' }}>
+              <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '3px 10px', borderRadius: '12px' }}>
                 {badgeInfo.name}
               </span>
             </dd>
@@ -185,47 +184,43 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           </div>
         </dl>
 
-        {/* 01. 커뮤니티 본문 내용 세션 */}
         <section className="detail-section">
           <p className="detail-section-number">01</p>
           <div style={{ width: '100%' }}>
             <h3>이야기 본문</h3>
             
-            {/* 대표 이미지 (등록된 경우) */}
             {selectedPost.imageUrl ? (
               <div style={{ margin: '16px 0', borderRadius: '8px', overflow: 'hidden', border: '2px solid #111' }}>
                 <img src={selectedPost.imageUrl} alt={selectedPost.title} style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
               </div>
             ) : null}
 
-            <div style={{ fontSize: '16px', color: '#222', lineHeight: 1.8, minHeight: '120px', whiteSpace: 'pre-line', marginTop: '12px', padding: '16px', background: '#faf0ca', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+            <div style={{ fontSize: '15px', color: '#222', lineHeight: 1.8, minHeight: '120px', whiteSpace: 'pre-line', marginTop: '12px', padding: '16px', background: '#faf0ca', borderRadius: '8px', border: '1px solid #e9ecef' }}>
               {textContent}
             </div>
           </div>
         </section>
 
-        {/* 02. 온기 참여 안내 및 공유 */}
         <section className="detail-section">
           <p className="detail-section-number">02</p>
           <div>
             <h3>선행 응원 및 소통 안내</h3>
-            <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '13px', color: '#555', lineHeight: 1.6 }}>
               따뜻한 봉사 후기와 이야기를 남겨주셔서 감사합니다. 응원 하트를 눌러 작성자에게 따뜻한 픽셀 온기를 전달해 보세요! (하트 전달 시 온기 +0.1°C)
             </p>
           </div>
         </section>
 
-        {/* 하단 고정 액션 바 (응원 하트 & 공유하기) */}
         <footer className="detail-apply-bar">
           <div>
             <span>COMMUNITY ACTION</span>
             <strong>{getAuthorName(selectedPost.author)} 님의 이야기를 응원하시겠어요?</strong>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" style={{ background: '#2ec4b6', padding: '12px 18px', fontSize: '13px' }} onClick={handleCopyLink}>
+            <button type="button" style={{ background: '#2ec4b6', padding: '10px 16px', fontSize: '12px' }} onClick={handleCopyLink}>
               🔗 공유 / 링크 복사
             </button>
-            <button type="button" style={{ background: '#ff4d6d', padding: '12px 22px', fontSize: '14px', fontWeight: 'bold' }} onClick={() => handleLike(selectedPost.id)}>
+            <button type="button" style={{ background: '#ff4d6d', padding: '10px 20px', fontSize: '13px', fontWeight: 'bold' }} onClick={() => handleLike(selectedPost.id)}>
               ❤️ 응원 하트 보내기 ({likesCount})
             </button>
           </div>
@@ -320,7 +315,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         </div>
       )}
 
-      {/* 커뮤니티 매거진 테이블 목록 */}
+      {/* [정밀 교정] 커뮤니티 매거진 테이블 목록 */}
       {loading ? (
         <div className="opportunity-state">커뮤니티 이야기를 불러오는 중입니다...</div>
       ) : safePosts.length === 0 ? (
@@ -331,9 +326,9 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
             <span role="columnheader">분류</span>
             <span role="columnheader">이야기 제목 및 내용 미리보기</span>
             <span role="columnheader">작성자 뱃지</span>
-            <span role="columnheader">조회/하트</span>
+            <span role="columnheader">조회 / 하트</span>
             <span role="columnheader">작성일</span>
-            <span role="columnheader" aria-label="상세 보기" />
+            <span role="columnheader" aria-label="상세 보기 및 액션" />
           </div>
 
           {safePosts.map((post, idx) => {
@@ -351,37 +346,45 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedPost(post)}
               >
-                <span className="opportunity-type" role="cell">
+                {/* Col 1: 분류 */}
+                <span className="opportunity-type" role="cell" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {getCategoryLabel(post.category)}
                 </span>
 
+                {/* Col 2: 제목 & 내용 미리보기 */}
                 <div className="opportunity-program" role="cell">
-                  <strong>{post.title}</strong>
-                  <span style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                    {snippetText.length > 50 ? `${snippetText.substring(0, 50)}...` : snippetText}
+                  <strong style={{ fontSize: '15px', color: '#111' }}>{post.title}</strong>
+                  <span style={{ fontSize: '12px', color: '#666', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {snippetText}
                   </span>
                 </div>
 
-                <div className="opportunity-keywords" role="cell">
-                  <span style={{ fontWeight: 'bold' }}>{getAuthorName(post.author)}</span>
-                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', padding: '2px 6px', borderRadius: '4px' }}>
+                {/* Col 3: 작성자 닉네임 & 레벨 뱃지 (수직 2줄 정돈) */}
+                <div className="opportunity-keywords" role="cell" style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', background: '#f0f0f0', padding: '2px 8px', borderRadius: '12px', border: '1px solid #ddd' }}>
+                    {getAuthorName(post.author)}
+                  </span>
+                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
                     {badgeInfo.name}
                   </span>
                 </div>
 
-                <span className="opportunity-area" role="cell">
+                {/* Col 4: 조회수 / 하트 */}
+                <span className="opportunity-area" role="cell" style={{ fontSize: '12px', color: '#444' }}>
                   👁️ {viewsCount} · ❤️ {likesCount}
                 </span>
 
-                <span className="opportunity-status" role="cell">
+                {/* Col 5: 작성일 */}
+                <span className="opportunity-status" role="cell" style={{ fontSize: '12px', color: '#2b9348', fontWeight: 'bold' }}>
                   {createdDate}
                 </span>
 
-                <div style={{ display: 'flex', gap: '6px' }} role="cell">
+                {/* Col 6: 상세보기 & 응원 액션 버튼 */}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} role="cell">
                   <button
                     type="button"
                     className="opportunity-action"
-                    style={{ background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a', fontSize: '11px', padding: '4px 8px' }}
+                    style={{ background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a', fontSize: '11px', padding: '6px 12px', borderRadius: '16px' }}
                     onClick={(e) => handleLike(post.id, e)}
                   >
                     ❤️ {likesCount}
@@ -389,7 +392,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                   <button
                     type="button"
                     className="opportunity-action"
-                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                    style={{ fontSize: '11px', padding: '6px 14px', borderRadius: '16px' }}
                     onClick={() => setSelectedPost(post)}
                   >
                     상세보기
