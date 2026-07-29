@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { AiChatMessage } from '../../types';
 import { playBeep } from '../../services/soundFx';
+import { sendAiMessage, fetchAiHistory } from '../../services/aiApi';
 
 interface PixelAiMateProps {
   onOpenModal: (title: string, type: 'volunteer' | 'donate') => void;
@@ -20,7 +21,52 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = (userQuery?: string) => {
+  // 대화 히스토리 불러오기
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const history = await fetchAiHistory();
+        if (history && history.length > 0) {
+          const formattedHistory: AiChatMessage[] = history.map((item) => {
+            let recCard = undefined;
+            if (item.recommendedMissionsJson) {
+              try {
+                const parsedCards = JSON.parse(item.recommendedMissionsJson);
+                if (parsedCards && parsedCards.length > 0) {
+                  const firstCard = parsedCards[0];
+                  recCard = {
+                    id: firstCard.opportunityId || 101,
+                    title: firstCard.title,
+                    category: 'VOLUNTEER' as const,
+                    location: firstCard.region || '부산 지역',
+                    organizer: '픽셀 케어 연동 봉사단',
+                    tags: ['1365 연동', firstCard.badgeReward || 'LV1_SEED'],
+                    link1365: 'https://www.1365.go.kr',
+                  };
+                }
+              } catch (e) {}
+            }
+
+            return {
+              id: item.id.toString(),
+              sender: item.sender === 'USER' ? 'USER' : 'AI',
+              text: item.message,
+              recommendedCard: recCard,
+              createdAt: new Date(item.createdAt).toLocaleTimeString(),
+            };
+          });
+
+          setMessages([INITIAL_MESSAGES[0], ...formattedHistory]);
+        }
+      } catch (e) {
+        console.error('AI 대화 히스토리 로드 실패:', e);
+      }
+    };
+
+    loadHistory();
+  }, []);
+
+  const handleSend = async (userQuery?: string) => {
     const textToSend = userQuery || inputText;
     if (!textToSend.trim()) return;
 
@@ -36,41 +82,20 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     setIsTyping(true);
     playBeep(440, 0.1);
 
-    setTimeout(() => {
-      let aiResponseText = '용사님의 마음에 딱 맞는 맞춤 선행 퀘스트를 큐레이션했습니다!';
-      let recCard = undefined;
+    try {
+      // 실시간 백엔드 Upstage Solar LLM API 호출
+      const aiResult = await sendAiMessage(textToSend);
 
-      if (textToSend.includes('동물') || textToSend.includes('유기견')) {
-        aiResponseText = '🐕 동물들을 사랑하는 따뜻한 마음을 지원합니다! 주말 유기견 보육원 봉사 미션을 추천합니다.';
+      let recCard = undefined;
+      if (aiResult.recommendedCards && aiResult.recommendedCards.length > 0) {
+        const firstCard = aiResult.recommendedCards[0];
         recCard = {
-          id: 101,
-          title: '🐕 유기견 보육원 주말 돌봄 봉사',
+          id: firstCard.opportunityId || Date.now(),
+          title: firstCard.title,
           category: 'VOLUNTEER' as const,
-          location: '부산 북구 동물보호센터',
-          organizer: '부산 동네 온기 봉사단',
-          tags: ['1365 연동', '4시간 인정', '주말'],
-          link1365: 'https://www.1365.go.kr',
-        };
-      } else if (textToSend.includes('환경') || textToSend.includes('바다') || textToSend.includes('해변')) {
-        aiResponseText = '🌊 깨끗한 바다를 만드는 픽셀 그린 영웅! 해운대 플로깅 봉사를 추천해 드려요.';
-        recCard = {
-          id: 102,
-          title: '🌊 해운대 해변 픽셀 플로깅 정화',
-          category: 'VOLUNTEER' as const,
-          location: '부산 해운대 구남로 광장',
-          organizer: '그린 픽셀 에코 클럽',
-          tags: ['1365 연동', '3시간 인정', '환경'],
-          link1365: 'https://www.1365.go.kr',
-        };
-      } else {
-        aiResponseText = '🍲 이웃에게 전하는 온기 한 그릇! 독거어르신 도시락 배달 봉사 미션을 추천합니다.';
-        recCard = {
-          id: 103,
-          title: '🍲 독거어르신 온기 도시락 배달',
-          category: 'VOLUNTEER' as const,
-          location: '부산 금정구 종합복지관',
-          organizer: '사랑의 픽셀 이웃',
-          tags: ['1365 연동', '4시간 인정', '복지'],
+          location: firstCard.region || '부산 지역',
+          organizer: '픽셀 케어 온기 센터',
+          tags: ['Upstage AI 큐레이션', firstCard.badgeReward || 'LV2_WARMTH'],
           link1365: 'https://www.1365.go.kr',
         };
       }
@@ -78,15 +103,25 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
       const aiMsg: AiChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'AI',
-        text: aiResponseText,
+        text: aiResult.reply,
         recommendedCard: recCard,
         createdAt: new Date().toLocaleTimeString(),
       };
 
       setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
       playBeep(880, 0.15);
-    }, 1000);
+    } catch (error) {
+      console.error('AI Solar LLM 통신 실패:', error);
+      const errorMsg: AiChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'AI',
+        text: '⚠️ 죄송합니다! AI 서버 통신 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        createdAt: new Date().toLocaleTimeString(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (

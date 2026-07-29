@@ -13,3 +13,14 @@ spring:
         format_sql: true
   flyway:
     enabled: false
+
+upstage:
+  api:
+    key: up_WwkZ8YuhJL8dfPo6dBZYU0ff7Orqa
+    base-url: https://api.upstage.ai/v1/solar
+
+gov1365:
+  api:
+    end-point: https://apis.data.go.kr/1741000/VolunteerPartcptnService
+    service-key-encoding: testKeyEncoding
+    service-key-decoding: testKeyDecoding

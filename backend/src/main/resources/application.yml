@@ -19,7 +19,7 @@ spring:
     locations: classpath:db/migration
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -27,7 +27,7 @@ spring:
 
 upstage:
   api:
-    key: ${UPSTAGE_API_KEY:your_upstage_api_key_here}
+    key: ${UPSTAGE_API_KEY:up_WwkZ8YuhJL8dfPo6dBZYU0ff7Orqa}
     base-url: https://api.upstage.ai/v1/solar
 
 gov1365:
