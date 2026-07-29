@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/common/Header';
 import { Modal } from './components/common/Modal';
 import { Toast } from './components/common/Toast';
@@ -9,11 +10,9 @@ import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { AuthModal } from './components/auth/AuthModal';
 import { playBeep } from './services/soundFx';
 
-type ActiveTab = 'ai' | 'volunteer' | 'diary' | 'roadmap';
 type AuthModalMode = 'login' | 'admin';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('ai');
   const [temperature, setTemperature] = useState<number>(78.4);
   const [totalDonation, setTotalDonation] = useState<number>(1250000);
   const [totalHours, setTotalHours] = useState<number>(342);
@@ -80,7 +79,6 @@ export function App() {
   const handleLogout = () => {
     localStorage.removeItem('pixel-care-user');
     setCurrentUser(null);
-    setActiveTab('ai');
     triggerToast('로그아웃되었습니다.');
   };
 
@@ -96,8 +94,6 @@ export function App() {
         totalDonation={totalDonation}
         totalHours={totalHours}
         totalMembers={totalMembers}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         currentUser={currentUser}
         onLogin={() => setAuthModalMode('login')}
         onLogout={handleLogout}
@@ -105,14 +101,15 @@ export function App() {
       />
 
       <main>
-        {activeTab === 'ai' && <PixelAiMate onOpenModal={handleOpenModal} />}
-        {activeTab === 'volunteer' && (
-          <VolunteerCatalog />
-        )}
-        {activeTab === 'diary' && (
-          <PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />
-        )}
-        {activeTab === 'roadmap' && <RoadmapMap showToast={triggerToast} />}
+        <Routes>
+          <Route path="/" element={<Navigate to="/volunteer" replace />} />
+          <Route path="/volunteer" element={<VolunteerCatalog />} />
+          <Route path="/community" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
+          <Route path="/community/posts/:id" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
+          <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
+          <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
+          <Route path="*" element={<Navigate to="/volunteer" replace />} />
+        </Routes>
       </main>
 
       <Modal

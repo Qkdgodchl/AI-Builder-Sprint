@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { PostItem } from '../../services/communityApi';
-import { fetchPosts, createPost, likePost } from '../../services/communityApi';
+import { fetchPosts, createPost, likePost, deletePost } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
 
 interface PixelDiaryProps {
@@ -9,6 +10,9 @@ interface PixelDiaryProps {
 }
 
 export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast }) => {
+  const navigate = useNavigate();
+  const { id: urlPostId } = useParams<{ id?: string }>();
+
   const [posts, setPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [title, setTitle] = useState('');
@@ -36,6 +40,19 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
     loadPosts();
   }, [filterCategory]);
 
+  // URL 파라미터 /community/posts/:id 경로 감지 및 selectedPost 동기화
+  useEffect(() => {
+    if (urlPostId && posts.length > 0) {
+      const targetId = Number(urlPostId);
+      const found = posts.find((p) => p.id === targetId);
+      if (found) {
+        setSelectedPost(found);
+      }
+    } else if (!urlPostId) {
+      setSelectedPost(null);
+    }
+  }, [urlPostId, posts]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
@@ -48,6 +65,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         title: title.trim(),
         content: content.trim(),
         category,
+        author: author.trim() || '부산 픽셀용사',
       });
 
       if (created) {
@@ -85,6 +103,27 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
       showToast('❤️ 게시글에 응원 하트를 보냈습니다! (온기 +0.1°C)');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeletePost = async (id: number) => {
+    if (!window.confirm('정말로 이 커뮤니티 이야기를 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)')) {
+      return;
+    }
+
+    try {
+      const success = await deletePost(id);
+      if (success) {
+        showToast('🗑️ 커뮤니티 게시글이 성공적으로 삭제되었습니다.');
+        playBeep(330, 0.15);
+        navigate('/community');
+        loadPosts();
+      } else {
+        alert('게시글 삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('게시글 삭제 처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -140,8 +179,17 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
     return (
       <article className="opportunity-detail" style={{ maxWidth: '880px', margin: '0 auto' }}>
         <div className="detail-back-nav">
-          <button type="button" className="detail-back-button" onClick={() => setSelectedPost(null)}>
+          <button type="button" className="detail-back-button" onClick={() => navigate('/community')}>
             ← 목록으로 돌아가기
+          </button>
+
+          <button
+            type="button"
+            className="detail-back-button"
+            style={{ color: '#ff3b30', fontWeight: 'bold' }}
+            onClick={() => handleDeletePost(selectedPost.id)}
+          >
+            🗑️ 게시글 삭제
           </button>
         </div>
 
@@ -315,24 +363,24 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         </div>
       )}
 
-      {/* [100% 매칭 교정] 커뮤니티 매거진 테이블 목록 */}
+      {/* 커뮤니티 피드 */}
       {loading ? (
         <div className="opportunity-state">커뮤니티 이야기를 불러오는 중입니다...</div>
       ) : safePosts.length === 0 ? (
         <div className="opportunity-state">등록된 커뮤니티 이야기 피드가 없습니다. 첫 번째 글을 작성해보세요!</div>
       ) : (
         <div className="opportunity-table" role="table" aria-label="커뮤니티 피드">
-          {/* 헤더 (6개 컬럼 스펙) */}
+          {/* 헤더 */}
           <div className="opportunity-table-head" role="row">
             <span role="columnheader">분류</span>
-            <span role="columnheader">이야기 제목 및 내용 미리보기</span>
+            <span role="columnheader">이야기 제목 및 미리보기</span>
             <span role="columnheader">작성자</span>
             <span role="columnheader">뱃지 / 반응</span>
             <span role="columnheader">작성일</span>
-            <span role="columnheader" aria-label="상세 보기" />
+            <span role="columnheader" style={{ textAlign: 'center' }}>응원 하트</span>
           </div>
 
-          {/* 목록 데이터 (6개 컬럼 exact 1대1 클래스 매칭) */}
+          {/* 목록 데이터 */}
           {safePosts.map((post, idx) => {
             const likesCount = post.likeCount ?? (post as any).likes ?? 0;
             const viewsCount = post.viewCount ?? (post as any).views ?? 0;
@@ -346,25 +394,43 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                 role="row"
                 key={`${post.id}-${idx}`}
                 style={{ cursor: 'pointer' }}
-                onClick={() => setSelectedPost(post)}
+                onClick={() => navigate(`/community/posts/${post.id}`)}
               >
-                {/* Col 1 (1.1fr): 분류 -> .opportunity-type */}
+                {/* Col 1: 분류 */}
                 <span className="opportunity-type" role="cell">
                   {getCategoryLabel(post.category)}
                 </span>
 
-                {/* Col 2 (2.5fr): 제목 & 미리보기 -> .opportunity-program */}
-                <div className="opportunity-program" role="cell">
-                  <strong>{post.title}</strong>
-                  <span>{snippetText}</span>
+                {/* Col 2: 썸네일 + 제목 & 미리보기 */}
+                <div className="opportunity-program" role="cell" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
+                  {post.imageUrl ? (
+                    <img
+                      src={post.imageUrl}
+                      alt={post.title}
+                      style={{ width: '48px', height: '48px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #111', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <div style={{ width: '44px', height: '44px', borderRadius: '6px', background: '#faf0ca', border: '1px solid #111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                      {post.category === 'REVIEW' ? '📝' : post.category === 'RECRUIT' ? '🤝' : '💬'}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: '3px' }}>
+                    <strong style={{ fontSize: '15px', color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {post.title}
+                    </strong>
+                    <span style={{ fontSize: '12px', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {snippetText}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Col 3 (1.0fr): 작성자 -> .opportunity-area */}
+                {/* Col 3: 작성자 */}
                 <span className="opportunity-area" role="cell">
-                  {getAuthorName(post.author)}
+                  ✍️ {getAuthorName(post.author)}
                 </span>
 
-                {/* Col 4 (1.5fr): 뱃지 및 반응 -> .opportunity-keywords */}
+                {/* Col 4: 뱃지 및 반응 */}
                 <div className="opportunity-keywords" role="cell">
                   <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold' }}>
                     {badgeInfo.name}
@@ -372,19 +438,22 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                   <span>👁️ {viewsCount} · ❤️ {likesCount}</span>
                 </div>
 
-                {/* Col 5 (0.8fr): 작성일 -> .opportunity-status */}
+                {/* Col 5: 작성일 */}
                 <span className="opportunity-status" role="cell">
                   {createdDate}
                 </span>
 
-                {/* Col 6 (auto): 상세보기 액션 버튼 -> .opportunity-action */}
-                <button
-                  type="button"
-                  className="opportunity-action"
-                  onClick={() => setSelectedPost(post)}
-                >
-                  상세보기
-                </button>
+                {/* Col 6: 응원 하트 액션 */}
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }} role="cell">
+                  <button
+                    type="button"
+                    className="opportunity-action"
+                    style={{ background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a', fontSize: '12px', padding: '6px 14px', borderRadius: '16px', fontWeight: 'bold' }}
+                    onClick={(e) => handleLike(post.id, e)}
+                  >
+                    ❤️ {likesCount}
+                  </button>
+                </div>
               </article>
             );
           })}
