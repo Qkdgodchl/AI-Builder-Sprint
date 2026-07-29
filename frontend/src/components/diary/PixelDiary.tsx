@@ -21,9 +21,10 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
     setLoading(true);
     try {
       const data = await fetchPosts(filterCategory);
-      setPosts(data);
+      setPosts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load community posts:', err);
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -44,11 +45,12 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
       const created = await createPost({
         title: title.trim(),
         content: content.trim(),
-        author: author.trim() || '부산 픽셀용사',
         category,
       });
 
-      setPosts((prev) => [created, ...prev]);
+      if (created) {
+        setPosts((prev) => [created, ...prev]);
+      }
       onAddDiary(0.5);
       showToast(`📝 픽셀 커뮤니티 글이 등록되었습니다! 온기 +0.5°C 상승!`);
       playBeep(587, 0.15);
@@ -56,6 +58,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
       setTitle('');
       setContent('');
       setAuthor('');
+      loadPosts(); // 목록 재로딩
     } catch (err) {
       console.error(err);
       alert('게시글 등록 중 오류가 발생했습니다.');
@@ -64,14 +67,31 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
   const handleLike = async (id: number) => {
     try {
-      const updated = await likePost(id);
-      setPosts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+      const updatedLike = await likePost(id);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, likeCount: updatedLike.likeCount } : p
+        )
+      );
       onAddDiary(0.1);
       playBeep(784, 0.1);
       showToast('❤️ 게시글에 응원 하트를 보냈습니다!');
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const getAuthorName = (authorInfo: any) => {
+    if (!authorInfo) return '익명 픽셀용사';
+    if (typeof authorInfo === 'string') return authorInfo;
+    return authorInfo.nickname || '익명 픽셀용사';
+  };
+
+  const getAuthorBadge = (authorInfo: any) => {
+    if (typeof authorInfo === 'object' && authorInfo?.badge) {
+      return ` [${authorInfo.badge}]`;
+    }
+    return '';
   };
 
   return (
@@ -109,7 +129,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
             >
               <option value="REVIEW">📝 봉사 후기</option>
               <option value="RECRUIT">🤝 동행 모집</option>
-              <option value="GENERAL">💬 자율 수다</option>
+              <option value="FREE">💬 자율 수다</option>
             </select>
           </div>
 
@@ -136,7 +156,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           📋 커뮤니티 이야기 피드
         </div>
         <div style={{ display: 'flex', gap: '4px' }}>
-          {['ALL', 'REVIEW', 'RECRUIT', 'GENERAL'].map((cat) => (
+          {['ALL', 'REVIEW', 'RECRUIT', 'FREE'].map((cat) => (
             <button
               key={cat}
               className="pixel-btn"
@@ -165,39 +185,46 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {posts.map((p) => (
-            <div key={p.id} className="pixel-box" style={{ background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span className="pixel-tag" style={{ background: p.category === 'REVIEW' ? '#ff9f1c' : p.category === 'RECRUIT' ? '#2ec4b6' : '#e76f51', color: '#fff' }}>
-                  {p.category === 'REVIEW' ? '📝 후기' : p.category === 'RECRUIT' ? '🤝 모집' : '💬 수다'}
-                </span>
-                <span style={{ fontSize: '11px', color: '#888' }}>
-                  👁️ {p.views} · 📅 {new Date(p.createdAt).toLocaleDateString('ko-KR')}
-                </span>
-              </div>
+          {posts.map((p) => {
+            const likesCount = p.likeCount ?? (p as any).likes ?? 0;
+            const viewsCount = p.viewCount ?? (p as any).views ?? 0;
+            const textContent = p.content || p.contentSnippet || '';
+            const createdDate = p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '방금 전';
 
-              <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1a1a24', marginBottom: '6px' }}>
-                {p.title}
-              </div>
+            return (
+              <div key={p.id} className="pixel-box" style={{ background: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span className="pixel-tag" style={{ background: p.category === 'REVIEW' ? '#ff9f1c' : p.category === 'RECRUIT' ? '#2ec4b6' : '#e76f51', color: '#fff' }}>
+                    {p.category === 'REVIEW' ? '📝 후기' : p.category === 'RECRUIT' ? '🤝 모집' : '💬 수다'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#888' }}>
+                    👁️ {viewsCount} · 📅 {createdDate}
+                  </span>
+                </div>
 
-              <div style={{ fontSize: '13px', color: '#444', lineHeight: 1.5, marginBottom: '12px', whiteSpace: 'pre-line' }}>
-                {p.content}
-              </div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#1a1a24', marginBottom: '6px' }}>
+                  {p.title}
+                </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #eee' }}>
-                <span style={{ fontSize: '12px', color: '#666' }}>
-                  ✍️ 작성자: <b>{p.author}</b>
-                </span>
-                <button
-                  className="pixel-btn"
-                  style={{ fontSize: '11px', background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a' }}
-                  onClick={() => handleLike(p.id)}
-                >
-                  ❤️ 응원 하트 {p.likes}
-                </button>
+                <div style={{ fontSize: '13px', color: '#444', lineHeight: 1.5, marginBottom: '12px', whiteSpace: 'pre-line' }}>
+                  {textContent}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #eee' }}>
+                  <span style={{ fontSize: '12px', color: '#666' }}>
+                    ✍️ 작성자: <b>{getAuthorName(p.author)}</b><span style={{ color: '#2ec4b6', fontSize: '11px' }}>{getAuthorBadge(p.author)}</span>
+                  </span>
+                  <button
+                    className="pixel-btn"
+                    style={{ fontSize: '11px', background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a' }}
+                    onClick={() => handleLike(p.id)}
+                  >
+                    ❤️ 응원 하트 {likesCount}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -7,19 +7,19 @@
 -- ---------------------------------------------------------
 -- 0. V1 레거시 posts를 현재 JPA Post 엔티티와 호환
 -- ---------------------------------------------------------
-ALTER TABLE posts ALTER COLUMN author SET DEFAULT '';
-ALTER TABLE posts ADD COLUMN author_nickname VARCHAR(100) NOT NULL DEFAULT '';
-ALTER TABLE posts ADD COLUMN author_badge VARCHAR(100) NULL;
-ALTER TABLE posts ADD COLUMN image_url VARCHAR(1000) NULL;
-ALTER TABLE posts ADD COLUMN like_count INT NOT NULL DEFAULT 0;
-ALTER TABLE posts ADD COLUMN comment_count INT NOT NULL DEFAULT 0;
-ALTER TABLE posts ADD COLUMN view_count INT NOT NULL DEFAULT 0;
-ALTER TABLE posts ADD COLUMN updated_at DATETIME(6) NULL;
-ALTER TABLE posts ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE posts ADD COLUMN deleted_at DATETIME(6) NULL;
-ALTER TABLE posts ADD COLUMN deleted_by VARCHAR(255) NULL;
+-- ALTER TABLE posts ALTER COLUMN author SET DEFAULT '';
+-- ALTER TABLE posts ADD COLUMN author_nickname VARCHAR(100) NOT NULL DEFAULT '';
+-- ALTER TABLE posts ADD COLUMN author_badge VARCHAR(100) NULL;
+-- ALTER TABLE posts ADD COLUMN image_url VARCHAR(1000) NULL;
+-- ALTER TABLE posts ADD COLUMN like_count INT NOT NULL DEFAULT 0;
+-- ALTER TABLE posts ADD COLUMN comment_count INT NOT NULL DEFAULT 0;
+-- ALTER TABLE posts ADD COLUMN view_count INT NOT NULL DEFAULT 0;
+-- ALTER TABLE posts ADD COLUMN updated_at DATETIME(6) NULL;
+-- ALTER TABLE posts ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE posts ADD COLUMN deleted_at DATETIME(6) NULL;
+-- ALTER TABLE posts ADD COLUMN deleted_by VARCHAR(255) NULL;
 
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     post_id BIGINT NOT NULL,
     author_nickname VARCHAR(100) NOT NULL,
@@ -43,7 +43,7 @@ CREATE INDEX idx_comments_post_created
 -- ---------------------------------------------------------
 -- 1. 사용자·인증
 -- ---------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NULL,
@@ -65,9 +65,9 @@ CREATE TABLE users (
     CONSTRAINT uk_users_email UNIQUE (email)
 );
 
-CREATE INDEX idx_users_status ON users(account_status);
+-- CREATE INDEX idx_users_status ON users(account_status);
 
-CREATE TABLE user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     role VARCHAR(50) NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE user_roles (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE user_interests (
+CREATE TABLE IF NOT EXISTS user_interests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     interest_code VARCHAR(50) NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE user_interests (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     token_hash VARCHAR(255) NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX idx_refresh_tokens_user_expires
     ON refresh_tokens(user_id, expires_at);
 
-CREATE TABLE stored_files (
+CREATE TABLE IF NOT EXISTS stored_files (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     owner_user_id BIGINT NULL,
     storage_key VARCHAR(500) NOT NULL,
@@ -119,7 +119,7 @@ CREATE TABLE stored_files (
 );
 
 -- 현재 AI 채팅 엔티티 호환용
-CREATE TABLE chat_messages (
+CREATE TABLE IF NOT EXISTS chat_messages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NULL,
     sender VARCHAR(30) NOT NULL,
@@ -138,7 +138,7 @@ CREATE INDEX idx_chat_messages_user_created
 -- ---------------------------------------------------------
 -- 2. 기관·관리자 승인
 -- ---------------------------------------------------------
-CREATE TABLE manager_applications (
+CREATE TABLE IF NOT EXISTS manager_applications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     applicant_user_id BIGINT NOT NULL,
     organization_name VARCHAR(255) NOT NULL,
@@ -162,7 +162,7 @@ CREATE TABLE manager_applications (
 CREATE INDEX idx_manager_applications_status_created
     ON manager_applications(status, created_at);
 
-CREATE TABLE organization_applications (
+CREATE TABLE IF NOT EXISTS organization_applications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     applicant_user_id BIGINT NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -191,7 +191,7 @@ CREATE TABLE organization_applications (
 CREATE INDEX idx_org_applications_status_created
     ON organization_applications(status, created_at);
 
-CREATE TABLE organizations (
+CREATE TABLE IF NOT EXISTS organizations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     source_application_id BIGINT NULL,
     name VARCHAR(255) NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE organizations (
         FOREIGN KEY (logo_file_id) REFERENCES stored_files(id) ON DELETE SET NULL
 );
 
-CREATE TABLE organization_managers (
+CREATE TABLE IF NOT EXISTS organization_managers (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     organization_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
@@ -235,7 +235,7 @@ CREATE TABLE organization_managers (
 -- ---------------------------------------------------------
 -- 3. AI 상담·계약 템플릿
 -- ---------------------------------------------------------
-CREATE TABLE ai_consultations (
+CREATE TABLE IF NOT EXISTS ai_consultations (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     title VARCHAR(255) NULL,
@@ -253,7 +253,7 @@ CREATE TABLE ai_consultations (
 CREATE INDEX idx_ai_consultations_user_created
     ON ai_consultations(user_id, created_at);
 
-CREATE TABLE ai_messages (
+CREATE TABLE IF NOT EXISTS ai_messages (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     consultation_id BIGINT NOT NULL,
     sender_type VARCHAR(30) NOT NULL,
@@ -268,7 +268,7 @@ CREATE TABLE ai_messages (
         ON DELETE CASCADE
 );
 
-CREATE TABLE contract_templates (
+CREATE TABLE IF NOT EXISTS contract_templates (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     organization_id BIGINT NULL,
     opportunity_type VARCHAR(50) NOT NULL,
@@ -284,7 +284,7 @@ CREATE TABLE contract_templates (
         FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
-CREATE TABLE contract_template_versions (
+CREATE TABLE IF NOT EXISTS contract_template_versions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     template_id BIGINT NOT NULL,
     version_no INT NOT NULL,
@@ -304,7 +304,7 @@ CREATE TABLE contract_template_versions (
 -- ---------------------------------------------------------
 -- 4. 선행 기회·신청
 -- ---------------------------------------------------------
-CREATE TABLE opportunities (
+CREATE TABLE IF NOT EXISTS opportunities (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     organization_id BIGINT NOT NULL,
     template_id BIGINT NULL,
@@ -345,7 +345,7 @@ CREATE INDEX idx_opportunities_type_status_created
 CREATE INDEX idx_opportunities_org_status
     ON opportunities(organization_id, status);
 
-CREATE TABLE opportunity_required_documents (
+CREATE TABLE IF NOT EXISTS opportunity_required_documents (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     opportunity_id BIGINT NOT NULL,
     document_code VARCHAR(50) NOT NULL,
@@ -360,7 +360,7 @@ CREATE TABLE opportunity_required_documents (
         ON DELETE CASCADE
 );
 
-CREATE TABLE applications (
+CREATE TABLE IF NOT EXISTS applications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     opportunity_id BIGINT NOT NULL,
     applicant_user_id BIGINT NOT NULL,
@@ -393,7 +393,7 @@ CREATE INDEX idx_applications_opportunity_status
 -- ---------------------------------------------------------
 -- 5. CLM 약정·동의·전자서명
 -- ---------------------------------------------------------
-CREATE TABLE commitments (
+CREATE TABLE IF NOT EXISTS commitments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     application_id BIGINT NOT NULL,
     opportunity_id BIGINT NOT NULL,
@@ -425,7 +425,7 @@ CREATE INDEX idx_commitments_user_status
 CREATE INDEX idx_commitments_org_status
     ON commitments(organization_id, commitment_status);
 
-CREATE TABLE commitment_versions (
+CREATE TABLE IF NOT EXISTS commitment_versions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     commitment_id BIGINT NOT NULL,
     version_no INT NOT NULL,
@@ -446,7 +446,7 @@ CREATE TABLE commitment_versions (
         FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
-CREATE TABLE consents (
+CREATE TABLE IF NOT EXISTS consents (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     commitment_id BIGINT NULL,
@@ -467,7 +467,7 @@ CREATE TABLE consents (
 CREATE INDEX idx_consents_user_type_created
     ON consents(user_id, consent_type, created_at);
 
-CREATE TABLE contract_documents (
+CREATE TABLE IF NOT EXISTS contract_documents (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     commitment_id BIGINT NOT NULL,
     commitment_version_id BIGINT NOT NULL,
@@ -485,7 +485,7 @@ CREATE TABLE contract_documents (
         FOREIGN KEY (file_id) REFERENCES stored_files(id)
 );
 
-CREATE TABLE signature_requests (
+CREATE TABLE IF NOT EXISTS signature_requests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     commitment_id BIGINT NOT NULL,
     provider VARCHAR(50) NOT NULL,
@@ -510,7 +510,7 @@ CREATE TABLE signature_requests (
 CREATE INDEX idx_signature_requests_commitment_status
     ON signature_requests(commitment_id, signature_status);
 
-CREATE TABLE signature_request_documents (
+CREATE TABLE IF NOT EXISTS signature_request_documents (
     signature_request_id BIGINT NOT NULL,
     contract_document_id BIGINT NOT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -523,7 +523,7 @@ CREATE TABLE signature_request_documents (
         ON DELETE CASCADE
 );
 
-CREATE TABLE processed_webhook_events (
+CREATE TABLE IF NOT EXISTS processed_webhook_events (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     provider VARCHAR(50) NOT NULL,
     external_event_id VARCHAR(255) NOT NULL,
@@ -537,7 +537,7 @@ CREATE TABLE processed_webhook_events (
         UNIQUE (provider, external_event_id)
 );
 
-CREATE TABLE commitment_change_requests (
+CREATE TABLE IF NOT EXISTS commitment_change_requests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     commitment_id BIGINT NOT NULL,
     requested_by BIGINT NOT NULL,
@@ -568,7 +568,7 @@ CREATE INDEX idx_commitment_changes_commitment_status
 -- ---------------------------------------------------------
 -- 6. 이행 기록
 -- ---------------------------------------------------------
-CREATE TABLE activity_records (
+CREATE TABLE IF NOT EXISTS activity_records (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     commitment_id BIGINT NOT NULL,
     recorded_by BIGINT NOT NULL,
@@ -601,7 +601,7 @@ CREATE INDEX idx_activity_records_commitment_date
 -- ---------------------------------------------------------
 -- 7. 신규 커뮤니티
 -- ---------------------------------------------------------
-CREATE TABLE community_posts (
+CREATE TABLE IF NOT EXISTS community_posts (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     author_user_id BIGINT NOT NULL,
     organization_id BIGINT NULL,
@@ -626,7 +626,7 @@ CREATE TABLE community_posts (
 CREATE INDEX idx_community_posts_category_created
     ON community_posts(category, created_at);
 
-CREATE TABLE community_post_images (
+CREATE TABLE IF NOT EXISTS community_post_images (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     post_id BIGINT NOT NULL,
     file_id BIGINT NOT NULL,
@@ -639,7 +639,7 @@ CREATE TABLE community_post_images (
         FOREIGN KEY (file_id) REFERENCES stored_files(id)
 );
 
-CREATE TABLE community_comments (
+CREATE TABLE IF NOT EXISTS community_comments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     post_id BIGINT NOT NULL,
     author_user_id BIGINT NOT NULL,
@@ -662,7 +662,7 @@ CREATE TABLE community_comments (
 CREATE INDEX idx_community_comments_post_created
     ON community_comments(post_id, created_at);
 
-CREATE TABLE post_reactions (
+CREATE TABLE IF NOT EXISTS post_reactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     post_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
@@ -676,7 +676,7 @@ CREATE TABLE post_reactions (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE reports (
+CREATE TABLE IF NOT EXISTS reports (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     reporter_user_id BIGINT NOT NULL,
     target_type VARCHAR(30) NOT NULL,
@@ -700,7 +700,7 @@ CREATE INDEX idx_reports_status_created
 -- ---------------------------------------------------------
 -- 8. 운영 감사·알림
 -- ---------------------------------------------------------
-CREATE TABLE admin_audit_logs (
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     actor_user_id BIGINT NULL,
     action_type VARCHAR(100) NOT NULL,
@@ -718,7 +718,7 @@ CREATE TABLE admin_audit_logs (
 CREATE INDEX idx_admin_audit_logs_target_created
     ON admin_audit_logs(target_type, target_id, created_at);
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     notification_type VARCHAR(50) NOT NULL,
