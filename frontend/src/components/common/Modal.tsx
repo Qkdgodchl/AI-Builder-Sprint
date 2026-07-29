@@ -22,9 +22,15 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, title, type, onClose, onSu
 
   return (
     <div className="modal-overlay active" onClick={onClose}>
-      <div className="pixel-box modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="pixel-box modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label={type === 'donate' ? '후원 신청' : '봉사 신청'}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '10px', color: '#1a1a24' }}>
-          {type === 'donate' ? '❤️ 1초 픽셀 마음 기부' : '⚡ 1초 픽셀 간편 봉사 신청'}
+          {type === 'donate' ? '후원 신청' : '봉사 신청'}
         </div>
         <div style={{ fontSize: '13px', color: '#555', marginBottom: '14px' }}>
           선택한 미션: <b>{title}</b>
@@ -62,7 +68,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, title, type, onClose, onSu
               취소
             </button>
             <button type="submit" className={`pixel-btn ${type === 'donate' ? 'pixel-btn-red' : ''}`}>
-              {type === 'donate' ? '❤️ 기부 확정' : '⚡ 신청 확정'}
+              {type === 'donate' ? '후원 신청 완료' : '봉사 신청 완료'}
             </button>
           </div>
         </form>
