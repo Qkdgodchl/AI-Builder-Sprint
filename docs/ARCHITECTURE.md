@@ -38,16 +38,23 @@
 
 ## 📂 3. 백엔드 패키지 구조 (`backend/src/main/java/com/pixelcare/`)
 
-```
+```text
 backend/src/main/java/com/pixelcare/
-├── PixelCareApplication.java         # 메인 실행 파일
-├── config/                           # CorsConfig, SecurityConfig
-├── user/                             # 유저 & 역할 관리 (User, ManagerApplication, UserRole: USER, CENTER_MANAGER, OPERATOR)
-├── organization/                     # 센터 & 센터 관리자 도메인 (Organization, OrganizationManager, OrganizationApplication)
-├── volunteer/                        # 봉사/기부 모집글 & 신청 도메인 (Opportunity, Application, SoftDelete)
-├── community/                        # 커뮤니티 게시판 도메인 (CommunityPost, Comment)
-├── operator/                         # 운영진 전용 도메인 (AdminAuditLog, OperatorService)
-└── ai/                               # Upstage AI Solar LLM 도메인 (AiRecommendService)
+├── PixelCareApplication.java         # 메인 실행 파일 (@EnableJpaAuditing)
+│
+├── global/                            # 🌐 전역 공통 시스템
+│   ├── config/                        # WebConfig (CORS), UpstageConfig, SecurityConfig
+│   ├── common/                        # ApiResponse<T> (표준 JSON 통일 응답 래퍼)
+│   ├── entity/                        # BaseTimeEntity (생성일시/수정일시/소프트 삭제 isDeleted 상속)
+│   └── error/                         # GlobalExceptionHandler (전역 예외 처리)
+│
+└── domain/                            # 🎯 기능(도메인)별 비즈니스 로직
+    ├── community/                     # 💬 커뮤니티 도메인 (Post, Comment, PostLike)
+    ├── user/                          # 📜 유저 & 마이페이지 도메인 (User, UserBadge, UserTempLog)
+    ├── ai/                            # 🤖 Upstage AI Solar LLM 도메인 (ChatMessage, AiMateClient)
+    ├── volunteer/                     # 🎁 봉사/기부 모집글 & 신청 도메인 (Opportunity, Application)
+    ├── center/                        # 🏢 센터 관리자 & 등록 센터 도메인 (Organization)
+    └── operator/                      # 🛡️ 운영진 승인 및 감사 로그 도메인 (AdminAuditLog, ManagerApplication)
 ```
 
 ---

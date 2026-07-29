@@ -17,6 +17,8 @@ frontend/dist-ssr
 backend/.gradle/
 backend/build/
 backend/out/
+backend/bin/
+bin/
 *.jar
 *.war
 

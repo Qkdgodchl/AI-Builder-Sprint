@@ -128,8 +128,180 @@
 
 ---
 
-## 🤖 4. Upstage AI & 커뮤니티 API (`/api/ai`, `/api/posts`)
+## 🤖 4. Upstage AI API (`/api/ai`)
 
-- `POST /api/ai/recommend`: Upstage Solar LLM 기반 사용자 의향 파싱 및 맞춤 봉사 추천
-- `GET /api/posts`: 커뮤니티 게시글 목록 조회
-- `POST /api/posts`: 커뮤니티 게시글 작성
+### 4.1 Upstage Solar LLM 기반 봉사/기부 큐레이션 (`POST /api/ai/recommend`)
+- **Request Body**:
+```json
+{
+  "userInput": "주말에 부산 금정구 근처에서 유기견 관련 봉사하고 싶어"
+}
+```
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "reply": "금정구 근처의 유기견 봉사활동 2건을 추천해드릴게요!",
+    "recommendedCards": [
+      {
+        "opportunityId": 1,
+        "title": "🐕 부산 북구 유기견 보육원 주말 봉사",
+        "region": "부산 북구",
+        "badgeReward": "LV1_SEED"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 💬 5. 커뮤니티 API (`/api/posts`, `/api/comments`)
+
+### 5.1 게시글 목록 조회 (`GET /api/posts`)
+- **Query Parameters**: `category=REVIEW` (ALL/FREE/REVIEW/QUESTION), `sort=latest` (latest/likes), `page=0`, `size=10`
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "author": {
+          "id": 5,
+          "nickname": "따뜻한픽셀",
+          "badge": "LV2_WARMTH"
+        },
+        "category": "REVIEW",
+        "title": "🐕 부산 유기견 봉사 다녀왔습니다!",
+        "contentSnippet": "오늘 아이들과 함께 산책도 하고...",
+        "imageUrl": "https://example.com/photo.jpg",
+        "likeCount": 12,
+        "commentCount": 3,
+        "createdAt": "2026-07-29T10:00:00"
+      }
+    ],
+    "page": 0,
+    "totalElements": 1
+  }
+}
+```
+
+### 5.2 게시글 상세 조회 (`GET /api/posts/{id}`)
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "author": {
+      "id": 5,
+      "nickname": "따뜻한픽셀",
+      "badge": "LV2_WARMTH"
+    },
+    "category": "REVIEW",
+    "title": "🐕 부산 유기견 봉사 다녀왔습니다!",
+    "content": "오늘 아이들과 함께 산책도 하고 밥도 주고 왔습니다. 정말 보람찬 하루였어요!",
+    "imageUrl": "https://example.com/photo.jpg",
+    "viewCount": 105,
+    "likeCount": 12,
+    "isLiked": true,
+    "createdAt": "2026-07-29T10:00:00"
+  }
+}
+```
+
+### 5.3 게시글 작성 (`POST /api/posts`)
+- **Request Body**:
+```json
+{
+  "category": "REVIEW",
+  "title": "🐕 부산 유기견 봉사 다녀왔습니다!",
+  "content": "오늘 아이들과 함께 산책도 하고 밥도 주고 왔습니다.",
+  "imageUrl": "https://example.com/photo.jpg"
+}
+```
+- **Response (`201 Created`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "title": "🐕 부산 유기견 봉사 다녀왔습니다!",
+    "createdAt": "2026-07-29T10:00:00"
+  }
+}
+```
+
+### 5.4 게시글 수정 (`PUT /api/posts/{id}`)
+- **Request Body**:
+```json
+{
+  "title": "[수정] 🐕 부산 유기견 봉사 후기",
+  "content": "수정된 글 내용입니다.",
+  "imageUrl": "https://example.com/photo_updated.jpg"
+}
+```
+
+### 5.5 게시글 삭제 (`DELETE /api/posts/{id}`)
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "게시글이 삭제되었습니다."
+}
+```
+
+### 5.6 좋아요 토글 (`POST /api/posts/{id}/like`)
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "data": {
+    "postId": 1,
+    "isLiked": true,
+    "likeCount": 13
+  }
+}
+```
+
+### 5.7 댓글 목록 조회 (`GET /api/posts/{postId}/comments`)
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 101,
+      "author": {
+        "id": 8,
+        "nickname": "행복봉사자",
+        "badge": "LV1_SEED"
+      },
+      "content": "멋진 봉사 후기네요! 다음번에 저도 같이 가고 싶습니다.",
+      "createdAt": "2026-07-29T11:20:00"
+    }
+  ]
+}
+```
+
+### 5.8 댓글 작성 (`POST /api/posts/{postId}/comments`)
+- **Request Body**:
+```json
+{
+  "content": "멋진 봉사 후기네요! 다음번에 저도 같이 가고 싶습니다.",
+  "parentCommentId": null
+}
+```
+
+### 5.9 댓글 삭제 (`DELETE /api/comments/{commentId}`)
+- **Response (`200 OK`)**:
+```json
+{
+  "success": true,
+  "message": "댓글이 삭제되었습니다."
+}
+```
+
