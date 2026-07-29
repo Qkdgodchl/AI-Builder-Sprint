@@ -1,22 +1,37 @@
+export interface Author {
+  id: number;
+  nickname: string;
+  badge: string;
+}
+
 export interface PostItem {
   id: number;
-  title: string;
-  content: string;
-  author: string;
+  author: Author | string;
   category: string;
-  likes: number;
-  views: number;
+  title: string;
+  contentSnippet?: string;
+  content?: string;
+  imageUrl?: string;
+  likeCount?: number;
+  commentCount?: number;
+  viewCount?: number;
+  likes?: number;
+  views?: number;
   createdAt: string;
 }
 
 const API_BASE_URL = 'http://localhost:8080/api/posts';
 
 /**
- * Fetch list of community posts from API
+ * 백엔드 REST API에서 커뮤니티 게시글 목록 조회
  */
-export const fetchPosts = async (category?: string): Promise<PostItem[]> => {
+export const fetchPosts = async (category?: string, sort: string = 'latest'): Promise<PostItem[]> => {
   try {
-    const url = category && category !== 'ALL' ? `${API_BASE_URL}?category=${encodeURIComponent(category)}` : API_BASE_URL;
+    let url = `${API_BASE_URL}?sort=${sort}`;
+    if (category && category !== 'ALL') {
+      url += `&category=${encodeURIComponent(category)}`;
+    }
+    
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -25,12 +40,28 @@ export const fetchPosts = async (category?: string): Promise<PostItem[]> => {
     });
 
     if (!response.ok) {
-      throw new Error(`API response status: ${response.status}`);
+      throw new Error(`API 응답 오류: ${response.status}`);
     }
 
-    return await response.json();
+    const result = await response.json();
+    
+    // 백엔드 ApiResponse { success: true, data: { content: [...] } } 언패킹
+    if (result.success && result.data) {
+      if (Array.isArray(result.data.content)) {
+        return result.data.content;
+      }
+      if (Array.isArray(result.data)) {
+        return result.data;
+      }
+    }
+    
+    if (Array.isArray(result)) {
+      return result;
+    }
+
+    return [];
   } catch (error) {
-    console.error('Failed to fetch community posts:', error);
+    console.error('커뮤니티 게시글 목록 조회 실패:', error);
     return [];
   }
 };
@@ -38,38 +69,45 @@ export const fetchPosts = async (category?: string): Promise<PostItem[]> => {
 export interface CreatePostPayload {
   title: string;
   content: string;
-  author: string;
   category?: string;
+  author?: string;
+  imageUrl?: string;
 }
 
 /**
- * Create a new community post via API
+ * 게시글 작성 API 호출
  */
-export const createPost = async (payload: CreatePostPayload): Promise<PostItem> => {
-  const response = await fetch(API_BASE_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      title: payload.title,
-      content: payload.content,
-      author: payload.author || '익명 픽셀용사',
-      category: payload.category || 'GENERAL',
-    }),
-  });
+export const createPost = async (payload: CreatePostPayload): Promise<PostItem | null> => {
+  try {
+    const response = await fetch(API_BASE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title: payload.title,
+        content: payload.content,
+        category: payload.category || 'FREE',
+        imageUrl: payload.imageUrl || '',
+      }),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to create post: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`게시글 작성 실패: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.data || null;
+  } catch (error) {
+    console.error('게시글 작성 오류:', error);
+    return null;
   }
-
-  return await response.json();
 };
 
 /**
- * Like a community post via API
+ * 게시글 좋아요 토글 API 호출
  */
-export const likePost = async (id: number): Promise<PostItem> => {
+export const likePost = async (id: number): Promise<{ postId: number; isLiked: boolean; likeCount: number }> => {
   const response = await fetch(`${API_BASE_URL}/${id}/like`, {
     method: 'POST',
     headers: {
@@ -78,8 +116,9 @@ export const likePost = async (id: number): Promise<PostItem> => {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to like post: ${response.status}`);
+    throw new Error(`좋아요 처리 실패: ${response.status}`);
   }
 
-  return await response.json();
+  const result = await response.json();
+  return result.data;
 };
