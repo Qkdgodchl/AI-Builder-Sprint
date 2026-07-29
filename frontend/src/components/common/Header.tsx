@@ -1,15 +1,21 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import type { SessionUser } from '../../types';
 
 interface HeaderProps {
   temperature: number;
   totalDonation: number;
   totalHours: number;
   totalMembers: number;
-  currentUser: string | null;
+  currentUser: SessionUser | null;
   onLogin: () => void;
   onLogout: () => void;
   onAdminApply: () => void;
+}
+
+interface NavigationItem {
+  label: string;
+  path: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,53 +31,57 @@ export const Header: React.FC<HeaderProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path.startsWith('/community')) return 'community';
-    if (path.startsWith('/ai')) return 'ai';
-    if (path.startsWith('/roadmap')) return 'roadmap';
-    return 'volunteer';
-  };
-
-  const activeTab = getActiveTab();
-
-  const navigation = [
+  const navigation: NavigationItem[] = [
+    { label: 'HOME', path: '/ai' },
     { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
     { label: 'COMMUNITY', path: '/community' },
-    { label: 'AI MATE', path: '/ai' },
-    { label: 'MY PAGE / ROADMAP', path: '/roadmap' },
+    { label: 'MY PAGE', path: '/roadmap' },
   ];
 
+  if (currentUser?.role === 'CENTER_MANAGER') {
+    navigation.push({ label: 'MY CENTER', path: '/my-centers' });
+  }
+
+  const usesContentDivider =
+    location.pathname.startsWith('/volunteer') ||
+    location.pathname.startsWith('/manager-application') ||
+    location.pathname.startsWith('/my-centers');
+
+  const isPathActive = (path: string) => {
+    if (path === '/community') return location.pathname.startsWith('/community');
+    if (path === '/volunteer') return location.pathname.startsWith('/volunteer');
+    if (path === '/my-centers') return location.pathname.startsWith('/my-centers');
+    return location.pathname === path;
+  };
+
   return (
-    <header className={`magazine-header ${activeTab === 'volunteer' ? 'flush-content' : ''}`}>
-      {/* Top Header Bar */}
+    <header className={`magazine-header ${usesContentDivider ? 'flush-content' : ''}`}>
       <div className="magazine-header-top">
         <button className="brand-button" type="button" onClick={() => navigate('/volunteer')}>
           PIXEL CARE STUDIO
         </button>
 
         <nav className="primary-navigation" aria-label="주요 메뉴">
-          {navigation.map((item) => {
-            const isActive = location.pathname.startsWith(item.path) || (item.path === '/volunteer' && location.pathname === '/');
-            return (
-              <button
-                key={item.path}
-                type="button"
-                className={`primary-nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => navigate(item.path)}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          {navigation.map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              className={`primary-nav-item ${isPathActive(item.path) ? 'active' : ''}`}
+              onClick={() => navigate(item.path)}
+            >
+              {item.label}
+            </button>
+          ))}
         </nav>
 
         <div className="header-account-actions">
           {currentUser ? (
             <>
-              <button className="admin-apply-button" type="button" onClick={onAdminApply}>
-                ADMIN APPLY
-              </button>
+              {currentUser.role === 'USER' && (
+                <button className="admin-apply-button" type="button" onClick={onAdminApply}>
+                  관리자 신청
+                </button>
+              )}
               <button className="header-login-button" type="button" onClick={onLogout}>
                 LOGOUT
               </button>
@@ -84,12 +94,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Main Magazine Title */}
-      <h1 className="magazine-title" style={{ cursor: 'pointer' }} onClick={() => navigate('/volunteer')}>
+      <h1 className="magazine-title" onClick={() => navigate('/volunteer')}>
         PIXEL CARE MAGAZINE
       </h1>
 
-      {/* Editorial Stats Banner */}
       <div className="magazine-stats" aria-label="픽셀 케어 누적 현황">
         <div className="magazine-stat">
           <span className="magazine-stat-label">WARMTH</span>

@@ -61,6 +61,71 @@ public class DataLoader implements CommandLineRunner {
                     "https://www.1365.go.kr/vols/1365/act/volsList.do?searchKeyword=도시락",
                     null
             ));
+
+            volunteerRepository.save(new Volunteer(
+                    null,
+                    "지역 아동 교육 정기 후원",
+                    "GENERAL",
+                    "전국",
+                    "픽셀케어 파트너 재단",
+                    null,
+                    0L,
+                    List.of("정기후원", "아동·청소년"),
+                    null,
+                    null
+            ));
+
+            volunteerRepository.save(new Volunteer(
+                    null,
+                    "나눔을 이어가는 유산기부 상담",
+                    "LEGACY",
+                    "전국",
+                    "유산기부 전문 상담센터",
+                    null,
+                    0L,
+                    List.of("전문상담", "약정"),
+                    null,
+                    null
+            ));
+
+            volunteerRepository.save(new Volunteer(
+                    null,
+                    "세계유산 보존 정기후원",
+                    "UNESCO",
+                    "전 세계",
+                    "세계유산 보존 파트너",
+                    null,
+                    0L,
+                    List.of("세계유산", "보존사업"),
+                    null,
+                    null
+            ));
+
+            volunteerRepository.save(new Volunteer(
+                    null,
+                    "우리 문화유산 지킴이 후원",
+                    "HERITAGE",
+                    "전국",
+                    "지역 문화유산 센터",
+                    null,
+                    0L,
+                    List.of("문화유산", "복원"),
+                    null,
+                    null
+            ));
+
+            volunteerRepository.save(new Volunteer(
+                    null,
+                    "부산 고향사랑기부제",
+                    "HOMETOWN",
+                    "부산광역시",
+                    "지역 상생 기부 안내센터",
+                    null,
+                    0L,
+                    List.of("고향사랑기부", "지역상생"),
+                    null,
+                    null
+            ));
         }
 
         if (postRepository.count() == 0) {

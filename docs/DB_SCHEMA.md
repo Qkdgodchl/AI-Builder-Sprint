@@ -1,6 +1,6 @@
 # Pixel Care CLM 데이터베이스 설계
 
-> 문서 버전: `v1.1`
+> 문서 버전: `v1.2`
 >
 > 운영 DB: MySQL 8.0
 >
@@ -30,6 +30,7 @@
 4. 외래키, `UNIQUE`, `NOT NULL` 같은 핵심 규칙은 DB에도 적용한다.
 5. 운영 데이터·개인정보·비밀키를 Migration이나 Seed에 넣지 않는다.
 6. 위험한 `DROP`, 컬럼 삭제, 대량 데이터 변경은 팀 리뷰 후 진행한다.
+7. 공개 콘텐츠는 정상 양수 `BIGINT id`를 URL에 사용할 수 있다. 민감한 업무 자원은 `public_id`만 노출한다.
 
 ---
 
@@ -41,7 +42,8 @@
 |---|---|---|---|
 | V1 | 기존 초기 구조 | `volunteers`, `volunteer_tags`, `posts` | 적용됨 |
 | V2 | CLM 전체 기반 스키마 | 사용자, 기관, AI, 선행 기회, 신청, 약정, 전자서명, 이행, 커뮤니티, 운영·알림 | [x] 생성·H2 검증 완료 |
-| V3+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
+| V3 | 공개 식별자 | 신청·약정·문서·서명 `public_id` | [x] 생성 |
+| V4+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
 | 별도 버전 | 레거시 이전 | V1 데이터를 신규 도메인 테이블로 이전 | [ ] |
 
 `V2__create_clm_schema.sql`이 전체 기반 테이블을 한 번에 생성한다. 이후에는 V2를 수정하지 않고 V3부터 변경분만 추가한다.
@@ -88,6 +90,9 @@ erDiagram
 ## 4. 공통 타입과 컬럼
 
 - 기본 PK: `BIGINT AUTO_INCREMENT`
+- 공개 콘텐츠 `id`: 센터·모집글처럼 공개 목록에서 조회되는 자원은 정상 양수 PK를 URL에 사용할 수 있다.
+- 비공개 흐름 `public_id`: 신청, 약정, 계약문서, 서명요청처럼 열거 공격을 막아야 하는 자원에 UUID를 사용한다.
+- 음수 ID, 배열 순번, 임시 증가값을 데모·시드·URL 식별자로 사용하지 않는다.
 - 시간: `DATETIME(6)`, 애플리케이션은 UTC 저장
 - 금액: 원 단위 `BIGINT`
 - 봉사시간: 오차 방지를 위해 분 단위 `INT`
@@ -190,6 +195,7 @@ Refresh Token 원문은 저장하지 않는다.
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `user_id` | BIGINT | FK, NOT NULL |
 | `organization_name` | VARCHAR(200) | NOT NULL |
 | `position` | VARCHAR(100) | NOT NULL |
@@ -213,6 +219,7 @@ Refresh Token 원문은 저장하지 않는다.
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `applicant_user_id` | BIGINT | FK, NOT NULL |
 | `application_data` | JSON | NOT NULL |
 | `evidence_file_id` | BIGINT | FK, NOT NULL |
@@ -328,6 +335,7 @@ PK: `(opportunity_id, document_type)`
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `opportunity_id` | BIGINT | FK, NOT NULL |
 | `user_id` | BIGINT | FK, NOT NULL |
 | `consultation_id` | BIGINT | FK, NULL |
@@ -358,6 +366,7 @@ UNIQUE: `(opportunity_id, user_id)`
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `application_id` | BIGINT | FK, UNIQUE |
 | `user_id` | BIGINT | FK, NOT NULL |
 | `organization_id` | BIGINT | FK, NOT NULL |
@@ -412,6 +421,7 @@ UNIQUE: `(commitment_id, consent_type, policy_version)`
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `commitment_id` | BIGINT | FK |
 | `document_type` | VARCHAR(50) | NOT NULL |
 | `version` | INT | NOT NULL |
@@ -429,6 +439,7 @@ UNIQUE: `(commitment_id, document_type, version)`
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `commitment_id` | BIGINT | FK |
 | `contract_document_id` | BIGINT | FK |
 | `modusign_document_id` | VARCHAR(255) | UNIQUE, NULL |
@@ -504,6 +515,7 @@ UNIQUE: `(commitment_id, document_type, version)`
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
 | `id` | BIGINT | PK |
+| `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
 | `user_id` | BIGINT | FK |
 | `activity_record_id` | BIGINT | FK, NULL |
 | `title` | VARCHAR(255) | NOT NULL |

@@ -32,6 +32,12 @@
 4. 테스트하지 못한 외부 연동은 구현 완료로 표시하지 않는다.
 5. 기존 레거시 `/api/volunteers`, `/api/posts`는 새 `/api/v1` 규격으로 이전한 뒤 체크한다.
 
+### 공개 식별자 규칙
+
+- 센터·모집글처럼 공개 목록에서 조회되는 자원은 정상 양수 `id`를 사용한다.
+- 신청, 약정, 문서, 서명 요청은 추측이 어려운 UUID `publicId`를 사용한다.
+- 음수 ID, 배열 인덱스, 프론트 임시 순번을 API 식별자로 사용하지 않는다.
+
 ---
 
 ## 1. 공통 규약
@@ -383,15 +389,15 @@ curl -i -X GET \
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
 | [ ] | [ ] | [ ] | GET | `/opportunities` | Public | 공개 모집글 검색·필터 |
-| [ ] | [ ] | [ ] | GET | `/opportunities/{id}` | Public | 공개 모집글 상세 |
-| [ ] | [ ] | [ ] | POST | `/manager/organizations/{orgId}/opportunities` | 해당 센터 관리자 | 모집글 초안 작성 |
-| [ ] | [ ] | [ ] | GET | `/manager/organizations/{orgId}/opportunities` | 해당 센터 관리자 | 센터 모집글 목록 |
-| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{id}` | 해당 센터 관리자 | 비공개 포함 상세 |
-| [ ] | [ ] | [ ] | PATCH | `/manager/opportunities/{id}` | 해당 센터 관리자 | 초안·수정가능 모집글 수정 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{id}/publish` | 해당 센터 관리자 | 모집글 공개 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{id}/close` | 해당 센터 관리자 | 모집 마감 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{id}/cancel` | 해당 센터 관리자 | 모집 취소 |
-| [ ] | [ ] | [ ] | DELETE | `/operator/opportunities/{id}` | OPERATOR | 모집글 소프트 삭제 |
+| [ ] | [ ] | [ ] | GET | `/opportunities/{opportunityId}` | Public | 공개 모집글 상세 |
+| [ ] | [ ] | [ ] | POST | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 모집글 초안 작성 |
+| [ ] | [ ] | [ ] | GET | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 센터 모집글 목록 |
+| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 비공개 포함 상세 |
+| [ ] | [ ] | [ ] | PATCH | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 초안·수정가능 모집글 수정 |
+| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/publish` | 해당 센터 관리자 | 모집글 공개 |
+| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/close` | 해당 센터 관리자 | 모집 마감 |
+| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/cancel` | 해당 센터 관리자 | 모집 취소 |
+| [ ] | [ ] | [ ] | DELETE | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 소프트 삭제 |
 
 목록 필터:
 
@@ -521,13 +527,13 @@ APPLIED → DOCUMENT_PENDING → SIGNATURE_PENDING → IN_REVIEW
 |---|---|---|---|---|---|---|
 | [ ] | [ ] | [ ] | POST | `/opportunities/{opportunityId}/applications` | USER | 봉사·기부 신청 |
 | [ ] | [ ] | [ ] | GET | `/applications/me` | USER | 내 신청 목록 |
-| [ ] | [ ] | [ ] | GET | `/applications/{id}` | 신청자·해당 센터 관리자 | 신청 상세 |
-| [ ] | [ ] | [ ] | POST | `/applications/{id}/cancel` | 신청자 | 신청 취소 |
-| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{id}/applications` | 해당 센터 관리자 | 모집글별 신청자 목록 |
-| [ ] | [ ] | [ ] | GET | `/manager/applications/{id}` | 해당 센터 관리자 | 신청자·문서 상세 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{id}/request-revision` | 해당 센터 관리자 | 수정 요청 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{id}/approve` | 해당 센터 관리자 | 신청 승인 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{id}/reject` | 해당 센터 관리자 | 신청 거절 |
+| [ ] | [ ] | [ ] | GET | `/applications/{applicationPublicId}` | 신청자·해당 센터 관리자 | 신청 상세 |
+| [ ] | [ ] | [ ] | POST | `/applications/{applicationPublicId}/cancel` | 신청자 | 신청 취소 |
+| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{opportunityId}/applications` | 해당 센터 관리자 | 모집글별 신청자 목록 |
+| [ ] | [ ] | [ ] | GET | `/manager/applications/{applicationPublicId}` | 해당 센터 관리자 | 신청자·문서 상세 |
+| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/request-revision` | 해당 센터 관리자 | 수정 요청 |
+| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/approve` | 해당 센터 관리자 | 신청 승인 |
+| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/reject` | 해당 센터 관리자 | 신청 거절 |
 
 신청 요청:
 

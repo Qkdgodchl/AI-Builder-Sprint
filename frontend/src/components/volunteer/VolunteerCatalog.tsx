@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { VolunteerItem } from '../../types';
 import { fetchVolunteers } from '../../services/volunteerApi';
 import { OpportunityDetail } from './OpportunityDetail';
@@ -27,59 +28,6 @@ const donationFilters: Array<{ value: DonationFilter; label: string }> = [
   { value: 'HERITAGE', label: '문화유산 후원' },
 ];
 
-const featuredPrograms: CatalogItem[] = [
-  {
-    id: -1,
-    title: '지역 아동 교육 정기 후원',
-    category: 'DONATION',
-    programType: 'GENERAL',
-    location: '전국',
-    organizer: '픽셀케어 파트너 재단',
-    tags: ['정기후원', '아동·청소년'],
-    availability: '상시 모집',
-  },
-  {
-    id: -2,
-    title: '나눔을 이어가는 유산기부 상담',
-    category: 'DONATION',
-    programType: 'LEGACY',
-    location: '전국',
-    organizer: '유산기부 전문 상담센터',
-    tags: ['전문상담', '약정'],
-    availability: '상담 가능',
-  },
-  {
-    id: -3,
-    title: '세계유산 보존 정기후원',
-    category: 'DONATION',
-    programType: 'UNESCO',
-    location: '전 세계',
-    organizer: '세계유산 보존 파트너',
-    tags: ['세계유산', '보존사업'],
-    availability: '상시 모집',
-  },
-  {
-    id: -4,
-    title: '우리 문화유산 지킴이 후원',
-    category: 'DONATION',
-    programType: 'HERITAGE',
-    location: '전국',
-    organizer: '지역 문화유산 센터',
-    tags: ['문화유산', '복원'],
-    availability: '상시 모집',
-  },
-  {
-    id: -5,
-    title: '부산 고향사랑기부제',
-    category: 'DONATION',
-    programType: 'HOMETOWN',
-    location: '부산광역시',
-    organizer: '지역 상생 기부 안내센터',
-    tags: ['고향사랑기부', '지역상생'],
-    availability: '신청 가능',
-  },
-];
-
 const getProgramLabel = (programType: ProgramType) => {
   const labels: Record<ProgramType, string> = {
     VOLUNTEER: '봉사',
@@ -100,8 +48,8 @@ export const VolunteerCatalog: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [primaryFilter, setPrimaryFilter] = useState<PrimaryFilter>(null);
   const [donationFilter, setDonationFilter] = useState<DonationFilter>('ALL');
-  const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null);
-  const [applicationItem, setApplicationItem] = useState<CatalogItem | null>(null);
+  const navigate = useNavigate();
+  const route = useParams()['*'] ?? '';
 
   useEffect(() => {
     const loadData = async () => {
@@ -118,19 +66,25 @@ export const VolunteerCatalog: React.FC = () => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [applicationItem, selectedItem]);
-
   const catalogItems = useMemo<CatalogItem[]>(() => {
     const apiPrograms = items.map<CatalogItem>((item) => ({
       ...item,
       title: removeLeadingSymbol(item.title),
-      programType: item.category === 'VOLUNTEER' ? 'VOLUNTEER' : 'GENERAL',
-      availability: '모집 중',
+      programType:
+        item.category === 'DONATION'
+          ? 'GENERAL'
+          : item.category,
+      availability:
+        item.category === 'LEGACY'
+          ? '상담 가능'
+          : item.category === 'HOMETOWN'
+            ? '신청 가능'
+            : item.category === 'VOLUNTEER'
+              ? '모집 중'
+              : '상시 모집',
     }));
 
-    return [...apiPrograms, ...featuredPrograms];
+    return apiPrograms;
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -153,17 +107,27 @@ export const VolunteerCatalog: React.FC = () => {
     return catalogItems.filter((item) => item.programType === donationFilter);
   }, [catalogItems, donationFilter, primaryFilter]);
 
+  const [routeId, routeAction] = route.split('/');
+  const selectedItem = routeId
+    ? catalogItems.find((item) => String(item.id) === routeId) ?? null
+    : null;
+  const isApplicationRoute = routeAction === 'apply';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [route]);
+
   const handlePrimaryFilter = (filter: Exclude<PrimaryFilter, null>) => {
     setPrimaryFilter((current) => (current === filter ? null : filter));
     if (filter !== 'DONATION') setDonationFilter('ALL');
   };
 
-  if (applicationItem) {
+  if (selectedItem && isApplicationRoute) {
     return (
       <ClmApplicationPreparation
-        item={applicationItem}
-        typeLabel={getProgramLabel(applicationItem.programType)}
-        onBack={() => setApplicationItem(null)}
+        item={selectedItem}
+        typeLabel={getProgramLabel(selectedItem.programType)}
+        onBack={() => navigate(`/volunteer/${selectedItem.id}`)}
       />
     );
   }
@@ -172,8 +136,8 @@ export const VolunteerCatalog: React.FC = () => {
     return (
       <OpportunityDetail
         item={selectedItem}
-        onBack={() => setSelectedItem(null)}
-        onApply={() => setApplicationItem(selectedItem)}
+        onBack={() => navigate('/volunteer')}
+        onApply={() => navigate(`/volunteer/${selectedItem.id}/apply`)}
       />
     );
   }
@@ -244,8 +208,8 @@ export const VolunteerCatalog: React.FC = () => {
       ) : (
         <div className="opportunity-table" role="table" aria-label="봉사 및 기부 프로그램">
           <div className="opportunity-table-head" role="row">
-            <span role="columnheader">구분</span>
             <span role="columnheader">프로그램</span>
+            <span role="columnheader">구분</span>
             <span role="columnheader">지역</span>
             <span role="columnheader">키워드</span>
             <span role="columnheader">상태</span>
@@ -253,14 +217,26 @@ export const VolunteerCatalog: React.FC = () => {
           </div>
 
           {filteredItems.map((item) => (
-            <article className="opportunity-row" role="row" key={item.id}>
-              <span className="opportunity-type" role="cell">
-                {getProgramLabel(item.programType)}
-              </span>
+            <article
+              className="opportunity-row"
+              role="row"
+              key={item.id}
+              tabIndex={0}
+              onClick={() => navigate(`/volunteer/${item.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  navigate(`/volunteer/${item.id}`);
+                }
+              }}
+            >
               <div className="opportunity-program" role="cell">
                 <strong>{item.title}</strong>
                 <span>{item.organizer}</span>
               </div>
+              <span className="opportunity-type" role="cell">
+                {getProgramLabel(item.programType)}
+              </span>
               <span className="opportunity-area" role="cell">
                 {item.location}
               </span>
@@ -275,7 +251,10 @@ export const VolunteerCatalog: React.FC = () => {
               <button
                 type="button"
                 className="opportunity-action"
-                onClick={() => setSelectedItem(item)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/volunteer/${item.id}`);
+                }}
                 aria-label={`${item.title} 상세 보기 및 신청`}
               >
                 상세보기

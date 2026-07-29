@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Header } from './components/common/Header';
 import { Modal } from './components/common/Modal';
 import { Toast } from './components/common/Toast';
@@ -8,19 +8,37 @@ import { VolunteerCatalog } from './components/volunteer/VolunteerCatalog';
 import { PixelDiary } from './components/diary/PixelDiary';
 import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { AuthModal } from './components/auth/AuthModal';
+import { ManagerApplicationPage } from './components/user/ManagerApplicationPage';
+import { MyCenterPage } from './components/center/MyCenterPage';
 import { playBeep } from './services/soundFx';
+import type { SessionUser, UserRole } from './types';
 
-type AuthModalMode = 'login' | 'admin';
+const loadStoredUser = (): SessionUser | null => {
+  const storedUser = localStorage.getItem('pixel-care-user');
+  if (!storedUser) return null;
+
+  try {
+    const parsed = JSON.parse(storedUser) as SessionUser;
+    if (parsed.email && parsed.role) return parsed;
+  } catch {
+    return {
+      email: storedUser,
+      nickname: storedUser.split('@')[0] || '픽셀 사용자',
+      role: 'USER',
+    };
+  }
+
+  return null;
+};
 
 export function App() {
+  const navigate = useNavigate();
   const [temperature, setTemperature] = useState<number>(78.4);
   const [totalDonation, setTotalDonation] = useState<number>(1250000);
   const [totalHours, setTotalHours] = useState<number>(342);
   const [totalMembers, setTotalMembers] = useState<number>(128);
-  const [currentUser, setCurrentUser] = useState<string | null>(
-    () => localStorage.getItem('pixel-care-user'),
-  );
-  const [authModalMode, setAuthModalMode] = useState<AuthModalMode | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(loadStoredUser);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -69,11 +87,12 @@ export function App() {
     setTemperature((prev) => Math.min(99.9, prev + val));
   };
 
-  const handleLogin = (email: string) => {
-    localStorage.setItem('pixel-care-user', email);
-    setCurrentUser(email);
-    setAuthModalMode(null);
-    triggerToast(`반가워요! ${email} 계정으로 로그인했습니다.`);
+  const handleAuthenticate = (email: string, nickname: string, role: UserRole) => {
+    const user: SessionUser = { email, nickname, role };
+    localStorage.setItem('pixel-care-user', JSON.stringify(user));
+    setCurrentUser(user);
+    setIsAuthModalOpen(false);
+    triggerToast(`${nickname}님, 로그인했습니다.`);
   };
 
   const handleLogout = () => {
@@ -82,9 +101,13 @@ export function App() {
     triggerToast('로그아웃되었습니다.');
   };
 
-  const handleAdminApplication = (organizationName: string) => {
-    setAuthModalMode(null);
-    triggerToast(`${organizationName} 관리자 계정 신청이 접수되었습니다.`);
+  const handleManagerApplicationSubmit = (centerName: string) => {
+    localStorage.setItem(
+      'pixel-care-manager-application',
+      JSON.stringify({ centerName, status: 'PENDING', submittedAt: new Date().toISOString() }),
+    );
+    navigate('/roadmap');
+    triggerToast(`${centerName} 센터 관리자 신청이 접수되었습니다.`);
   };
 
   return (
@@ -95,19 +118,43 @@ export function App() {
         totalHours={totalHours}
         totalMembers={totalMembers}
         currentUser={currentUser}
-        onLogin={() => setAuthModalMode('login')}
+        onLogin={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
-        onAdminApply={() => setAuthModalMode('admin')}
+        onAdminApply={() => navigate('/manager-application')}
       />
 
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/volunteer" replace />} />
-          <Route path="/volunteer" element={<VolunteerCatalog />} />
+          <Route path="/volunteer/*" element={<VolunteerCatalog />} />
           <Route path="/community" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/community/posts/:id" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
           <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
+          <Route
+            path="/manager-application"
+            element={
+              currentUser ? (
+                <ManagerApplicationPage
+                  currentUser={currentUser}
+                  onBack={() => navigate('/roadmap')}
+                  onSubmit={handleManagerApplicationSubmit}
+                />
+              ) : (
+                <Navigate to="/roadmap" replace />
+              )
+            }
+          />
+          <Route
+            path="/my-centers/*"
+            element={
+              currentUser?.role === 'CENTER_MANAGER' ? (
+                <MyCenterPage currentUser={currentUser} />
+              ) : (
+                <Navigate to="/roadmap" replace />
+              )
+            }
+          />
           <Route path="*" element={<Navigate to="/volunteer" replace />} />
         </Routes>
       </main>
@@ -123,11 +170,9 @@ export function App() {
       <Toast message={toastMessage} />
 
       <AuthModal
-        mode={authModalMode}
-        currentUser={currentUser}
-        onClose={() => setAuthModalMode(null)}
-        onLogin={handleLogin}
-        onAdminApply={handleAdminApplication}
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthenticate={handleAuthenticate}
       />
     </div>
   );

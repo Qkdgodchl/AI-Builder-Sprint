@@ -3,7 +3,7 @@
 export interface VolunteerItem {
   id: number;
   title: string;
-  category: 'VOLUNTEER' | 'DONATION';
+  category: 'VOLUNTEER' | 'DONATION' | 'GENERAL' | 'LEGACY' | 'UNESCO' | 'HERITAGE' | 'HOMETOWN';
   location: string;
   organizer: string;
   targetAmount?: number;
@@ -39,3 +39,19 @@ export interface AiChatMessage {
   recommendedCard?: VolunteerItem;
   createdAt: string;
 }
+
+export type UserRole = 'USER' | 'CENTER_MANAGER';
+
+export interface SessionUser {
+  email: string;
+  nickname: string;
+  role: UserRole;
+}
+
+export type AppTab =
+  | 'ai'
+  | 'volunteer'
+  | 'diary'
+  | 'roadmap'
+  | 'managerApplication'
+  | 'center';
