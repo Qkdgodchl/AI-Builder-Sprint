@@ -1,10 +1,12 @@
 package com.pixelcare.domain.community.controller;
 
+import com.pixelcare.domain.community.dto.LikeToggleResponse;
 import com.pixelcare.domain.community.dto.PostCreateRequest;
 import com.pixelcare.domain.community.dto.PostListItemResponse;
 import com.pixelcare.domain.community.dto.PostResponse;
 import com.pixelcare.domain.community.service.PostService;
 import com.pixelcare.global.common.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -50,8 +52,8 @@ public class PostController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<PostResponse> createPost(@RequestBody PostCreateRequest request) {
-        // TODO: 로그인 시큐리티 적용 후 현재 유저 정보 세팅
+    public ApiResponse<PostResponse> createPost(@Valid @RequestBody PostCreateRequest request) {
+        // TODO: 로그인 시큐리티 연동 후 현재 세션 유저 정보 세팅
         Long dummyAuthorId = 5L;
         String dummyNickname = "따뜻한픽셀";
         String dummyBadge = "LV2_WARMTH";
@@ -68,5 +70,17 @@ public class PostController {
         String dummyUser = "USER_SYSTEM";
         postService.deletePost(id, dummyUser);
         return ApiResponse.success("게시글이 성공적으로 삭제되었습니다.");
+    }
+
+    /**
+     * 게시글 좋아요 토글 (누르면 등록/다시 누르면 취소)
+     * POST /api/posts/{id}/like
+     */
+    @PostMapping("/{id}/like")
+    public ApiResponse<LikeToggleResponse> toggleLike(@PathVariable Long id) {
+        // TODO: 로그인 세션 적용 후 유저 ID 연동
+        Long dummyUserId = 1L;
+        LikeToggleResponse response = postService.toggleLike(id, dummyUserId);
+        return ApiResponse.success(response);
     }
 }

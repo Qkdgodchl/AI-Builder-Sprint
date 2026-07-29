@@ -1,10 +1,13 @@
 package com.pixelcare.domain.community.service;
 
+import com.pixelcare.domain.community.dto.LikeToggleResponse;
 import com.pixelcare.domain.community.dto.PostCreateRequest;
 import com.pixelcare.domain.community.dto.PostListItemResponse;
 import com.pixelcare.domain.community.dto.PostResponse;
 import com.pixelcare.domain.community.entity.Post;
 import com.pixelcare.domain.community.entity.PostCategory;
+import com.pixelcare.domain.community.entity.PostLike;
+import com.pixelcare.domain.community.repository.PostLikeRepository;
 import com.pixelcare.domain.community.repository.PostRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,14 +15,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @Transactional(readOnly = true)
 public class PostService {
 
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
 
-    public PostService(PostRepository postRepository) {
+    public PostService(PostRepository postRepository, PostLikeRepository postLikeRepository) {
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
     }
 
     /**
@@ -42,7 +49,6 @@ public class PostService {
                 return postRepository.findByCategoryAndIsDeletedFalse(postCategory, pageRequest)
                         .map(PostListItemResponse::new);
             } catch (IllegalArgumentException e) {
-                // 잘지 않은 카테고리 문자열이 올 경우 전체 목록 반환
                 return postRepository.findByIsDeletedFalse(pageRequest)
                         .map(PostListItemResponse::new);
             }
@@ -87,5 +93,32 @@ public class PostService {
         Post post = postRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 이미 삭제된 게시글입니다. id=" + id));
         post.markDeleted(deletedBy);
+    }
+
+    /**
+     * 게시글 좋아요 토글 (누르면 +1 / 다시 누르면 -1)
+     */
+    @Transactional
+    public LikeToggleResponse toggleLike(Long postId, Long userId) {
+        Post post = postRepository.findByIdAndIsDeletedFalse(postId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. id=" + postId));
+
+        Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndUserId(postId, userId);
+
+        boolean isLiked;
+        if (existingLike.isPresent()) {
+            // 이미 좋아요 한 상태 -> 취소 처리
+            postLikeRepository.delete(existingLike.get());
+            post.updateLikeCount(-1);
+            isLiked = false;
+        } else {
+            // 좋아요 안 한 상태 -> 좋아요 등록
+            PostLike postLike = new PostLike(post, userId);
+            postLikeRepository.save(postLike);
+            post.updateLikeCount(1);
+            isLiked = true;
+        }
+
+        return new LikeToggleResponse(postId, isLiked, post.getLikeCount());
     }
 }
