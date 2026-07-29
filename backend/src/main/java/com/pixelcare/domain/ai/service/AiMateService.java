@@ -92,4 +92,12 @@ public class AiMateService {
                 .map(ChatMessageResponse::new)
                 .toList();
     }
+
+    /**
+     * AI 대화 히스토리 전체 삭제 (초기화)
+     */
+    @Transactional
+    public void clearChatHistory(Long userId) {
+        chatMessageRepository.deleteAll();
+    }
 }

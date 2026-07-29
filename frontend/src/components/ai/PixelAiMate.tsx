@@ -1,17 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import type { AiChatMessage } from '../../types';
 import { playBeep } from '../../services/soundFx';
-import { sendAiMessage, fetchAiHistory } from '../../services/aiApi';
+import { sendAiMessage, fetchAiHistory, clearAiHistory } from '../../services/aiApi';
 
 interface PixelAiMateProps {
   onOpenModal: (title: string, type: 'volunteer' | 'donate') => void;
 }
 
+export interface AiChatMessage {
+  id: string;
+  sender: 'USER' | 'AI';
+  text: string;
+  recommendedCard?: {
+    id: number;
+    title: string;
+    category: 'VOLUNTEER' | 'DONATION';
+    location: string;
+    organizer: string;
+    tags: string[];
+    link1365?: string;
+  };
+  createdAt: string;
+}
+
 const INITIAL_MESSAGES: AiChatMessage[] = [
   {
-    id: '1',
+    id: 'init-1',
     sender: 'AI',
-    text: '반가워요 픽셀용사님! 🤖 저는 당신의 맞춤 선행 큐레이터 Pixel AI Mate입니다. 희망하는 봉사/기부 조건(지역, 관심분야, 가능한 시간)을 말씀해 주세요!',
+    text: '안녕! 나는 너의 픽셀 케어 AI 메이트야 🤖✨ 부산 지역 봉사활동이나 기부처, 혹은 오늘 기분에 맞는 선행 활동을 물어봐줘! 예: "해운대 근처에서 할 수 있는 주말 봉사 추천해줘"',
     createdAt: new Date().toLocaleTimeString(),
   },
 ];
@@ -52,17 +67,15 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
               sender: item.sender === 'USER' ? 'USER' : 'AI',
               text: item.message,
               recommendedCard: recCard,
-              createdAt: new Date(item.createdAt).toLocaleTimeString(),
+              createdAt: item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : '과거 대화',
             };
           });
-
-          setMessages([INITIAL_MESSAGES[0], ...formattedHistory]);
+          setMessages(formattedHistory);
         }
       } catch (e) {
-        console.error('AI 대화 히스토리 로드 실패:', e);
+        console.error('Failed to load AI history:', e);
       }
     };
-
     loadHistory();
   }, []);
 
@@ -124,91 +137,145 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (!window.confirm('AI 메이트와의 모든 대화 내역을 초기화하시겠습니까?')) {
+      return;
+    }
+    const success = await clearAiHistory();
+    if (success) {
+      setMessages(INITIAL_MESSAGES);
+      playBeep(330, 0.15);
+    } else {
+      alert('대화 내역 초기화 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleQuickPrompt = (promptText: string) => {
+    handleSend(promptText);
+  };
+
   return (
-    <div className="ai-dark-container" style={{ maxWidth: '840px', margin: '0 auto' }}>
-      <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '14px', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '0.5px' }}>
-        <span>🤖</span> Upstage Solar LLM AI 픽셀 큐레이터 (ArteDante Glow)
-      </div>
+    <section className="pixel-ai-container">
+      {/* Header */}
+      <div className="ai-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="ai-avatar">🤖</div>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#1a1a24' }}>
+              PIXEL AI MATE
+            </h2>
+            <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>
+              Upstage Solar LLM 파워드 · 부산 선행 큐레이터
+            </p>
+          </div>
+        </div>
 
-      {/* Recommended Chips */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <button className="pixel-btn" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.1)', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => handleSend('주말에 유기견 돌봄 봉사하고 싶어')}>
-          🐕 유기견 돌봄 봉사
-        </button>
-        <button className="pixel-btn" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.1)', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => handleSend('해변 쓰레기 줍는 플로깅 추천해줘')}>
-          🌊 해변 플로깅 봉사
-        </button>
-        <button className="pixel-btn" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.1)', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }} onClick={() => handleSend('어르신 도시락 배달 봉사 추천해줘')}>
-          🍲 독거어르신 도시락 배달
-        </button>
-      </div>
-
-      {/* Messages Feed */}
-      <div style={{ height: '380px', overflowY: 'auto', paddingRight: '8px', marginBottom: '20px' }}>
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: m.sender === 'USER' ? 'flex-end' : 'flex-start',
-              marginBottom: '14px',
-            }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            className="pixel-button"
+            style={{ fontSize: '11px', padding: '5px 10px', background: '#ffe5ec', color: '#ff3b30', borderColor: '#ff3b30' }}
+            onClick={handleClearHistory}
           >
-            <div
-              className="ai-glass-card"
-              style={{
-                background: m.sender === 'USER' ? '#ff3b30' : 'rgba(255, 255, 255, 0.08)',
-                color: '#ffffff',
-                maxWidth: '75%',
-                fontSize: '13px',
-                lineHeight: 1.5,
-              }}
-            >
-              {m.text}
-            </div>
+            🗑️ 대화 초기화
+          </button>
+          <span className="online-badge">● ONLINE</span>
+        </div>
+      </div>
 
-            {m.recommendedCard && (
-              <div className="ai-glass-card" style={{ marginTop: '6px', maxWidth: '340px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)' }}>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '6px', color: '#ffb703' }}>{m.recommendedCard.title}</div>
-                <div style={{ fontSize: '11px', color: '#ccc', marginBottom: '10px', lineHeight: 1.4 }}>
-                  📍 {m.recommendedCard.location}<br />
-                  🏢 {m.recommendedCard.organizer}
-                </div>
-                <button
-                  className="pixel-btn pixel-btn-red"
-                  style={{ width: '100%', fontSize: '11px' }}
-                  onClick={() => onOpenModal(m.recommendedCard!.title, 'volunteer')}
-                >
-                  ⚡ 1초 간편 신청하기
-                </button>
+      {/* Quick Prompts */}
+      <div className="ai-quick-prompts">
+        <button type="button" onClick={() => handleQuickPrompt('해운대 근처 주말 봉사 추천해줘')}>
+          🐕 유기견 봉사
+        </button>
+        <button type="button" onClick={() => handleQuickPrompt('오늘 1시간 정도 할 수 있는 소규모 기부 활동')}>
+          🍲 도시락 배달
+        </button>
+        <button type="button" onClick={() => handleQuickPrompt('어린이 학습 지도 및 동행 봉사')}>
+          📚 학습 지도
+        </button>
+      </div>
+
+      {/* Chat Messages Stream */}
+      <div className="ai-chat-body">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`chat-bubble-row ${msg.sender === 'USER' ? 'user-row' : 'ai-row'}`}>
+            {msg.sender === 'AI' && <div className="chat-avatar">🤖</div>}
+            
+            <div className="chat-content">
+              <div className={`chat-bubble ${msg.sender === 'USER' ? 'user-bubble' : 'ai-bubble'}`}>
+                {msg.text}
               </div>
-            )}
+
+              {/* Recommended Mission Card (Bento Overlay) */}
+              {msg.recommendedCard && (
+                <div className="ai-recommended-card">
+                  <div className="card-badge">✨ UPSTAGE AI MATCH</div>
+                  <h4>{msg.recommendedCard.title}</h4>
+                  <p>📍 위치: {msg.recommendedCard.location} | 주관: {msg.recommendedCard.organizer}</p>
+                  <div className="card-tags">
+                    {msg.recommendedCard.tags.map((tag) => (
+                      <span key={tag} className="tag">{tag}</span>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      className="pixel-button primary"
+                      style={{ fontSize: '12px', padding: '6px 12px' }}
+                      onClick={() => onOpenModal(msg.recommendedCard!.title, 'volunteer')}
+                    >
+                      ⚡ 간편 신청하기
+                    </button>
+                    {msg.recommendedCard.link1365 && (
+                      <a
+                        href={msg.recommendedCard.link1365}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="pixel-button"
+                        style={{ fontSize: '12px', padding: '6px 12px', textDecoration: 'none' }}
+                      >
+                        🔗 1365 상세보기
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <span className="chat-timestamp">{msg.createdAt}</span>
+            </div>
           </div>
         ))}
 
         {isTyping && (
-          <div style={{ fontSize: '12px', color: '#aaa', fontStyle: 'italic' }}>
-            👾 Solar LLM AI가 답변을 생성 중입니다...
+          <div className="chat-bubble-row ai-row">
+            <div className="chat-avatar">🤖</div>
+            <div className="chat-bubble ai-bubble typing">
+              <span>.</span><span>.</span><span>.</span> Upstage Solar LLM이 최적의 선행 활동을 탐색 중입니다
+            </div>
           </div>
         )}
       </div>
 
-      {/* Input */}
-      <div style={{ display: 'flex', gap: '10px' }}>
+      {/* Input Form */}
+      <form
+        className="ai-input-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSend();
+        }}
+      >
         <input
           type="text"
           className="pixel-input"
-          style={{ flex: 1, background: 'rgba(255,255,255,0.08)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}
-          placeholder="예: 해운대 근처에서 주말 오전 환경 봉사하고 싶어!"
+          placeholder="AI 메이트에게 부산 선행 활동이나 기부처를 물어보세요! (예: 금정구 도시락 봉사)"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
         />
-        <button className="pixel-btn pixel-btn-red" onClick={() => handleSend()}>
-          전송 🚀
+        <button type="submit" className="pixel-button primary" style={{ background: '#ff3b30' }}>
+          🚀 전송
         </button>
-      </div>
-    </div>
+      </form>
+    </section>
   );
 };

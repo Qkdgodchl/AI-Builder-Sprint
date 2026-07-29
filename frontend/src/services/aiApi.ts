@@ -64,3 +64,27 @@ export const fetchAiHistory = async (): Promise<ChatMessageItem[]> => {
     return [];
   }
 };
+
+/**
+ * AI 대화 히스토리 삭제 (초기화) API 호출
+ */
+export const clearAiHistory = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${AI_API_BASE_URL}/messages`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI 히스토리 삭제 실패: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result.success ?? true;
+  } catch (error) {
+    console.error('AI 히스토리 삭제 오류:', error);
+    return false;
+  }
+};

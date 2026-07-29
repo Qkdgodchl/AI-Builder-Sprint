@@ -26,7 +26,6 @@ public class AiMateController {
      */
     @PostMapping("/recommend")
     public ApiResponse<AiRecommendResponse> recommend(@Valid @RequestBody AiRecommendRequest request) {
-        // TODO: 로그인 인증 적용 후 유저 ID 연동
         Long dummyUserId = 1L;
         AiRecommendResponse response = aiMateService.getRecommendation(dummyUserId, request);
         return ApiResponse.success(response);
@@ -41,5 +40,16 @@ public class AiMateController {
         Long dummyUserId = 1L;
         List<ChatMessageResponse> history = aiMateService.getChatHistory(dummyUserId);
         return ApiResponse.success(history);
+    }
+
+    /**
+     * AI 마스코트 챗봇 대화 히스토리 전체 삭제 (초기화)
+     * DELETE /api/ai/messages
+     */
+    @DeleteMapping("/messages")
+    public ApiResponse<String> clearChatHistory() {
+        Long dummyUserId = 1L;
+        aiMateService.clearChatHistory(dummyUserId);
+        return ApiResponse.success("AI 대화 내역이 성공적으로 초기화되었습니다.");
     }
 }
