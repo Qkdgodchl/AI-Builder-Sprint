@@ -129,7 +129,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
   const safePosts = Array.isArray(posts) ? posts : [];
 
-  // [Task 1] 고도화된 게시글 상세 보기 UI 렌더링
+  // [상세 보기 UI 전면 개편] opportunity-detail 잡지형 전용 CSS 클래스 사용
   if (selectedPost) {
     const likesCount = selectedPost.likeCount ?? (selectedPost as any).likes ?? 0;
     const viewsCount = selectedPost.viewCount ?? (selectedPost as any).views ?? 0;
@@ -138,93 +138,99 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
     const badgeInfo = getBadgeColor(getAuthorBadge(selectedPost.author));
 
     return (
-      <section className="opportunity-catalog" style={{ maxWidth: '840px', margin: '0 auto' }}>
-        <button
-          type="button"
-          className="opportunity-action"
-          style={{ marginBottom: '20px', background: '#333', color: '#fff', padding: '8px 18px', fontSize: '13px' }}
-          onClick={() => setSelectedPost(null)}
-        >
-          ← 목록으로 돌아가기
-        </button>
+      <article className="opportunity-detail" style={{ maxWidth: '880px', margin: '0 auto' }}>
+        <div className="detail-back-nav">
+          <button type="button" className="detail-back-button" onClick={() => setSelectedPost(null)}>
+            ← 목록으로 돌아가기
+          </button>
+        </div>
 
-        {/* 잡지형 아티클 매거진 카테고리 & 헤더 */}
-        <article className="opportunity-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '20px', padding: '28px', background: '#ffffff', borderRadius: '12px', border: '2px solid #111', boxShadow: '4px 4px 0 #111' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <span className="opportunity-type" style={{ fontSize: '13px', padding: '6px 12px' }}>
+        <header className="detail-hero">
+          <div style={{ marginBottom: '10px' }}>
+            <span className="opportunity-type" style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '4px' }}>
               {getCategoryLabel(selectedPost.category)}
             </span>
-            <div style={{ display: 'flex', gap: '14px', fontSize: '12px', color: '#666' }}>
-              <span>👁️ 조회수 <b>{viewsCount}</b>회</span>
-              <span>📅 <b>{createdDate}</b></span>
-            </div>
           </div>
-
-          <h1 style={{ fontSize: '24px', fontWeight: '900', margin: '6px 0', color: '#111', lineHeight: 1.4, letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: '26px', fontWeight: '900', color: '#111', lineHeight: 1.3, marginBottom: '12px' }}>
             {selectedPost.title}
-          </h1>
-
-          {/* 작성자 프로필 뱃지 Bento Box Card */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#f8f9fa', borderRadius: '10px', border: '1px solid #eee' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: badgeInfo.bg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 'bold' }}>
-                👾
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '800', color: '#111' }}>
-                  {getAuthorName(selectedPost.author)}
-                </div>
-                <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
-                  픽셀 케어 활동 회원
-                </div>
-              </div>
-            </div>
-
-            <span style={{ background: badgeInfo.bg, color: '#ffffff', fontSize: '11px', fontWeight: 'bold', padding: '6px 12px', borderRadius: '20px' }}>
-              {badgeInfo.name}
-            </span>
+          </h2>
+          <div className="detail-inline-keywords" aria-label="관련 키워드">
+            <span>#{getCategoryLabel(selectedPost.category).replace(/\s+/g, '')}</span>
+            <span>#픽셀온기</span>
+            <span>#{getAuthorName(selectedPost.author)}</span>
           </div>
+        </header>
 
-          {/* 대표 이미지 영역 (URL이 있을 경우 픽셀 보더 뷰어로 렌더링) */}
-          {selectedPost.imageUrl ? (
-            <div style={{ margin: '10px 0', borderRadius: '8px', overflow: 'hidden', border: '2px solid #111' }}>
-              <img src={selectedPost.imageUrl} alt={selectedPost.title} style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
-            </div>
-          ) : (
-            <div style={{ margin: '6px 0', padding: '30px', background: '#faf0ca', borderRadius: '8px', border: '1px dashed #111', textAlign: 'center', color: '#555', fontSize: '13px' }}>
-              🎨 픽셀 케어 온기 커뮤니티 선행 인증 게시글입니다.
-            </div>
-          )}
-
-          {/* 아티클 본문 내용 */}
-          <div style={{ fontSize: '16px', color: '#222', lineHeight: 1.8, minHeight: '140px', whiteSpace: 'pre-line', padding: '10px 4px' }}>
-            {textContent}
+        {/* 게시글 핵심 팩트 정보 (주관/작성자, 뱃지, 작성일, 조회수) */}
+        <dl className="detail-facts">
+          <div>
+            <dt>작성자</dt>
+            <dd>✍️ {getAuthorName(selectedPost.author)}</dd>
           </div>
+          <div>
+            <dt>픽셀 레벨 뱃지</dt>
+            <dd>
+              <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '11px', fontWeight: 'bold', padding: '3px 10px', borderRadius: '12px' }}>
+                {badgeInfo.name}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>작성 시각</dt>
+            <dd>📅 {createdDate}</dd>
+          </div>
+          <div>
+            <dt>조회수 및 하트</dt>
+            <dd>👁️ {viewsCount} 회 · ❤️ {likesCount} 개</dd>
+          </div>
+        </dl>
 
-          {/* 하단 액션 버튼 바: 응원 하트 & 공유하기 */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '20px', borderTop: '2px dashed #eee', flexWrap: 'wrap', gap: '12px' }}>
-            <button
-              type="button"
-              className="opportunity-action"
-              style={{ background: '#ff4d6d', color: '#ffffff', fontSize: '14px', fontWeight: 'bold', padding: '12px 24px', borderRadius: '24px', border: '2px solid #111', boxShadow: '2px 2px 0 #111' }}
-              onClick={() => handleLike(selectedPost.id)}
-            >
+        {/* 01. 커뮤니티 본문 내용 세션 */}
+        <section className="detail-section">
+          <p className="detail-section-number">01</p>
+          <div style={{ width: '100%' }}>
+            <h3>이야기 본문</h3>
+            
+            {/* 대표 이미지 (등록된 경우) */}
+            {selectedPost.imageUrl ? (
+              <div style={{ margin: '16px 0', borderRadius: '8px', overflow: 'hidden', border: '2px solid #111' }}>
+                <img src={selectedPost.imageUrl} alt={selectedPost.title} style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
+              </div>
+            ) : null}
+
+            <div style={{ fontSize: '16px', color: '#222', lineHeight: 1.8, minHeight: '120px', whiteSpace: 'pre-line', marginTop: '12px', padding: '16px', background: '#faf0ca', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+              {textContent}
+            </div>
+          </div>
+        </section>
+
+        {/* 02. 온기 참여 안내 및 공유 */}
+        <section className="detail-section">
+          <p className="detail-section-number">02</p>
+          <div>
+            <h3>선행 응원 및 소통 안내</h3>
+            <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.6 }}>
+              따뜻한 봉사 후기와 이야기를 남겨주셔서 감사합니다. 응원 하트를 눌러 작성자에게 따뜻한 픽셀 온기를 전달해 보세요! (하트 전달 시 온기 +0.1°C)
+            </p>
+          </div>
+        </section>
+
+        {/* 하단 고정 액션 바 (응원 하트 & 공유하기) */}
+        <footer className="detail-apply-bar">
+          <div>
+            <span>COMMUNITY ACTION</span>
+            <strong>{getAuthorName(selectedPost.author)} 님의 이야기를 응원하시겠어요?</strong>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" style={{ background: '#2ec4b6', padding: '12px 18px', fontSize: '13px' }} onClick={handleCopyLink}>
+              🔗 공유 / 링크 복사
+            </button>
+            <button type="button" style={{ background: '#ff4d6d', padding: '12px 22px', fontSize: '14px', fontWeight: 'bold' }} onClick={() => handleLike(selectedPost.id)}>
               ❤️ 응원 하트 보내기 ({likesCount})
             </button>
-
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="opportunity-action"
-                style={{ background: '#2ec4b6', color: '#fff', fontSize: '12px', padding: '10px 16px', borderRadius: '20px' }}
-                onClick={handleCopyLink}
-              >
-                🔗 공유 / 링크 복사
-              </button>
-            </div>
           </div>
-        </article>
-      </section>
+        </footer>
+      </article>
     );
   }
 
