@@ -38,7 +38,8 @@
 
 ## 📚 프로젝트 문서 목록 (`docs/`)
 
-- [📜 서비스 기획 & 단계별 개발 로드맵 (PLAN.md)](file:///Users/tatata/Desktop/3-1/project/AI-Builder-Sprint/docs/PLAN.md)
-- [🏗️ 시스템 아키텍처 (ARCHITECTURE.md)](file:///Users/tatata/Desktop/3-1/project/AI-Builder-Sprint/docs/ARCHITECTURE.md)
-- [📡 REST API 명세서 (API_SPEC.md)](file:///Users/tatata/Desktop/3-1/project/AI-Builder-Sprint/docs/API_SPEC.md)
-- [🤝 팀 협업 가이드라인 (TEAM_CONVENTIONS.md)](file:///Users/tatata/Desktop/3-1/project/AI-Builder-Sprint/docs/TEAM_CONVENTIONS.md)
+- [📜 서비스 기획 & 단계별 개발 로드맵 (PLAN.md)](docs/PLAN.md)
+- [🏗️ 시스템 아키텍처 (ARCHITECTURE.md)](docs/ARCHITECTURE.md)
+- [📡 REST API 명세서 (API_SPEC.md)](docs/API_SPEC.md)
+- [🗄️ 데이터베이스 설계 & Flyway 관리 (DB_SCHEMA.md)](docs/DB_SCHEMA.md)
+- [🤝 팀 협업 가이드라인 (TEAM_CONVENTIONS.md)](docs/TEAM_CONVENTIONS.md)
