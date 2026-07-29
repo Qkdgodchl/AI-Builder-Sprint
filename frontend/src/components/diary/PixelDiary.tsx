@@ -315,22 +315,24 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         </div>
       )}
 
-      {/* [정밀 교정] 커뮤니티 매거진 테이블 목록 */}
+      {/* [100% 매칭 교정] 커뮤니티 매거진 테이블 목록 */}
       {loading ? (
         <div className="opportunity-state">커뮤니티 이야기를 불러오는 중입니다...</div>
       ) : safePosts.length === 0 ? (
         <div className="opportunity-state">등록된 커뮤니티 이야기 피드가 없습니다. 첫 번째 글을 작성해보세요!</div>
       ) : (
         <div className="opportunity-table" role="table" aria-label="커뮤니티 피드">
+          {/* 헤더 (6개 컬럼 스펙) */}
           <div className="opportunity-table-head" role="row">
             <span role="columnheader">분류</span>
             <span role="columnheader">이야기 제목 및 내용 미리보기</span>
-            <span role="columnheader">작성자 뱃지</span>
-            <span role="columnheader">조회 / 하트</span>
+            <span role="columnheader">작성자</span>
+            <span role="columnheader">뱃지 / 반응</span>
             <span role="columnheader">작성일</span>
-            <span role="columnheader" aria-label="상세 보기 및 액션" />
+            <span role="columnheader" aria-label="상세 보기" />
           </div>
 
+          {/* 목록 데이터 (6개 컬럼 exact 1대1 클래스 매칭) */}
           {safePosts.map((post, idx) => {
             const likesCount = post.likeCount ?? (post as any).likes ?? 0;
             const viewsCount = post.viewCount ?? (post as any).views ?? 0;
@@ -346,58 +348,43 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                 style={{ cursor: 'pointer' }}
                 onClick={() => setSelectedPost(post)}
               >
-                {/* Col 1: 분류 */}
-                <span className="opportunity-type" role="cell" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {/* Col 1 (1.1fr): 분류 -> .opportunity-type */}
+                <span className="opportunity-type" role="cell">
                   {getCategoryLabel(post.category)}
                 </span>
 
-                {/* Col 2: 제목 & 내용 미리보기 */}
+                {/* Col 2 (2.5fr): 제목 & 미리보기 -> .opportunity-program */}
                 <div className="opportunity-program" role="cell">
-                  <strong style={{ fontSize: '15px', color: '#111' }}>{post.title}</strong>
-                  <span style={{ fontSize: '12px', color: '#666', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {snippetText}
-                  </span>
+                  <strong>{post.title}</strong>
+                  <span>{snippetText}</span>
                 </div>
 
-                {/* Col 3: 작성자 닉네임 & 레벨 뱃지 (수직 2줄 정돈) */}
-                <div className="opportunity-keywords" role="cell" style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#333', background: '#f0f0f0', padding: '2px 8px', borderRadius: '12px', border: '1px solid #ddd' }}>
-                    {getAuthorName(post.author)}
-                  </span>
-                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px' }}>
-                    {badgeInfo.name}
-                  </span>
-                </div>
-
-                {/* Col 4: 조회수 / 하트 */}
-                <span className="opportunity-area" role="cell" style={{ fontSize: '12px', color: '#444' }}>
-                  👁️ {viewsCount} · ❤️ {likesCount}
+                {/* Col 3 (1.0fr): 작성자 -> .opportunity-area */}
+                <span className="opportunity-area" role="cell">
+                  {getAuthorName(post.author)}
                 </span>
 
-                {/* Col 5: 작성일 */}
-                <span className="opportunity-status" role="cell" style={{ fontSize: '12px', color: '#2b9348', fontWeight: 'bold' }}>
+                {/* Col 4 (1.5fr): 뱃지 및 반응 -> .opportunity-keywords */}
+                <div className="opportunity-keywords" role="cell">
+                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold' }}>
+                    {badgeInfo.name}
+                  </span>
+                  <span>👁️ {viewsCount} · ❤️ {likesCount}</span>
+                </div>
+
+                {/* Col 5 (0.8fr): 작성일 -> .opportunity-status */}
+                <span className="opportunity-status" role="cell">
                   {createdDate}
                 </span>
 
-                {/* Col 6: 상세보기 & 응원 액션 버튼 */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} role="cell">
-                  <button
-                    type="button"
-                    className="opportunity-action"
-                    style={{ background: '#ffe5ec', borderColor: '#ff4d6d', color: '#c9184a', fontSize: '11px', padding: '6px 12px', borderRadius: '16px' }}
-                    onClick={(e) => handleLike(post.id, e)}
-                  >
-                    ❤️ {likesCount}
-                  </button>
-                  <button
-                    type="button"
-                    className="opportunity-action"
-                    style={{ fontSize: '11px', padding: '6px 14px', borderRadius: '16px' }}
-                    onClick={() => setSelectedPost(post)}
-                  >
-                    상세보기
-                  </button>
-                </div>
+                {/* Col 6 (auto): 상세보기 액션 버튼 -> .opportunity-action */}
+                <button
+                  type="button"
+                  className="opportunity-action"
+                  onClick={() => setSelectedPost(post)}
+                >
+                  상세보기
+                </button>
               </article>
             );
           })}
