@@ -12,12 +12,10 @@ public class VolunteerResponseDto {
     private Long targetAmount;
     private Long currentAmount;
     private List<String> tags;
-    private String link1365;
-
     public VolunteerResponseDto() {}
 
     public VolunteerResponseDto(Long id, String title, String category, String location, String organizer,
-                                Long targetAmount, Long currentAmount, List<String> tags, String link1365) {
+                                Long targetAmount, Long currentAmount, List<String> tags) {
         this.id = id;
         this.title = title;
         this.category = category;
@@ -26,7 +24,6 @@ public class VolunteerResponseDto {
         this.targetAmount = targetAmount;
         this.currentAmount = currentAmount;
         this.tags = tags;
-        this.link1365 = link1365;
     }
 
     public static VolunteerResponseDto fromEntity(Volunteer volunteer) {
@@ -38,8 +35,7 @@ public class VolunteerResponseDto {
                 volunteer.getOrganizer(),
                 volunteer.getTargetAmount(),
                 volunteer.getCurrentAmount(),
-                volunteer.getTags(),
-                volunteer.getLink1365()
+                volunteer.getTags()
         );
     }
 
@@ -67,9 +63,6 @@ public class VolunteerResponseDto {
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
 
-    public String getLink1365() { return link1365; }
-    public void setLink1365(String link1365) { this.link1365 = link1365; }
-
     public static VolunteerResponseDtoBuilder builder() {
         return new VolunteerResponseDtoBuilder();
     }
@@ -83,7 +76,6 @@ public class VolunteerResponseDto {
         private Long targetAmount;
         private Long currentAmount;
         private List<String> tags;
-        private String link1365;
 
         public VolunteerResponseDtoBuilder id(Long id) { this.id = id; return this; }
         public VolunteerResponseDtoBuilder title(String title) { this.title = title; return this; }
@@ -93,10 +85,8 @@ public class VolunteerResponseDto {
         public VolunteerResponseDtoBuilder targetAmount(Long targetAmount) { this.targetAmount = targetAmount; return this; }
         public VolunteerResponseDtoBuilder currentAmount(Long currentAmount) { this.currentAmount = currentAmount; return this; }
         public VolunteerResponseDtoBuilder tags(List<String> tags) { this.tags = tags; return this; }
-        public VolunteerResponseDtoBuilder link1365(String link1365) { this.link1365 = link1365; return this; }
-
         public VolunteerResponseDto build() {
-            return new VolunteerResponseDto(id, title, category, location, organizer, targetAmount, currentAmount, tags, link1365);
+            return new VolunteerResponseDto(id, title, category, location, organizer, targetAmount, currentAmount, tags);
         }
     }
 }

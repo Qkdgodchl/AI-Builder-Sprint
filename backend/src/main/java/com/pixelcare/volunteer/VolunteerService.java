@@ -3,9 +3,7 @@ package com.pixelcare.volunteer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -27,7 +25,7 @@ public class VolunteerService {
 
         return volunteers.stream()
                 .map(VolunteerResponseDto::fromEntity)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional
@@ -44,7 +42,6 @@ public class VolunteerService {
                 .targetAmount(requestDto.getTargetAmount())
                 .currentAmount(requestDto.getCurrentAmount() != null ? requestDto.getCurrentAmount() : 0L)
                 .tags(requestDto.getTags() != null ? requestDto.getTags() : List.of())
-                .link1365(requestDto.getLink1365())
                 .build();
 
         Volunteer saved = volunteerRepository.save(volunteer);

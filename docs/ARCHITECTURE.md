@@ -29,7 +29,7 @@
    - `USER` $\rightarrow$ `POST /api/users/manager-applications` (증빙 서류, 소속 기관 정보)
    - `OPERATOR` $\rightarrow$ `PUT /api/operator/manager-applications/{id}/approve` $\rightarrow$ `USER` 역할에 `CENTER_MANAGER` 추가.
 2. **센터 등록 신청**:
-   - `CENTER_MANAGER` $\rightarrow$ `POST /api/center/organizations` (센터 정보, 1365 제공 여부 등)
+   - `CENTER_MANAGER` $\rightarrow$ `POST /api/center/organizations` (센터 기본 정보와 입증 자료)
    - `OPERATOR` $\rightarrow$ `PUT /api/operator/organization-applications/{id}/approve` $\rightarrow$ `Organization.status = APPROVED`.
 3. **모집글 게시**:
    - `CENTER_MANAGER` $\rightarrow$ `POST /api/center/opportunities` $\rightarrow$ `status = PUBLISHED` 시 `선행하기` 탭 자동 공개.

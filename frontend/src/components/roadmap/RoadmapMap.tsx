@@ -35,7 +35,7 @@ const BADGES: UserBadge[] = [
     id: 4,
     level: 4,
     name: 'LV4. 동네 영웅',
-    description: '1365 연동 봉사 10시간 이상 달성한 기사',
+    description: '봉사 10시간 이상 달성한 기사',
     iconUrl: '🛡️',
     isUnlocked: false,
   },

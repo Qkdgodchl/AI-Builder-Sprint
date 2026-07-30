@@ -1,67 +1,96 @@
-const API_BASE_URL = 'http://localhost:8080/api/users';
+import type { SessionUser } from '../types';
+import {
+  apiRequest,
+  clearTokens,
+  getRefreshToken,
+  saveTokens,
+} from './apiClient';
 
-export interface UserAuthResponse {
+interface AuthResponse {
+  userId: number;
+  email: string;
+  nickname: string;
+  roles: string[];
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+const toSession = (response: AuthResponse): SessionUser => ({
+  id: response.userId,
+  email: response.email,
+  nickname: response.nickname,
+  role: response.roles.includes('OPERATOR')
+    ? 'OPERATOR'
+    : response.roles.includes('CENTER_MANAGER')
+      ? 'CENTER_MANAGER'
+      : 'USER',
+  roles: response.roles,
+});
+
+const acceptAuth = (response: AuthResponse) => {
+  saveTokens(response.accessToken, response.refreshToken);
+  return toSession(response);
+};
+
+export const signup = async (input: {
+  email: string;
+  password: string;
+  name: string;
+  nickname: string;
+  privacyConsent: boolean;
+}): Promise<SessionUser> => {
+  const response = await apiRequest<AuthResponse>('/api/v1/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+  return acceptAuth(response);
+};
+
+export const login = async (email: string, password: string): Promise<SessionUser> => {
+  const response = await apiRequest<AuthResponse>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  return acceptAuth(response);
+};
+
+export const logout = async (): Promise<void> => {
+  try {
+    await apiRequest<void>('/api/v1/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: getRefreshToken() }),
+    });
+  } finally {
+    clearTokens();
+  }
+};
+
+export interface UserProfile {
   id: number;
   email: string;
   nickname: string;
-  role: string;
+  name: string;
+  phone?: string;
+  birthDate?: string;
+  region?: string;
+  roles: string[];
+  interests: string[];
+  accountStatus: string;
   temperature: number;
+  createdAt: string;
 }
 
-export const signupUserApi = async (
-  email: string,
-  nickname: string,
-  name: string,
-  password: string
-): Promise<UserAuthResponse> => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, nickname, name, password }),
-    });
+export const fetchMyProfile = () =>
+  apiRequest<UserProfile>('/api/v1/users/me');
 
-    if (!res.ok) {
-      throw new Error(`회원가입 실패 (${res.status})`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.warn('백엔드 연동 미작동, 목업 대체:', error);
-    return {
-      id: Date.now(),
-      email,
-      nickname,
-      role: 'USER',
-      temperature: 36.5,
-    };
-  }
-};
-
-export const loginUserApi = async (
-  email: string,
-  password: string
-): Promise<UserAuthResponse> => {
-  try {
-    const res = await fetch(`${API_BASE_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`로그인 실패 (${res.status})`);
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.warn('백엔드 연동 미작동, 목업 대체:', error);
-    return {
-      id: Date.now(),
-      email,
-      nickname: email.split('@')[0] || '픽셀 사용자',
-      role: 'USER',
-      temperature: 36.5,
-    };
-  }
-};
+export const updateMyProfile = (payload: {
+  nickname?: string;
+  phone?: string;
+  region?: string;
+  interests?: string[];
+}) =>
+  apiRequest<UserProfile>('/api/v1/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });

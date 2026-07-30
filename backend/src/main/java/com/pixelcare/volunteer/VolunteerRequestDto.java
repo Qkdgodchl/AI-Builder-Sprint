@@ -22,12 +22,10 @@ public class VolunteerRequestDto {
 
     private List<String> tags;
 
-    private String link1365;
-
     public VolunteerRequestDto() {}
 
     public VolunteerRequestDto(String title, String location, String organizer, String category,
-                               Long targetAmount, Long currentAmount, List<String> tags, String link1365) {
+                               Long targetAmount, Long currentAmount, List<String> tags) {
         this.title = title;
         this.location = location;
         this.organizer = organizer;
@@ -35,7 +33,6 @@ public class VolunteerRequestDto {
         this.targetAmount = targetAmount;
         this.currentAmount = currentAmount;
         this.tags = tags;
-        this.link1365 = link1365;
     }
 
     public String getTitle() { return title; }
@@ -59,6 +56,4 @@ public class VolunteerRequestDto {
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
 
-    public String getLink1365() { return link1365; }
-    public void setLink1365(String link1365) { this.link1365 = link1365; }
 }

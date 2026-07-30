@@ -1,37 +1,39 @@
 package com.pixelcare.domain.user.controller;
 
-import com.pixelcare.domain.user.dto.LoginRequestDto;
-import com.pixelcare.domain.user.dto.SignupRequestDto;
-import com.pixelcare.domain.user.dto.UserResponseDto;
-import com.pixelcare.domain.user.service.UserService;
-import org.springframework.http.ResponseEntity;
+import com.pixelcare.domain.user.dto.ProfileUpdateRequest;
+import com.pixelcare.domain.user.dto.UserProfileResponse;
+import com.pixelcare.domain.user.service.AuthService;
+import com.pixelcare.global.auth.AuthGuard;
+import com.pixelcare.global.auth.CurrentUser;
+import com.pixelcare.global.common.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
-    private final UserService userService;
+    private final AuthGuard authGuard;
+    private final AuthService authService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @PostMapping("/signup")
-    public ResponseEntity<UserResponseDto> signup(@RequestBody SignupRequestDto request) {
-        UserResponseDto response = userService.signup(request);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<UserResponseDto> login(@RequestBody LoginRequestDto request) {
-        UserResponseDto response = userService.login(request);
-        return ResponseEntity.ok(response);
+    public UserController(AuthGuard authGuard, AuthService authService) {
+        this.authGuard = authGuard;
+        this.authService = authService;
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponseDto> getMyInfo(@RequestParam String email) {
-        UserResponseDto response = userService.getUserByEmail(email);
-        return ResponseEntity.ok(response);
+    public ApiResponse<UserProfileResponse> me(HttpServletRequest request) {
+        CurrentUser user = authGuard.requireUser(request);
+        return ApiResponse.success(authService.profile(user.id()));
+    }
+
+    @PatchMapping("/me")
+    public ApiResponse<UserProfileResponse> updateMe(
+            HttpServletRequest httpRequest,
+            @Valid @RequestBody ProfileUpdateRequest request
+    ) {
+        CurrentUser user = authGuard.requireUser(httpRequest);
+        return ApiResponse.success(authService.updateProfile(user.id(), request));
     }
 }

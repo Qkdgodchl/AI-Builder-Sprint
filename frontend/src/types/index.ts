@@ -9,7 +9,6 @@ export interface VolunteerItem {
   targetAmount?: number;
   currentAmount?: number;
   tags: string[];
-  link1365?: string;
 }
 
 export interface PixelDiaryItem {
@@ -40,12 +39,14 @@ export interface AiChatMessage {
   createdAt: string;
 }
 
-export type UserRole = 'USER' | 'CENTER_MANAGER';
+export type UserRole = 'USER' | 'CENTER_MANAGER' | 'OPERATOR';
 
 export interface SessionUser {
+  id: number;
   email: string;
   nickname: string;
   role: UserRole;
+  roles: string[];
 }
 
 export type AppTab =

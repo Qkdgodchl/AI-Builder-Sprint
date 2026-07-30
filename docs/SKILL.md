@@ -34,7 +34,7 @@ description: Master Synthesized Multi-Aesthetic Design System for Pixel Care pla
 ## 🎨 2. 탭별 세부 융합 가이드라인 (Tab Specific Adaptation)
 
 ### 🤝 1. 봉사 & 기부 탭 (`VolunteerCatalog`)
-- 1365 연동 상태 뱃지, CLM 전자서명 약정 신청 준비 모달 (`ClmApplicationPreparation`)과 연결.
+- CLM 전자서명 약정 신청 준비 모달 (`ClmApplicationPreparation`)과 연결.
 
 ### 💬 2. 픽셀 커뮤니티 탭 (`Pixel Community / PixelDiary`)
 - 봉사/기부 탭과 100% 동일한 `.opportunity-table` 및 `.opportunity-detail` 스펙 채택.

@@ -4,30 +4,39 @@ server:
 spring:
   application:
     name: pixel-care-backend
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:pixelcare;DB_CLOSE_DELAY=-1;MODE=MySQL}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3307/pixelcare?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${SPRING_DATASOURCE_USERNAME:pixelcare}
+    password: ${SPRING_DATASOURCE_PASSWORD:pixelcare_local}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     enabled: true
-    baseline-on-migrate: true
+    baseline-on-migrate: false
     locations: classpath:db/migration
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          time_zone: UTC
 
 upstage:
   api:
-    key: ${UPSTAGE_API_KEY:up_WwkZ8YuhJL8dfPo6dBZYU0ff7Orqa}
+    key: ${UPSTAGE_API_KEY:}
     base-url: https://api.upstage.ai/v1/solar
 
-
+app:
+  storage:
+    path: ${APP_STORAGE_PATH:storage}
+  bootstrap:
+    enabled: ${APP_BOOTSTRAP_ENABLED:true}
+    operator-password: ${APP_OPERATOR_PASSWORD:Operator123!}
+    manager-password: ${APP_MANAGER_PASSWORD:Manager123!}
