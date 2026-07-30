@@ -11,34 +11,30 @@ public class Comment extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    private Post post;
-
-    @Column(nullable = false)
-    private String authorNickname;
-
-    private String authorBadge = "LV1_SEED";
+    @Column(name = "post_id", nullable = false)
+    private Long postId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    private Long parentCommentId;
+    @Column(name = "author_nickname", nullable = false)
+    private String authorNickname;
+
+    @Column(name = "author_badge", nullable = false)
+    private String authorBadge = "LV1_SEED";
 
     public Comment() {}
 
-    public Comment(Post post, String authorNickname, String authorBadge, String content, Long parentCommentId) {
-        this.post = post;
+    public Comment(Long postId, String content, String authorNickname, String authorBadge) {
+        this.postId = postId;
+        this.content = content;
         this.authorNickname = authorNickname;
         this.authorBadge = authorBadge != null ? authorBadge : "LV1_SEED";
-        this.content = content;
-        this.parentCommentId = parentCommentId;
     }
 
     public Long getId() { return id; }
-    public Post getPost() { return post; }
+    public Long getPostId() { return postId; }
+    public String getContent() { return content; }
     public String getAuthorNickname() { return authorNickname; }
     public String getAuthorBadge() { return authorBadge; }
-    public String getContent() { return content; }
-    public Long getParentCommentId() { return parentCommentId; }
 }

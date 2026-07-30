@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { PostItem } from '../../services/communityApi';
-import { fetchPosts, createPost, likePost, deletePost } from '../../services/communityApi';
+import type { PostItem, CommentItem } from '../../services/communityApi';
+import { fetchPosts, createPost, likePost, deletePost, fetchComments, createComment, deleteComment } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
 
 interface PixelDiaryProps {
@@ -22,6 +22,12 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [isWriteOpen, setIsWriteOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
+
+  // 댓글 관련 상태
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [commentContent, setCommentContent] = useState('');
+  const [commentAuthor, setCommentAuthor] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const loadPosts = async () => {
     setLoading(true);
@@ -51,6 +57,79 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
       setSelectedPost(null);
     }
   }, [urlPostId, posts]);
+
+  // 선택된 게시글의 댓글 목록 로드
+  const loadComments = async (postId: number) => {
+    setLoadingComments(true);
+    try {
+      const data = await fetchComments(postId);
+      setComments(data);
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+      setComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPost) {
+      loadComments(selectedPost.id);
+    } else {
+      setComments([]);
+    }
+  }, [selectedPost]);
+
+  const handleCreateComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPost) return;
+    if (!commentContent.trim()) {
+      alert('댓글 내용을 입력해주세요!');
+      return;
+    }
+
+    try {
+      const newComment = await createComment(
+        selectedPost.id,
+        commentContent.trim(),
+        commentAuthor.trim() || undefined
+      );
+
+      if (newComment) {
+        setComments((prev) => [...prev, newComment]);
+        setCommentContent('');
+        setSelectedPost((prev) =>
+          prev ? { ...prev, commentCount: (prev.commentCount ?? 0) + 1 } : null
+        );
+        onAddDiary(0.1);
+        playBeep(659, 0.12);
+        showToast('💬 따뜻한 댓글이 작성되었습니다! (온기 +0.1°C)');
+      }
+    } catch (err) {
+      console.error('댓글 작성 오류:', err);
+      alert('댓글 작성 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteCommentItem = async (commentId: number) => {
+    if (!window.confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
+
+    try {
+      const success = await deleteComment(commentId);
+      if (success) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        setSelectedPost((prev) =>
+          prev ? { ...prev, commentCount: Math.max(0, (prev.commentCount ?? 1) - 1) } : null
+        );
+        playBeep(349, 0.1);
+        showToast('🗑️ 댓글이 삭제되었습니다.');
+      } else {
+        alert('댓글 삭제에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error('댓글 삭제 오류:', err);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,6 +328,96 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           </div>
         </section>
 
+        <section className="detail-section">
+          <p className="detail-section-number">03</p>
+          <div style={{ width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>💬 픽셀 용사들의 온기 댓글 ({comments.length})</h3>
+            </div>
+
+            {/* 댓글 작성 폼 */}
+            <form onSubmit={handleCreateComment} style={{ marginBottom: '24px', padding: '16px', background: '#fcf8eb', borderRadius: '12px', border: '2px solid var(--pc-dark, #111)' }}>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <input
+                  type="text"
+                  className="pixel-input"
+                  style={{ flex: 1, padding: '8px 12px', fontSize: '13px', background: '#fff' }}
+                  placeholder="작성자 닉네임 (기본: 익명 용사)"
+                  value={commentAuthor}
+                  onChange={(e) => setCommentAuthor(e.target.value)}
+                />
+              </div>
+              <textarea
+                className="pixel-input"
+                style={{ width: '100%', height: '70px', padding: '10px', fontSize: '14px', resize: 'none', marginBottom: '10px', background: '#fff' }}
+                placeholder="따뜻한 응원이나 소감을 댓글로 자유롭게 나눠주세요!"
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                required
+              />
+              <div style={{ textAlign: 'right' }}>
+                <button type="submit" className="opportunity-action" style={{ background: '#ff70a6', fontSize: '12px', padding: '8px 16px' }}>
+                  💬 댓글 남기기 (온기 +0.1°C)
+                </button>
+              </div>
+            </form>
+
+            {/* 댓글 목록 */}
+            {loadingComments ? (
+              <p style={{ color: '#666', fontSize: '14px' }}>댓글을 불러오는 중입니다...</p>
+            ) : comments.length === 0 ? (
+              <div style={{ padding: '24px', textAlign: 'center', background: '#fafafa', borderRadius: '8px', border: '1px dashed #ccc', color: '#777', fontSize: '14px' }}>
+                👾 첫 번째 온기 댓글의 주인공이 되어보세요!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {comments.map((comment) => {
+                  const badgeInfo = getBadgeColor(comment.authorBadge || 'LV1_SEED');
+                  const commentDate = comment.createdAt ? new Date(comment.createdAt).toLocaleString('ko-KR') : '방금 전';
+
+                  return (
+                    <div
+                      key={comment.id}
+                      style={{
+                        padding: '14px 16px',
+                        background: '#ffffff',
+                        borderRadius: '10px',
+                        border: '1.5px solid #e0e0e0',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: '700', fontSize: '14px', color: '#1a1a24' }}>
+                            ✍️ {comment.authorNickname}
+                          </span>
+                          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '12px', color: '#fff', background: badgeInfo.bg, fontWeight: 'bold' }}>
+                            {badgeInfo.name}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#888' }}>
+                            · {commentDate}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCommentItem(comment.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#ff3b30', opacity: 0.8 }}
+                          title="댓글 삭제"
+                        >
+                          🗑️ 삭제
+                        </button>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.6, color: '#333', whiteSpace: 'pre-wrap' }}>
+                        {comment.content}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
         <footer className="detail-apply-bar">
           <div>
             <span>COMMUNITY ACTION</span>
@@ -388,6 +557,9 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
                   <div className="feed-meta-row">
                     <span className="stat-item" style={{ color: '#ff3b30', fontWeight: 'bold' }}>
                       ❤️ {likesCount}
+                    </span>
+                    <span className="stat-item" style={{ color: '#2ec4b6', fontWeight: 'bold' }}>
+                      💬 {post.commentCount ?? 0}
                     </span>
                     <span className="stat-item">
                       👁️ {viewsCount}

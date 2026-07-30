@@ -71,4 +71,12 @@ public class Post extends BaseTimeEntity {
     public void updateLikeCount(int delta) {
         this.likeCount = Math.max(0, this.likeCount + delta);
     }
+
+    public void incrementCommentCount() {
+        this.commentCount++;
+    }
+
+    public void decrementCommentCount() {
+        this.commentCount = Math.max(0, this.commentCount - 1);
+    }
 }

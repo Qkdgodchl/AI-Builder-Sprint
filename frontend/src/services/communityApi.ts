@@ -146,3 +146,69 @@ export const likePost = async (id: number): Promise<{ postId: number; isLiked: b
   const result = await response.json();
   return result.data;
 };
+
+export interface CommentItem {
+  id: number;
+  postId: number;
+  content: string;
+  authorNickname: string;
+  authorBadge: string;
+  createdAt: string;
+}
+
+/**
+ * 특정 게시글의 댓글 목록 조회
+ */
+export const fetchComments = async (postId: number): Promise<CommentItem[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/${postId}/comments`);
+    if (!response.ok) throw new Error(`댓글 조회 실패: ${response.status}`);
+    const result = await response.json();
+    return result.success && Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    console.error('댓글 목록 조회 오류:', error);
+    return [];
+  }
+};
+
+/**
+ * 댓글 작성
+ */
+export const createComment = async (
+  postId: number,
+  content: string,
+  authorNickname?: string,
+  authorBadge?: string
+): Promise<CommentItem | null> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/${postId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, authorNickname, authorBadge }),
+    });
+    if (!response.ok) throw new Error(`댓글 작성 실패: ${response.status}`);
+    const result = await response.json();
+    return result.data || null;
+  } catch (error) {
+    console.error('댓글 작성 오류:', error);
+    return null;
+  }
+};
+
+/**
+ * 댓글 삭제
+ */
+export const deleteComment = async (commentId: number): Promise<boolean> => {
+  try {
+    const response = await fetch(`http://localhost:8080/api/comments/${commentId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error(`댓글 삭제 실패: ${response.status}`);
+    const result = await response.json();
+    return result.success ?? true;
+  } catch (error) {
+    console.error('댓글 삭제 오류:', error);
+    return false;
+  }
+};
+

@@ -16,6 +16,14 @@ public class AuthGuard {
         throw new ApiException(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "로그인이 필요합니다.");
     }
 
+    public CurrentUser resolveUser(HttpServletRequest request) {
+        Object user = request.getAttribute(AuthTokenFilter.CURRENT_USER_ATTRIBUTE);
+        if (user instanceof CurrentUser currentUser) {
+            return currentUser;
+        }
+        return null;
+    }
+
     public CurrentUser requireRole(HttpServletRequest request, String role) {
         CurrentUser user = requireUser(request);
         if (!user.hasRole(role)) {
