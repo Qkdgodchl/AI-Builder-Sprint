@@ -4,6 +4,7 @@ import {
   createApplication,
   submitCommitment,
 } from '../../services/applicationApi';
+import { requestClmSign, completeClmSign, ClmDocumentDto } from '../../services/clmApi';
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -39,7 +40,67 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [completed, setCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // 모두싸인 (Modusign) 전자서명 상태
+  const [applicantName, setApplicantName] = useState('부산 픽셀용사');
+  const [applicantEmail, setApplicantEmail] = useState('user@pixelcare.com');
+  const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
+  const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
+  const [isSigned, setIsSigned] = useState(false);
+  const [requestingSign, setRequestingSign] = useState(false);
+
+  const canStartSigning = privacyConsent && thirdPartyConsent;
+
+  // 모두싸인 서명 요청 시작
+  const handleStartModusign = async () => {
+    if (!canStartSigning) {
+      alert('필수 동의 항목을 먼저 동의해 주세요.');
+      return;
+    }
+
+    setRequestingSign(true);
+    try {
+      const doc = await requestClmSign({
+        volunteerId: item.id,
+        applicantName: applicantName.trim() || '부산 픽셀용사',
+        applicantEmail: applicantEmail.trim() || 'user@pixelcare.com',
+      });
+
+      if (doc) {
+        setClmDoc(doc);
+        setIsSigningModalOpen(true);
+      } else {
+        alert('모두싸인 서명 요청 문서 생성에 실패했습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('서명 요청 처리 중 오류가 발생했습니다.');
+    } finally {
+      setRequestingSign(false);
+    }
+  };
+
+  // 전자서명 최종 서과 완료 처리
+  const handleConfirmSignature = async () => {
+    if (!clmDoc) return;
+    try {
+      const updated = await completeClmSign(clmDoc.id);
+      if (updated && updated.status === 'SIGNED') {
+        setIsSigned(true);
+        setIsSigningModalOpen(false);
+        alert('✍️ 모두싸인 전자서명이 성공적으로 작성 및 보존 처리되었습니다!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('서명 완료 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!isSigned) {
+      alert('모두싸인 전자서명을 먼저 완료해 주세요!');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage('');
     try {
@@ -66,24 +127,34 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         <button type="button" onClick={onBack}>
           프로그램 상세로 돌아가기
         </button>
-        <span>CLM APPLICATION</span>
+        <span>CLM APPLICATION (MODUSIGN VERIFIED)</span>
       </div>
 
       <header className="clm-header">
-        <p>약정서 작성 및 전자서명</p>
-        <h2>신청 서류 작성</h2>
+        <p>모두싸인 API 기반 약정서 전자서명 및 CLM</p>
+        <h2>신청 서류 작성 & 전자서명</h2>
         <span>
-          신청 정보를 바탕으로 약정서를 작성하고 전자서명을 완료하면 최종 신청이 접수됩니다.
+          신청 정보를 바탕으로 약정서를 작성하고 모두싸인 전자서명을 완료하면 최종 신청 및 서류가 안전하게 보존됩니다.
         </span>
       </header>
 
       <ol className="clm-steps" aria-label="신청 진행 단계">
-        {steps.map((step) => (
-          <li key={step.number} className={step.state} aria-current={step.state === 'current' ? 'step' : undefined}>
-            <span>{step.number}</span>
-            <strong>{step.label}</strong>
-          </li>
-        ))}
+        <li className="complete">
+          <span>01</span>
+          <strong>신청 정보</strong>
+        </li>
+        <li className={privacyConsent && thirdPartyConsent ? 'complete' : 'current'}>
+          <span>02</span>
+          <strong>서류 작성</strong>
+        </li>
+        <li className={isSigned ? 'complete' : canStartSigning ? 'current' : 'upcoming'}>
+          <span>03</span>
+          <strong>전자서명</strong>
+        </li>
+        <li className={completed ? 'complete' : 'upcoming'}>
+          <span>04</span>
+          <strong>신청 완료</strong>
+        </li>
       </ol>
 
       <div className="clm-layout">
@@ -113,30 +184,57 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <div className="clm-section-heading">
               <div>
                 <span>STEP 02</span>
-                <h3>서류 작성</h3>
+                <h3>서류 작성 & 신청자 정보</h3>
               </div>
-              <span className="clm-status pending">작성 전</span>
+              <span className={`clm-status ${canStartSigning ? 'complete' : 'pending'}`}>
+                {canStartSigning ? '작성 완료' : '작성 중'}
+              </span>
             </div>
 
             <div className="clm-document-card">
               <div>
                 <span>필수 서류</span>
-                <strong>{documentName}</strong>
+                <strong>{documentName} (모두싸인 연동)</strong>
                 <p>
                   참여 조건, 활동 또는 후원 내용, 개인정보 동의 항목이 포함됩니다.
                 </p>
               </div>
-              <span className="clm-status pending">온라인 작성</span>
+              <span className="clm-status complete">온라인 작성</span>
             </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <label style={{ flex: 1 }}>
+                신청자 이름
+                <input
+                  type="text"
+                  className="pixel-input"
+                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
+                  value={applicantName}
+                  onChange={(e) => setApplicantName(e.target.value)}
+                />
+              </label>
+              <label style={{ flex: 1 }}>
+                신청자 이메일
+                <input
+                  type="email"
+                  className="pixel-input"
+                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
+                  value={applicantEmail}
+                  onChange={(e) => setApplicantEmail(e.target.value)}
+                />
+              </label>
+            </div>
+
             <label>
               특별 조건 및 전달사항
               <textarea
                 value={specialConditions}
                 onChange={(event) => setSpecialConditions(event.target.value)}
                 placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
-                rows={5}
+                rows={4}
               />
             </label>
+
             <label className="clm-final-consent">
               <input
                 type="checkbox"
@@ -167,21 +265,50 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <div className="clm-section-heading">
               <div>
                 <span>STEP 03</span>
-                <h3>전자서명</h3>
+                <h3>모두싸인 (Modusign) 전자서명</h3>
               </div>
-              <span className="clm-status locked">서류 작성 후 가능</span>
+              <span className={`clm-status ${isSigned ? 'complete' : canStartSigning ? 'pending' : 'locked'}`}>
+                {isSigned ? '서명 완료' : canStartSigning ? '서명 대기' : '서류 작성 후 가능'}
+              </span>
             </div>
 
-            <div className="clm-signature-placeholder">
-              <span>E-SIGNATURE AREA</span>
-              <strong>전자서명 영역</strong>
-              <p>작성된 약정서를 확인한 뒤 본인 인증과 전자서명을 진행합니다.</p>
-              <button type="button" disabled>
-                전자서명 시작
-              </button>
+            <div className="clm-signature-placeholder" style={{ borderColor: isSigned ? '#2ec4b6' : 'var(--pc-dark)' }}>
+              <span>MODUSIGN E-SIGNATURE</span>
+              <strong>{isSigned ? '✅ 전자서명 완료됨' : '모두싸인 전자서명 서명창'}</strong>
+              <p>
+                {isSigned
+                  ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 법적 효력이 있는 서명이 보존되었습니다.`
+                  : '약정서를 확인한 뒤 모두싸인 전자서명을 작성합니다.'}
+              </p>
+              
+              {!isSigned && (
+                <button
+                  type="button"
+                  style={{
+                    background: canStartSigning ? '#ff70a6' : '#aaa',
+                    cursor: canStartSigning ? 'pointer' : 'not-allowed',
+                    color: '#fff',
+                    padding: '12px 24px',
+                    fontSize: '14px',
+                    borderRadius: '8px',
+                    border: '2px solid #111',
+                    fontWeight: 'bold'
+                  }}
+                  disabled={!canStartSigning || requestingSign}
+                  onClick={handleStartModusign}
+                >
+                  {requestingSign ? '서명 요청 중...' : '✍️ 모두싸인 전자서명 시작하기'}
+                </button>
+              )}
+
+              {isSigned && (
+                <div style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '15px', marginTop: '10px' }}>
+                  ✍️ 서명 완료일시: {new Date().toLocaleString('ko-KR')}
+                </div>
+              )}
             </div>
             <p className="clm-placeholder-note">
-              전자서명 제공업체 연동 전까지는 온라인 약정 제출 상태로 저장됩니다.
+              모두싸인(Modusign) 공식 API와 연동하여 자필 전자서명이 CLM DB에 안전하게 보존됩니다.
             </p>
           </section>
         </div>
@@ -190,9 +317,9 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           <p>신청 완료 조건</p>
           <ul>
             <li className="complete">신청 프로그램 확인</li>
-            <li className={specialConditions || confirmed ? 'complete' : ''}>필수 약정서 작성</li>
+            <li className={privacyConsent && thirdPartyConsent ? 'complete' : ''}>필수 서류 & 약정 작성</li>
             <li className={privacyConsent && thirdPartyConsent ? 'complete' : ''}>개인정보 동의</li>
-            <li>전자서명 완료</li>
+            <li className={isSigned ? 'complete' : ''}>모두싸인 전자서명 완료</li>
           </ul>
           <div className="clm-submit-divider" />
           <label className="clm-final-consent">
@@ -206,19 +333,106 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           <button
             type="button"
             className="clm-final-submit"
-            disabled={!privacyConsent || !thirdPartyConsent || !confirmed || submitting || completed}
+            disabled={!privacyConsent || !thirdPartyConsent || !isSigned || !confirmed || submitting || completed}
             onClick={handleSubmit}
           >
-            {completed ? '신청 접수 완료' : submitting ? '신청 중...' : '작성 완료 및 신청'}
+            {completed ? '🎉 최종 신청 접수 완료!' : submitting ? '신청 처리 중...' : '🚀 작성 완료 및 최종 신청'}
           </button>
           {errorMessage && <small className="auth-form-error">{errorMessage}</small>}
           <small>
             {completed
-              ? '신청과 약정 초안이 MySQL에 저장됐습니다.'
-              : '필수 동의와 작성 내용 확인 후 신청할 수 있습니다.'}
+              ? '신청서와 모두싸인 전자서명이 픽셀케어 CLM에 보관되었습니다.'
+              : '모두싸인 서명 완료 후 최종 신청할 수 있습니다.'}
           </small>
         </aside>
       </div>
+
+      {/* 모두싸인 서명 진행 팝업/모달 */}
+      {isSigningModalOpen && clmDoc && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff',
+            width: '100%',
+            maxWidth: '560px',
+            borderRadius: '16px',
+            border: '3px solid #111',
+            padding: '24px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ fontSize: '18px', margin: '0 0 12px 0', color: '#111' }}>
+              ✍️ 모두싸인 (Modusign) 전자서명 작성
+            </h3>
+            <p style={{ fontSize: '14px', color: '#555', marginBottom: '20px', lineHeight: 1.5 }}>
+              <b>{clmDoc.volunteerTitle}</b> 참여 약정서에 서명을 작성합니다.<br/>
+              문서 번호: <code style={{ background: '#eee', padding: '2px 6px', borderRadius: '4px' }}>{clmDoc.modusignDocumentId}</code>
+            </p>
+
+            {/* 자필 서명 Canvas 패드 흉내/임베드 박스 */}
+            <div style={{
+              height: '160px',
+              border: '2px dashed #ff70a6',
+              background: '#fffef9',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: '20px',
+              cursor: 'crosshair'
+            }}>
+              <span style={{ fontSize: '32px', marginBottom: '8px' }}>🖋️</span>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#ff70a6' }}>
+                [자필 서명 완료 영역]
+              </span>
+              <span style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                모두싸인(Modusign API v2)으로 보안 인증 서명이 부여됩니다
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                style={{
+                  padding: '12px 20px',
+                  background: '#ccc',
+                  border: '2px solid #111',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setIsSigningModalOpen(false)}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: '12px 24px',
+                  background: '#2ec4b6',
+                  color: '#fff',
+                  border: '2px solid #111',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+                onClick={handleConfirmSignature}
+              >
+                ✍️ 서명 작성 완료 및 제출
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 };

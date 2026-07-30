@@ -40,3 +40,9 @@ app:
     enabled: ${APP_BOOTSTRAP_ENABLED:true}
     operator-password: ${APP_OPERATOR_PASSWORD:Operator123!}
     manager-password: ${APP_MANAGER_PASSWORD:Manager123!}
+
+modusign:
+  api:
+    key: ${MODUSIGN_API_KEY:YzJlNTc0NzQtMDk4OC00ZWVjLWI2MGMtZDBjZmUyYmEyZDY3}
+    base-url: https://api.modusign.co.kr
+
