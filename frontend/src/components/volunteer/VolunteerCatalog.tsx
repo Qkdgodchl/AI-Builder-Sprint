@@ -67,22 +67,29 @@ export const VolunteerCatalog: React.FC = () => {
   }, []);
 
   const catalogItems = useMemo<CatalogItem[]>(() => {
-    const apiPrograms = items.map<CatalogItem>((item) => ({
-      ...item,
-      title: removeLeadingSymbol(item.title),
-      programType:
-        item.category === 'DONATION'
+    const apiPrograms = items.map<CatalogItem>((item) => {
+      const rawCategory = item.category || 'VOLUNTEER';
+      const validTypes: ProgramType[] = ['VOLUNTEER', 'GENERAL', 'LEGACY', 'UNESCO', 'HERITAGE', 'HOMETOWN'];
+      const programType: ProgramType = validTypes.includes(rawCategory as ProgramType)
+        ? (rawCategory as ProgramType)
+        : rawCategory === 'DONATION'
           ? 'GENERAL'
-          : item.category,
-      availability:
-        item.category === 'LEGACY'
-          ? '상담 가능'
-          : item.category === 'HOMETOWN'
-            ? '신청 가능'
-            : item.category === 'VOLUNTEER'
-              ? '모집 중'
-              : '상시 모집',
-    }));
+          : 'VOLUNTEER';
+
+      return {
+        ...item,
+        title: removeLeadingSymbol(item.title),
+        programType,
+        availability:
+          programType === 'LEGACY'
+            ? '상담 가능'
+            : programType === 'HOMETOWN'
+              ? '신청 가능'
+              : programType === 'VOLUNTEER'
+                ? '모집 중'
+                : '상시 모집',
+      };
+    });
 
     return apiPrograms;
   }, [items]);

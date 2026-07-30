@@ -268,9 +268,9 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
   }
 
   return (
-    <section className="opportunity-catalog" style={{ maxWidth: '960px', margin: '0 auto' }}>
-      {/* Primary Category Nav */}
-      <nav className="opportunity-primary-nav" aria-label="커뮤니티 분류">
+    <section className="opportunity-catalog">
+      {/* Primary Category Nav (VolunteerCatalog와 동일한 네비게이션) */}
+      <nav className="opportunity-primary-nav" aria-label="커뮤니티 이야기 분류">
         {['ALL', 'REVIEW', 'RECRUIT', 'FREE'].map((cat) => (
           <button
             key={cat}
@@ -278,28 +278,27 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
             className={filterCategory === cat ? 'active' : ''}
             onClick={() => setFilterCategory(cat)}
           >
-            {cat === 'ALL' ? '전체 소통' : cat === 'REVIEW' ? '봉사 후기' : cat === 'RECRUIT' ? '동행 모집' : '자율 수다'}
+            {cat === 'ALL' ? '전체' : cat === 'REVIEW' ? '봉사후기' : cat === 'RECRUIT' ? '동행모집' : '자율수다'}
           </button>
         ))}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            type="button"
-            className="opportunity-action"
-            style={{ background: isWriteOpen ? '#444' : 'var(--pixel-primary, #ff3b30)', padding: '6px 14px', fontSize: '12px' }}
-            onClick={() => setIsWriteOpen(!isWriteOpen)}
-          >
-            {isWriteOpen ? '✖️ 작성 닫기' : '📝 새 글 작성하기'}
-          </button>
-          <span className="opportunity-count" aria-live="polite">
-            총 {safePosts.length}개 이야기
-          </span>
-        </div>
+        <button
+          type="button"
+          className="opportunity-action"
+          style={{ background: isWriteOpen ? '#444' : 'var(--magazine-accent, #ff3b30)', padding: '6px 14px', fontSize: '12px', borderRadius: '20px' }}
+          onClick={() => setIsWriteOpen(!isWriteOpen)}
+        >
+          {isWriteOpen ? '✖️ 작성 닫기' : '📝 이야기 작성'}
+        </button>
+
+        <span className="opportunity-count" aria-live="polite">
+          총 {safePosts.length}개 이야기
+        </span>
       </nav>
 
-      {/* 글쓰기 Bento Box Form */}
+      {/* 글쓰기 폼 */}
       {isWriteOpen && (
-        <div style={{ marginBottom: '24px', padding: '20px', background: '#faf0ca', borderRadius: '12px', border: '2px solid #111' }}>
+        <div style={{ marginBottom: '24px', padding: '20px', background: '#faf0ca', borderRadius: '12px', border: '2px solid var(--pc-dark, #111)' }}>
           <div style={{ fontSize: '16px', fontWeight: '800', marginBottom: '14px', color: '#1a1a24', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span>💬</span> 픽셀 커뮤니티 새 이야기 작성
           </div>
@@ -353,24 +352,12 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
         </div>
       )}
 
-      {/* 헤더 텍스트 수직 가이드라인과 1대1 자석 일치 테이블 */}
       {loading ? (
-        <div className="opportunity-state">커뮤니티 이야기를 불러오는 중입니다...</div>
+        <div className="opportunity-state">이야기를 불러오는 중입니다.</div>
       ) : safePosts.length === 0 ? (
-        <div className="opportunity-state">등록된 커뮤니티 이야기 피드가 없습니다. 첫 번째 글을 작성해보세요!</div>
+        <div className="opportunity-state">등록된 이야기 피드가 없습니다. 첫 번째 이야기를 나눠보세요!</div>
       ) : (
-        <div className="opportunity-table" role="table" aria-label="커뮤니티 피드">
-          {/* 헤더 (6개 컬럼 정밀 좌측 수직 기준선) */}
-          <div className="opportunity-table-head" role="row" style={{ padding: '14px 20px' }}>
-            <span role="columnheader" style={{ padding: 0, margin: 0 }}>분류</span>
-            <span role="columnheader" style={{ padding: 0, margin: 0 }}>이야기 제목 및 미리보기</span>
-            <span role="columnheader" style={{ padding: 0, margin: 0 }}>작성자</span>
-            <span role="columnheader" style={{ padding: 0, margin: 0 }}>뱃지 / 반응</span>
-            <span role="columnheader" style={{ padding: 0, margin: 0 }}>작성일</span>
-            <span role="columnheader" style={{ padding: 0, margin: 0, textAlign: 'center' }}>상세 보기</span>
-          </div>
-
-          {/* 목록 데이터 (헤더 텍스트 바로 밑 수직선 1px 오차 없이 칼정렬) */}
+        <div className="community-line-feed-container">
           {safePosts.map((post, idx) => {
             const likesCount = post.likeCount ?? (post as any).likes ?? 0;
             const viewsCount = post.viewCount ?? (post as any).views ?? 0;
@@ -380,94 +367,47 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
             return (
               <article
-                className="opportunity-row"
-                role="row"
                 key={`${post.id}-${idx}`}
-                style={{ cursor: 'pointer', padding: '16px 20px', minHeight: '96px', alignItems: 'center' }}
+                className="community-line-feed-item"
                 onClick={() => navigate(`/community/posts/${post.id}`)}
               >
-                {/* Col 1: 분류 (헤더 '분류' 텍스트 바로 밑 수직선 100% 일치) */}
-                <span
-                  className="opportunity-type"
-                  role="cell"
-                  style={{ display: 'flex', alignItems: 'center', height: '64px', padding: 0, margin: 0, fontSize: '13px', fontWeight: '800', color: '#111' }}
-                >
-                  {getCategoryLabel(post.category)}
-                </span>
-
-                {/* Col 2: 썸네일 + 제목/미리보기 (헤더 '이야기 제목...' 바로 밑 수직선 100% 일치) */}
-                <div
-                  className="opportunity-program"
-                  role="cell"
-                  style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '16px', height: '64px', padding: 0, margin: 0 }}
-                >
-                  {post.imageUrl ? (
-                    <img
-                      src={post.imageUrl}
-                      alt={post.title}
-                      style={{ width: '64px', height: '64px', borderRadius: '4px', objectFit: 'cover', border: '2px solid #111', flexShrink: 0, boxShadow: '2px 2px 0 #111' }}
-                    />
-                  ) : (
-                    <div style={{ width: '64px', height: '64px', borderRadius: '4px', background: '#faf0ca', border: '2px solid #111', boxShadow: '2px 2px 0 #111', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>
-                      {post.category === 'REVIEW' ? '📝' : post.category === 'RECRUIT' ? '🤝' : '💬'}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '64px', minWidth: 0, gap: '4px' }}>
-                    <strong style={{ fontSize: '15px', fontWeight: '800', color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
-                      {post.title}
-                    </strong>
-                    <span style={{ fontSize: '12px', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>
-                      {snippetText}
+                {/* 좌측: 카테고리/뱃지 태그 + 굵은 제목 + 본문 미리보기 + 메타정보 */}
+                <div className="feed-content-main">
+                  <div className="feed-tags-row">
+                    <span className="feed-cat-badge">
+                      {getCategoryLabel(post.category)}
                     </span>
+                    <span className="feed-user-badge" style={{ background: badgeInfo.bg }}>
+                      {badgeInfo.name}
+                    </span>
+                  </div>
+
+                  <h3 className="feed-title">{post.title}</h3>
+                  <p className="feed-snippet">{snippetText}</p>
+
+                  <div className="feed-meta-row">
+                    <span className="stat-item" style={{ color: '#ff3b30', fontWeight: 'bold' }}>
+                      ❤️ {likesCount}
+                    </span>
+                    <span className="stat-item">
+                      👁️ {viewsCount}
+                    </span>
+                    <span>·</span>
+                    <span>✍️ {getAuthorName(post.author)}</span>
+                    <span>·</span>
+                    <span>📅 {createdDate}</span>
                   </div>
                 </div>
 
-                {/* Col 3: 작성자 (헤더 '작성자' 바로 밑 수직선 100% 일치) */}
-                <span
-                  className="opportunity-area"
-                  role="cell"
-                  style={{ display: 'flex', alignItems: 'center', height: '64px', padding: 0, margin: 0, fontSize: '13px', fontWeight: '700', color: '#222' }}
-                >
-                  ✍️ {getAuthorName(post.author)}
-                </span>
-
-                {/* Col 4: 뱃지 및 반응 (헤더 '뱃지 / 반응' 바로 밑 수직선 100% 일치) */}
-                <div
-                  className="opportunity-keywords"
-                  role="cell"
-                  style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '64px', gap: '4px', alignItems: 'flex-start', padding: 0, margin: 0 }}
-                >
-                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>
-                    {badgeInfo.name}
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#555', fontWeight: '600' }}>
-                    👁️ {viewsCount} · ❤️ {likesCount}
-                  </span>
-                </div>
-
-                {/* Col 5: 작성일 (헤더 '작성일' 바로 밑 수직선 100% 일치) */}
-                <span
-                  className="opportunity-status"
-                  role="cell"
-                  style={{ display: 'flex', alignItems: 'center', height: '64px', padding: 0, margin: 0, fontSize: '12px', fontWeight: '700', color: '#2b9348' }}
-                >
-                  {createdDate}
-                </span>
-
-                {/* Col 6: [상세보기] 버튼 (헤더 '상세 보기' 중앙 수직선 100% 일치) */}
-                <div
-                  style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '64px', padding: 0, margin: 0 }}
-                  role="cell"
-                >
-                  <button
-                    type="button"
-                    className="opportunity-action"
-                    style={{ width: '92px', height: '36px', fontSize: '12px', fontWeight: 'bold', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px' }}
-                    onClick={() => navigate(`/community/posts/${post.id}`)}
-                  >
-                    상세보기
-                  </button>
+                {/* 우측: 80x80 정사각형 썸네일/아이콘 박스 */}
+                <div className="feed-thumbnail-box">
+                  {post.imageUrl ? (
+                    <img src={post.imageUrl} alt={post.title} />
+                  ) : (
+                    <div className="placeholder-icon">
+                      {post.category === 'REVIEW' ? '📝' : post.category === 'RECRUIT' ? '🤝' : '💬'}
+                    </div>
+                  )}
                 </div>
               </article>
             );

@@ -30,10 +30,4 @@ upstage:
     key: ${UPSTAGE_API_KEY:up_WwkZ8YuhJL8dfPo6dBZYU0ff7Orqa}
     base-url: https://api.upstage.ai/v1/solar
 
-gov1365:
-  api:
-    end-point: https://apis.data.go.kr/1741000/VolunteerPartcptnService
-    service-key-encoding: ${GOV1365_KEY_ENCODING:2vU2n5a8v48w9dstMuQB5IruvSqfyFOc5s4oR3wBpSBARe6OpcKWPkT2BaftUfCd1ASYG0BXvpznf8KeNUaidw%3D%3D}
-    service-key-decoding: ${GOV1365_KEY_DECODING:2vU2n5a8v48w9dstMuQB5IruvSqfyFOc5s4oR3wBpSBARe6OpcKWPkT2BaftUfCd1ASYG0BXvpznf8KeNUaidw==}
-
 

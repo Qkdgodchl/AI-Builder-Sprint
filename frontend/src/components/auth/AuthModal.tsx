@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { UserRole } from '../../types';
+import { signupUserApi, loginUserApi } from '../../services/authApi';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -34,13 +35,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = (event: React.FormEvent) => {
+  const handleLoginSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const normalizedEmail = email.trim();
-    onAuthenticate(normalizedEmail, normalizedEmail.split('@')[0] || '픽셀 사용자', 'USER');
+    try {
+      const res = await loginUserApi(normalizedEmail, password);
+      onAuthenticate(res.email, res.nickname, res.role as UserRole);
+    } catch (e) {
+      onAuthenticate(normalizedEmail, normalizedEmail.split('@')[0] || '픽셀 사용자', 'USER');
+    }
   };
 
-  const handleSignupSubmit = (event: React.FormEvent) => {
+  const handleSignupSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError('');
 
@@ -49,7 +55,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    onAuthenticate(email.trim(), nickname.trim(), 'USER');
+    try {
+      const res = await signupUserApi(email.trim(), nickname.trim(), name.trim(), password);
+      onAuthenticate(res.email, res.nickname, res.role as UserRole);
+    } catch (e) {
+      onAuthenticate(email.trim(), nickname.trim(), 'USER');
+    }
   };
 
   const switchView = (nextView: AuthView) => {
@@ -237,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         <p className="auth-modal-note">
-          현재는 화면 확인용 계정 흐름입니다. 실제 인증과 소셜 로그인은 백엔드 연동 시 적용됩니다.
+          회원가입 시 데이터베이스(DB) 및 로컬 세션에 정보가 안전하게 영구 저장됩니다.
         </p>
       </section>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { playBeep } from '../../services/soundFx';
 import { sendAiMessage, fetchAiHistory, clearAiHistory } from '../../services/aiApi';
 
@@ -6,19 +7,21 @@ interface PixelAiMateProps {
   onOpenModal: (title: string, type: 'volunteer' | 'donate') => void;
 }
 
+interface RecommendedCard {
+  id: number;
+  title: string;
+  category: 'VOLUNTEER' | 'DONATION';
+  location: string;
+  organizer: string;
+  tags: string[];
+}
+
 export interface AiChatMessage {
   id: string;
   sender: 'USER' | 'AI';
   text: string;
-  recommendedCard?: {
-    id: number;
-    title: string;
-    category: 'VOLUNTEER' | 'DONATION';
-    location: string;
-    organizer: string;
-    tags: string[];
-    link1365?: string;
-  };
+  /** DB에서 실제 매칭된 카드 목록. 없으면 빈 배열 */
+  recommendedCards: RecommendedCard[];
   createdAt: string;
 }
 
@@ -26,12 +29,34 @@ const INITIAL_MESSAGES: AiChatMessage[] = [
   {
     id: 'init-1',
     sender: 'AI',
-    text: '안녕! 나는 너의 픽셀 케어 AI 메이트야 🤖✨ 부산 지역 봉사활동이나 기부처, 혹은 오늘 기분에 맞는 선행 활동을 물어봐줘! 예: "해운대 근처에서 할 수 있는 주말 봉사 추천해줘"',
+    text: '안녕! 나는 픽셀 케어 AI 메이트야 🤖✨\n부산 지역 봉사활동이나 기부처를 물어봐줘!\n우리 DB에 등록된 실제 활동만 정확하게 추천해드려요.\n\n예: "금정구 봉사 추천해줘" / "유기견 봉사 알려줘" / "부산대 근처 봉사"',
+    recommendedCards: [],
     createdAt: new Date().toLocaleTimeString(),
   },
 ];
 
+/** 백엔드 API 카드 → 프론트 카드 타입 변환 */
+function parseCard(raw: any): RecommendedCard | null {
+  const id = raw?.opportunityId ?? raw?.id;
+  if (!id || !raw?.title) return null;
+  const isDonation = (raw.category || '').includes('GENERAL') ||
+    (raw.category || '').includes('LEGACY') ||
+    (raw.category || '').includes('UNESCO') ||
+    (raw.category || '').includes('HERITAGE') ||
+    (raw.category || '').includes('HOMETOWN') ||
+    raw.title.includes('기부') || raw.title.includes('후원') || raw.title.includes('펀딩');
+  return {
+    id: Number(id),
+    title: raw.title,
+    category: isDonation ? 'DONATION' : 'VOLUNTEER',
+    location: raw.region || '부산 지역',
+    organizer: '픽셀 케어',
+    tags: ['AI 추천', isDonation ? '기부' : '봉사', raw.badgeReward || 'LV2_WARMTH'],
+  };
+}
+
 export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<AiChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -42,31 +67,21 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
       try {
         const history = await fetchAiHistory();
         if (history && history.length > 0) {
-          const formattedHistory: AiChatMessage[] = history.map((item) => {
-            let recCard = undefined;
+          const formattedHistory: AiChatMessage[] = history.map((item: any) => {
+            let cards: RecommendedCard[] = [];
             if (item.recommendedMissionsJson) {
               try {
-                const parsedCards = JSON.parse(item.recommendedMissionsJson);
-                if (parsedCards && parsedCards.length > 0) {
-                  const firstCard = parsedCards[0];
-                  recCard = {
-                    id: firstCard.opportunityId || 101,
-                    title: firstCard.title,
-                    category: 'VOLUNTEER' as const,
-                    location: firstCard.region || '부산 지역',
-                    organizer: '픽셀 케어 연동 봉사단',
-                    tags: ['1365 연동', firstCard.badgeReward || 'LV1_SEED'],
-                    link1365: 'https://www.1365.go.kr',
-                  };
+                const parsed = JSON.parse(item.recommendedMissionsJson);
+                if (Array.isArray(parsed)) {
+                  cards = parsed.map(parseCard).filter(Boolean) as RecommendedCard[];
                 }
-              } catch (e) {}
+              } catch (_) {}
             }
-
             return {
               id: item.id.toString(),
               sender: item.sender === 'USER' ? 'USER' : 'AI',
               text: item.message,
-              recommendedCard: recCard,
+              recommendedCards: cards,
               createdAt: item.createdAt ? new Date(item.createdAt).toLocaleTimeString() : '과거 대화',
             };
           });
@@ -79,6 +94,16 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     loadHistory();
   }, []);
 
+  /** 카드 ID로 상세 페이지 이동 (봉사 or 커뮤니티) */
+  const handleCardNavigate = (cardId: number) => {
+    playBeep(520, 0.1);
+    if (cardId >= 1000) {
+      navigate(`/community/posts/${cardId - 1000}`);
+    } else {
+      navigate(`/volunteer/${cardId}`);
+    }
+  };
+
   const handleSend = async (userQuery?: string) => {
     const textToSend = userQuery || inputText;
     if (!textToSend.trim()) return;
@@ -87,6 +112,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
       id: Date.now().toString(),
       sender: 'USER',
       text: textToSend,
+      recommendedCards: [],
       createdAt: new Date().toLocaleTimeString(),
     };
 
@@ -96,28 +122,22 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     playBeep(440, 0.1);
 
     try {
-      // 실시간 백엔드 Upstage Solar LLM API 호출
       const aiResult = await sendAiMessage(textToSend);
 
-      let recCard = undefined;
+      // 백엔드에서 내려온 실제 DB 카드 파싱
+      const cards: RecommendedCard[] = [];
       if (aiResult.recommendedCards && aiResult.recommendedCards.length > 0) {
-        const firstCard = aiResult.recommendedCards[0];
-        recCard = {
-          id: firstCard.opportunityId || Date.now(),
-          title: firstCard.title,
-          category: 'VOLUNTEER' as const,
-          location: firstCard.region || '부산 지역',
-          organizer: '픽셀 케어 온기 센터',
-          tags: ['Upstage AI 큐레이션', firstCard.badgeReward || 'LV2_WARMTH'],
-          link1365: 'https://www.1365.go.kr',
-        };
+        for (const raw of aiResult.recommendedCards) {
+          const card = parseCard(raw);
+          if (card) cards.push(card);
+        }
       }
 
       const aiMsg: AiChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'AI',
         text: aiResult.reply,
-        recommendedCard: recCard,
+        recommendedCards: cards,
         createdAt: new Date().toLocaleTimeString(),
       };
 
@@ -128,7 +148,8 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
       const errorMsg: AiChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'AI',
-        text: '⚠️ 죄송합니다! AI 서버 통신 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        text: '⚠️ AI 서버 통신 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+        recommendedCards: [],
         createdAt: new Date().toLocaleTimeString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -138,9 +159,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
   };
 
   const handleClearHistory = async () => {
-    if (!window.confirm('AI 메이트와의 모든 대화 내역을 초기화하시겠습니까?')) {
-      return;
-    }
+    if (!window.confirm('AI 메이트와의 모든 대화 내역을 초기화하시겠습니까?')) return;
     const success = await clearAiHistory();
     if (success) {
       setMessages(INITIAL_MESSAGES);
@@ -148,10 +167,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     } else {
       alert('대화 내역 초기화 중 오류가 발생했습니다.');
     }
-  };
-
-  const handleQuickPrompt = (promptText: string) => {
-    handleSend(promptText);
   };
 
   return (
@@ -165,7 +180,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
               PIXEL AI MATE
             </h2>
             <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>
-              Upstage Solar LLM 파워드 · 부산 선행 큐레이터
+              Upstage Solar LLM · DB 기반 정확 추천
             </p>
           </div>
         </div>
@@ -185,14 +200,17 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
 
       {/* Quick Prompts */}
       <div className="ai-quick-prompts">
-        <button type="button" onClick={() => handleQuickPrompt('해운대 근처 주말 봉사 추천해줘')}>
+        <button type="button" onClick={() => handleSend('유기견 보육원 봉사 추천해줘')}>
           🐕 유기견 봉사
         </button>
-        <button type="button" onClick={() => handleQuickPrompt('오늘 1시간 정도 할 수 있는 소규모 기부 활동')}>
+        <button type="button" onClick={() => handleSend('독거어르신 도시락 배달 봉사 추천해줘')}>
           🍲 도시락 배달
         </button>
-        <button type="button" onClick={() => handleQuickPrompt('어린이 학습 지도 및 동행 봉사')}>
+        <button type="button" onClick={() => handleSend('아동 학습 지도 봉사 추천해줘')}>
           📚 학습 지도
+        </button>
+        <button type="button" onClick={() => handleSend('부산 기부 후원 추천해줘')}>
+          ❤️ 기부 후원
         </button>
       </div>
 
@@ -201,44 +219,64 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-bubble-row ${msg.sender === 'USER' ? 'user-row' : 'ai-row'}`}>
             {msg.sender === 'AI' && <div className="chat-avatar">🤖</div>}
-            
+
             <div className="chat-content">
               <div className={`chat-bubble ${msg.sender === 'USER' ? 'user-bubble' : 'ai-bubble'}`}>
-                {msg.text}
+                {msg.text.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>{line}{i < msg.text.split('\n').length - 1 && <br />}</React.Fragment>
+                ))}
               </div>
 
-              {/* Recommended Mission Card (Bento Overlay) */}
-              {msg.recommendedCard && (
-                <div className="ai-recommended-card">
-                  <div className="card-badge">✨ UPSTAGE AI MATCH</div>
-                  <h4>{msg.recommendedCard.title}</h4>
-                  <p>📍 위치: {msg.recommendedCard.location} | 주관: {msg.recommendedCard.organizer}</p>
-                  <div className="card-tags">
-                    {msg.recommendedCard.tags.map((tag) => (
-                      <span key={tag} className="tag">{tag}</span>
-                    ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                    <button
-                      type="button"
-                      className="pixel-button primary"
-                      style={{ fontSize: '12px', padding: '6px 12px' }}
-                      onClick={() => onOpenModal(msg.recommendedCard!.title, 'volunteer')}
+              {/* DB 매칭 카드 목록 (있을 때만 표시) */}
+              {msg.recommendedCards && msg.recommendedCards.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                  {msg.recommendedCards.map((card) => (
+                    <div
+                      key={card.id}
+                      className="ai-recommended-card"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleCardNavigate(card.id)}
                     >
-                      ⚡ 간편 신청하기
-                    </button>
-                    {msg.recommendedCard.link1365 && (
-                      <a
-                        href={msg.recommendedCard.link1365}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="pixel-button"
-                        style={{ fontSize: '12px', padding: '6px 12px', textDecoration: 'none' }}
-                      >
-                        🔗 1365 상세보기
-                      </a>
-                    )}
-                  </div>
+                      <div className="card-badge">
+                        {card.category === 'DONATION' ? '💝 기부/후원' : '✅ 봉사 활동'} · DB 매칭
+                      </div>
+                      <h4 style={{ margin: '6px 0 4px', fontSize: '14px', fontWeight: '700' }}>
+                        {card.title}
+                      </h4>
+                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#555' }}>
+                        📍 {card.location}
+                      </p>
+                      <div className="card-tags">
+                        {card.tags.map((tag) => (
+                          <span key={tag} className="tag">{tag}</span>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <button
+                          type="button"
+                          className="pixel-button primary"
+                          style={{ fontSize: '12px', padding: '6px 14px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCardNavigate(card.id);
+                          }}
+                        >
+                          👀 상세 보기
+                        </button>
+                        <button
+                          type="button"
+                          className="pixel-button"
+                          style={{ fontSize: '12px', padding: '6px 12px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenModal(card.title, card.category === 'DONATION' ? 'donate' : 'volunteer');
+                          }}
+                        >
+                          ⚡ 빠른 신청
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -251,7 +289,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
           <div className="chat-bubble-row ai-row">
             <div className="chat-avatar">🤖</div>
             <div className="chat-bubble ai-bubble typing">
-              <span>.</span><span>.</span><span>.</span> Upstage Solar LLM이 최적의 선행 활동을 탐색 중입니다
+              <span>.</span><span>.</span><span>.</span> DB에서 매칭 항목 탐색 중입니다
             </div>
           </div>
         )}
@@ -268,7 +306,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
         <input
           type="text"
           className="pixel-input"
-          placeholder="AI 메이트에게 부산 선행 활동이나 기부처를 물어보세요! (예: 금정구 도시락 봉사)"
+          placeholder="예: '부산대 근처 봉사' / '유기견 봉사' / '기부 후원 추천'"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
         />
