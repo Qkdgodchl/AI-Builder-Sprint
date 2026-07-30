@@ -4,7 +4,8 @@ import {
   createApplication,
   submitCommitment,
 } from '../../services/applicationApi';
-import { requestClmSign, completeClmSign, ClmDocumentDto } from '../../services/clmApi';
+import { requestClmSign, completeClmSign } from '../../services/clmApi';
+import type { ClmDocumentDto } from '../../services/clmApi';
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -16,13 +17,6 @@ interface ClmApplicationPreparationProps {
   typeLabel: string;
   onBack: () => void;
 }
-
-const steps = [
-  { number: '01', label: '신청 정보', state: 'complete' },
-  { number: '02', label: '서류 작성', state: 'current' },
-  { number: '03', label: '전자서명', state: 'upcoming' },
-  { number: '04', label: '신청 완료', state: 'upcoming' },
-] as const;
 
 export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps> = ({
   item,
