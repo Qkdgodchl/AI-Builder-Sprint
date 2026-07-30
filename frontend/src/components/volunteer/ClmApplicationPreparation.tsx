@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { VolunteerItem } from '../../types';
 import {
   createApplication,
@@ -42,6 +42,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [isSigned, setIsSigned] = useState(false);
   const [requestingSign, setRequestingSign] = useState(false);
 
+  // 캔버스 마우스/터치 서명 관련 상태
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
+
   const canStartSigning = privacyConsent && thirdPartyConsent;
 
   // 모두싸인 서명 요청 시작
@@ -62,6 +67,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       if (doc) {
         setClmDoc(doc);
         setIsSigningModalOpen(true);
+        setHasDrawn(false);
       } else {
         alert('모두싸인 서명 요청 문서 생성에 실패했습니다.');
       }
@@ -73,15 +79,78 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     }
   };
 
-  // 전자서명 최종 서과 완료 처리
+  // 캔버스 드로잉 로직 (마우스 / 터치)
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    draw(e);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.beginPath();
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing && e.type !== 'mousedown' && e.type !== 'touchstart') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    let clientX = 0;
+    let clientY = 0;
+
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      const mouseEvent = e as React.MouseEvent<HTMLCanvasElement>;
+      clientX = mouseEvent.clientX;
+      clientY = mouseEvent.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#111';
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setHasDrawn(true);
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  };
+
+  // 전자서명 최종 제출 처리
   const handleConfirmSignature = async () => {
     if (!clmDoc) return;
+    if (!hasDrawn) {
+      alert('마우스 또는 터치로 캔버스에 직접 자필 서명을 남겨주세요!');
+      return;
+    }
+
     try {
       const updated = await completeClmSign(clmDoc.id);
       if (updated && updated.status === 'SIGNED') {
         setIsSigned(true);
         setIsSigningModalOpen(false);
-        alert('✍️ 모두싸인 전자서명이 성공적으로 작성 및 보존 처리되었습니다!');
+        alert('✍️ 마우스 자필 전자서명이 작성되었으며 모두싸인 CLM DB에 보존 처리되었습니다!');
       }
     } catch (err) {
       console.error(err);
@@ -268,13 +337,13 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
             <div className="clm-signature-placeholder" style={{ borderColor: isSigned ? '#2ec4b6' : 'var(--pc-dark)' }}>
               <span>MODUSIGN E-SIGNATURE</span>
-              <strong>{isSigned ? '✅ 전자서명 완료됨' : '모두싸인 전자서명 서명창'}</strong>
+              <strong>{isSigned ? '✅ 자필 전자서명 완료됨' : '모두싸인 자필 전자서명'}</strong>
               <p>
                 {isSigned
                   ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 법적 효력이 있는 서명이 보존되었습니다.`
-                  : '약정서를 확인한 뒤 모두싸인 전자서명을 작성합니다.'}
+                  : '약정서를 확인한 뒤 마우스 또는 손가락으로 자필 전자서명을 작성합니다.'}
               </p>
-              
+
               {!isSigned && (
                 <button
                   type="button"
@@ -291,7 +360,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   disabled={!canStartSigning || requestingSign}
                   onClick={handleStartModusign}
                 >
-                  {requestingSign ? '서명 요청 중...' : '✍️ 모두싸인 전자서명 시작하기'}
+                  {requestingSign ? '서명 창 로딩 중...' : '✍️ 모두싸인 자필 서명하기 (마우스 드로잉)'}
                 </button>
               )}
 
@@ -302,7 +371,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               )}
             </div>
             <p className="clm-placeholder-note">
-              모두싸인(Modusign) 공식 API와 연동하여 자필 전자서명이 CLM DB에 안전하게 보존됩니다.
+              모두싸인(Modusign API v2) 공식 규격과 연동하여 마우스 자필 서명이 CLM DB에 안전하게 보존됩니다.
             </p>
           </section>
         </div>
@@ -341,7 +410,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         </aside>
       </div>
 
-      {/* 모두싸인 서명 진행 팝업/모달 */}
+      {/* 모두싸인 자필 서명 마우스 캔버스 모달 */}
       {isSigningModalOpen && clmDoc && (
         <div style={{
           position: 'fixed',
@@ -363,33 +432,70 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
             textAlign: 'center'
           }}>
-            <h3 style={{ fontSize: '18px', margin: '0 0 12px 0', color: '#111' }}>
-              ✍️ 모두싸인 (Modusign) 전자서명 작성
+            <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', color: '#111' }}>
+              ✍️ 모두싸인 (Modusign) 자필 전자서명 작성
             </h3>
-            <p style={{ fontSize: '14px', color: '#555', marginBottom: '20px', lineHeight: 1.5 }}>
-              <b>{clmDoc.volunteerTitle}</b> 참여 약정서에 서명을 작성합니다.<br/>
-              문서 번호: <code style={{ background: '#eee', padding: '2px 6px', borderRadius: '4px' }}>{clmDoc.modusignDocumentId}</code>
+            <p style={{ fontSize: '13px', color: '#555', marginBottom: '16px', lineHeight: 1.4 }}>
+              <b>{clmDoc.volunteerTitle}</b> 약정서 서명 패드입니다.<br/>
+              <span style={{ color: '#ff70a6', fontWeight: 'bold' }}>아래 하얀 창에 마우스나 손가락으로 직접 서명을 그려주세요!</span>
             </p>
 
-            {/* 자필 서명 Canvas 패드 흉내/임베드 박스 */}
-            <div style={{
-              height: '160px',
-              border: '2px dashed #ff70a6',
-              background: '#fffef9',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: '20px',
-              cursor: 'crosshair'
-            }}>
-              <span style={{ fontSize: '32px', marginBottom: '8px' }}>🖋️</span>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#ff70a6' }}>
-                [자필 서명 완료 영역]
-              </span>
-              <span style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                모두싸인(Modusign API v2)으로 보안 인증 서명이 부여됩니다
+            {/* 마우스/터치 자필 서명 HTML5 Canvas */}
+            <div style={{ position: 'relative', marginBottom: '16px' }}>
+              <canvas
+                ref={canvasRef}
+                width={500}
+                height={180}
+                onMouseDown={startDrawing}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onMouseMove={draw}
+                onTouchStart={startDrawing}
+                onTouchEnd={stopDrawing}
+                onTouchMove={draw}
+                style={{
+                  border: '2px dashed #ff70a6',
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  cursor: 'crosshair',
+                  touchAction: 'none',
+                  display: 'block',
+                  margin: '0 auto'
+                }}
+              />
+              {!hasDrawn && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  color: '#aaa',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}>
+                  🖊️ 마우스로 이곳에 서명하세요
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <button
+                type="button"
+                onClick={clearCanvas}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  background: '#fff',
+                  border: '1px solid #777',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 서명 다시 그리기 (지우기)
+              </button>
+              <span style={{ fontSize: '11px', color: '#888' }}>
+                문서 코드: {clmDoc.modusignDocumentId}
               </span>
             </div>
 
@@ -412,16 +518,17 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 type="button"
                 style={{
                   padding: '12px 24px',
-                  background: '#2ec4b6',
+                  background: hasDrawn ? '#2ec4b6' : '#aaa',
                   color: '#fff',
                   border: '2px solid #111',
                   borderRadius: '8px',
                   fontWeight: 'bold',
-                  cursor: 'pointer'
+                  cursor: hasDrawn ? 'pointer' : 'not-allowed'
                 }}
+                disabled={!hasDrawn}
                 onClick={handleConfirmSignature}
               >
-                ✍️ 서명 작성 완료 및 제출
+                ✍️ 서명 제출 및 완성
               </button>
             </div>
           </div>
