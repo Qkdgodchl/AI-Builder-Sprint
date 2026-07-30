@@ -34,6 +34,16 @@ public class PostController {
         return ApiResponse.success(posts);
     }
 
+    @GetMapping("/me")
+    public ApiResponse<Page<PostResponse>> getMyPosts(
+            HttpServletRequest request,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "20") int size
+    ) {
+        CurrentUser user = authGuard.requireUser(request);
+        return ApiResponse.success(postService.getMyPosts(user.id(), page, size));
+    }
+
     @GetMapping("/{id}")
     public ApiResponse<PostResponse> getPostDetail(@PathVariable Long id) {
         PostResponse post = postService.getPostDetail(id);

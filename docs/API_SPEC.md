@@ -822,6 +822,7 @@ Idempotency-Key: commitment-72-version-1
 | [ ] | [ ] | [ ] | GET | `/community/posts/{id}` | Public | 게시글 상세 |
 | [ ] | [ ] | [ ] | PATCH | `/community/posts/{id}` | 작성자 | 게시글 수정 |
 | [x] | [x] | [x] | DELETE | `/api/posts/{id}` | 작성자 또는 OPERATOR | 현재 커뮤니티 목록·상세 화면에서 게시글 소프트 삭제 |
+| [x] | [x] | [x] | GET | `/api/posts/me` | USER | 로그인 사용자가 작성한 커뮤니티 글 목록 |
 | [ ] | [ ] | [ ] | POST | `/community/posts/{id}/reactions` | USER | 응원 추가·취소 |
 | [ ] | [ ] | [ ] | GET | `/community/posts/{id}/comments` | Public | 댓글 목록 |
 | [ ] | [ ] | [ ] | POST | `/community/posts/{id}/comments` | USER | 댓글 작성 |

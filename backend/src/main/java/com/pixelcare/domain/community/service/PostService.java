@@ -47,6 +47,13 @@ public class PostService {
         ).map(PostResponse::new);
     }
 
+    public Page<PostResponse> getMyPosts(Long userId, int page, int size) {
+        return postRepository.findByAuthorUserIdAndIsDeletedFalse(
+                userId,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+        ).map(PostResponse::new);
+    }
+
     @Transactional
     public PostResponse getPostDetail(Long id) {
         Post post = postRepository.findByIdAndIsDeletedFalse(id)

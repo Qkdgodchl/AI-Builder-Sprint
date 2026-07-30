@@ -44,6 +44,5 @@ app:
 
 modusign:
   api:
-    key: ${MODUSIGN_API_KEY:YzJlNTc0NzQtMDk4OC00ZWVjLWI2MGMtZDBjZmUyYmEyZDY3}
+    key: ${MODUSIGN_API_KEY:}
     base-url: https://api.modusign.co.kr
-

@@ -18,26 +18,48 @@
 }
 
 .user-my-page {
-  width: min(1460px, calc(100% - 80px));
-  margin: 0 auto 80px;
-  border-top: 3px solid #111;
+  width: 100%;
+  margin: 0 0 80px;
+  border-top: 2px solid #111;
 }
 
 .user-my-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
   padding: 46px 24px 36px;
   border-bottom: 1px solid #111;
 }
 
-.user-my-page-header p {
-  margin: 0 0 10px;
-  color: #ff3b30;
-  font-weight: 800;
-}
-
 .user-my-page-header h2 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: clamp(42px, 7vw, 92px);
   line-height: 0.95;
+}
+
+.user-my-page-header button,
+.user-section-back button {
+  border: 0;
+  padding: 10px 0;
+  background: transparent;
+  color: #555;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.user-my-page-header button {
+  border: 1px solid #111;
+  border-radius: 999px;
+  padding: 12px 22px;
+  color: #111;
+}
+
+.user-my-page-header button:hover {
+  background: #111;
+  color: #fff;
 }
 
 .user-profile-section {
@@ -76,6 +98,26 @@
   border-bottom: 3px solid #111;
 }
 
+.user-profile-editor {
+  border-bottom: 1px solid #111;
+}
+
+.user-section-back {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 62px;
+  border-bottom: 1px solid #111;
+  padding: 0 24px;
+}
+
+.user-section-back span {
+  color: #777;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
 .user-profile-form label {
   display: grid;
   gap: 8px;
@@ -110,13 +152,62 @@
   font-size: 28px;
 }
 
+.user-my-page-tabs {
+  display: flex;
+  align-items: center;
+  min-height: 68px;
+  border-bottom: 1px solid #111;
+  padding: 0 24px;
+}
+
+.user-my-page-tabs button {
+  align-self: stretch;
+  border: 0;
+  border-bottom: 4px solid transparent;
+  padding: 0 28px;
+  background: transparent;
+  color: #777;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.user-my-page-tabs button:first-child {
+  padding-left: 0;
+}
+
+.user-my-page-tabs button.active {
+  border-bottom-color: #111;
+  color: #111;
+}
+
+.user-my-page-tabs > span {
+  margin-left: auto;
+  color: #666;
+  font-size: 11px;
+  font-weight: 800;
+}
+
 .user-application-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px 140px;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 150px 120px 90px;
   gap: 24px;
   align-items: center;
-  padding: 26px 24px;
+  border: 0;
   border-top: 1px solid #ddd;
+  padding: 26px 24px;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-application-row:hover,
+.user-post-row:hover {
+  background: #f1f1ef;
 }
 
 .user-application-row div {
@@ -129,6 +220,151 @@
   color: #666;
 }
 
+.user-application-row > em,
+.user-post-row > em {
+  justify-self: end;
+  color: #111;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.user-post-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 130px 150px 90px;
+  gap: 24px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+  padding: 26px 24px;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-post-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.user-post-row > div strong,
+.user-post-row > div span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-post-row > div span,
+.user-post-row > span {
+  color: #666;
+  font-size: 12px;
+}
+
+.user-application-detail > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  border-bottom: 1px solid #111;
+  padding: 38px 24px;
+}
+
+.user-application-detail > header span,
+.user-commitment-preview > span {
+  display: block;
+  margin-bottom: 10px;
+  color: #777;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.user-application-detail > header h3 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 58px);
+  line-height: 1.05;
+}
+
+.user-application-detail > header p {
+  margin: 12px 0 0;
+  color: #666;
+}
+
+.user-application-detail > header > strong {
+  color: #237a57;
+  font-size: 13px;
+}
+
+.user-application-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid #111;
+}
+
+.user-application-facts > div {
+  padding: 22px 24px;
+}
+
+.user-application-facts > div + div {
+  border-left: 1px solid #ddd;
+}
+
+.user-application-facts span {
+  display: block;
+  margin-bottom: 10px;
+  color: #777;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.user-commitment-preview {
+  border-bottom: 1px solid #ddd;
+  padding: 30px 24px;
+}
+
+.user-commitment-preview h4 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.user-commitment-preview p {
+  max-width: 900px;
+  margin: 16px 0 0;
+  color: #555;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.user-document-row {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: 20px;
+  border-top: 1px solid #ddd;
+  padding: 22px 24px;
+}
+
+.user-document-row > span {
+  color: #ff3b30;
+  font-weight: 900;
+}
+
+.user-document-row > div p {
+  margin: 6px 0 0;
+  color: #777;
+  font-size: 12px;
+}
+
+.user-document-row > em {
+  justify-self: end;
+  color: #237a57;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .user-application-empty {
   padding: 36px 24px;
   border-top: 1px solid #ddd;
@@ -137,7 +373,7 @@
 
 @media (max-width: 800px) {
   .user-my-page {
-    width: calc(100% - 32px);
+    width: 100%;
   }
 
   .user-profile-section,
@@ -147,6 +383,20 @@
 
   .user-application-row {
     grid-template-columns: 1fr;
+  }
+
+  .user-post-row,
+  .user-application-facts,
+  .user-document-row {
+    grid-template-columns: 1fr;
+  }
+
+  .user-my-page-header {
+    align-items: flex-start;
+  }
+
+  .user-my-page-tabs {
+    padding-inline: 0;
   }
 }
 

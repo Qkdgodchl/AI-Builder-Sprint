@@ -128,7 +128,7 @@ export function App() {
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
           <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
           <Route
-            path="/my-page"
+            path="/my-page/*"
             element={
               currentUser ? (
                 <MyPage currentUser={currentUser} />

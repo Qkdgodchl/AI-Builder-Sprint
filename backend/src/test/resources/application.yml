@@ -22,3 +22,8 @@ upstage:
 app:
   bootstrap:
     enabled: false
+
+modusign:
+  api:
+    key:
+    base-url: https://api.modusign.co.kr

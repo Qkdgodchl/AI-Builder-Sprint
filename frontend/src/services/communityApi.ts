@@ -71,6 +71,20 @@ export const fetchPosts = async (category?: string, sort: string = 'latest'): Pr
   }
 };
 
+export const fetchMyPosts = async (): Promise<PostItem[]> => {
+  const token = localStorage.getItem('pixel-care-access-token');
+  const response = await fetch(`${API_BASE_URL}/me?size=100`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!response.ok) throw new Error(`나의 글 조회 실패: ${response.status}`);
+  const result = await response.json();
+  const content = result?.data?.content;
+  return Array.isArray(content) ? content.map(normalizePost) : [];
+};
+
 export interface CreatePostPayload {
   title: string;
   content: string;

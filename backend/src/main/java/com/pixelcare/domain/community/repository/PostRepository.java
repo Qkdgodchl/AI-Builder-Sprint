@@ -15,5 +15,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByCategoryAndIsDeletedFalse(String category, Pageable pageable);
 
+    Page<Post> findByAuthorUserIdAndIsDeletedFalse(Long authorUserId, Pageable pageable);
+
     Optional<Post> findByIdAndIsDeletedFalse(Long id);
 }
