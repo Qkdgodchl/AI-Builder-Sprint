@@ -15,6 +15,7 @@ interface OpportunityItem {
   targetAmount?: number;
   currentAmount?: number;
   status: string;
+  createdByUserId?: number;
 }
 
 /**
@@ -33,12 +34,16 @@ export const fetchVolunteers = async (category?: string): Promise<VolunteerItem[
       targetAmount: item.targetAmount,
       currentAmount: item.currentAmount,
       tags: [categoryLabel(item), item.region || '전국'],
+      createdByUserId: item.createdByUserId,
     }));
   } catch (error) {
     console.error('Failed to fetch from Volunteer API:', error);
     return [];
   }
 };
+
+export const deleteOpportunity = (id: number) =>
+  apiRequest<void>(`/api/v1/opportunities/${id}`, { method: 'DELETE' });
 
 const mapCategory = (item: OpportunityItem): VolunteerItem['category'] => {
   if (item.type === 'VOLUNTEER') return 'VOLUNTEER';

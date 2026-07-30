@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import './App.css';
 import { Header } from './components/common/Header';
 import { Modal } from './components/common/Modal';
 import { Toast } from './components/common/Toast';
@@ -11,6 +12,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { ManagerApplicationPage } from './components/user/ManagerApplicationPage';
 import { MyPage } from './components/user/MyPage';
 import { MyCenterPage } from './components/center/MyCenterPage';
+import { ManagementPage } from './components/operator/ManagementPage';
 import { playBeep } from './services/soundFx';
 import { logout as logoutApi } from './services/authApi';
 import type { SessionUser } from './types';
@@ -120,9 +122,9 @@ export function App() {
       <main>
         <Routes>
           <Route path="/" element={<Navigate to="/volunteer" replace />} />
-          <Route path="/volunteer/*" element={<VolunteerCatalog />} />
-          <Route path="/community" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
-          <Route path="/community/posts/:id" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
+          <Route path="/volunteer/*" element={<VolunteerCatalog currentUser={currentUser} showToast={triggerToast} />} />
+          <Route path="/community" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
+          <Route path="/community/posts/:id" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
           <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
           <Route
@@ -156,6 +158,16 @@ export function App() {
                 <MyCenterPage currentUser={currentUser} />
               ) : (
                 <Navigate to="/roadmap" replace />
+              )
+            }
+          />
+          <Route
+            path="/management/*"
+            element={
+              currentUser?.role === 'OPERATOR' ? (
+                <ManagementPage />
+              ) : (
+                <Navigate to="/volunteer" replace />
               )
             }
           />

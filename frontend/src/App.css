@@ -294,6 +294,281 @@
   }
 }
 
+.management-page {
+  width: min(1460px, calc(100% - 96px));
+  margin: 0 auto 96px;
+  border-top: 3px solid #111;
+  color: #111;
+}
+
+.management-heading {
+  padding: 42px 4px 34px;
+}
+
+.management-heading p {
+  margin: 0 0 12px;
+  color: #ff4038;
+  font-weight: 900;
+}
+
+.management-heading h2 {
+  margin: 0;
+  font-size: clamp(52px, 8vw, 112px);
+  line-height: .9;
+  letter-spacing: -0.07em;
+}
+
+.management-heading span {
+  display: block;
+  margin-top: 24px;
+  color: #666;
+  font-weight: 700;
+}
+
+.management-tabs,
+.management-subtabs {
+  display: flex;
+  gap: 28px;
+  border-top: 2px solid #111;
+  border-bottom: 1px solid #111;
+  padding: 0 24px;
+}
+
+.management-tabs button,
+.management-subtabs button {
+  border: 0;
+  border-bottom: 4px solid transparent;
+  background: transparent;
+  padding: 22px 4px 18px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.management-tabs button.active,
+.management-subtabs button.active {
+  border-bottom-color: #111;
+}
+
+.management-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  padding-top: 36px;
+}
+
+.approval-panel {
+  border: 1px solid #ccc;
+}
+
+.approval-panel h3 {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 22px 24px;
+  border-bottom: 2px solid #111;
+}
+
+.approval-panel h3 span {
+  color: #777;
+  font-size: 14px;
+}
+
+.approval-panel > p {
+  padding: 42px 24px;
+  color: #777;
+}
+
+.approval-panel article,
+.operator-content-list article {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  border-bottom: 1px solid #ddd;
+}
+
+.approval-panel article > div:first-child,
+.operator-content-list article > div {
+  display: grid;
+  gap: 7px;
+}
+
+.approval-panel article span,
+.operator-content-list article span {
+  color: #666;
+  font-size: 14px;
+}
+
+.approval-panel button,
+.operator-content-list button,
+.operator-editor button {
+  border: 0;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  padding: 11px 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.approval-panel button.outline {
+  margin-left: 8px;
+  border: 1px solid #111;
+  background: #fff;
+  color: #111;
+}
+
+.management-alert {
+  margin: 24px 0 0;
+  padding: 14px 18px;
+  background: #eaf8f0;
+  color: #168052;
+  font-weight: 800;
+}
+
+.management-alert.error {
+  background: #fff0ef;
+  color: #d9342c;
+}
+
+.management-content {
+  padding-top: 32px;
+}
+
+.operator-content-list {
+  border-top: 1px solid #ddd;
+}
+
+.operator-content-list article {
+  cursor: pointer;
+  min-height: 72px;
+}
+
+.document-browser {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) minmax(300px, 1.5fr);
+  min-height: 500px;
+  margin-top: 34px;
+  border: 1px solid #bbb;
+}
+
+.document-level,
+.document-preview {
+  padding: 24px;
+  border-right: 1px solid #ddd;
+}
+
+.document-level h3,
+.document-preview h3 {
+  margin: 0 0 20px;
+}
+
+.document-level button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #ddd;
+  background: transparent;
+  padding: 14px 4px;
+  text-align: left;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.document-level button.active {
+  color: #ff4038;
+}
+
+.document-preview {
+  border-right: 0;
+}
+
+.document-preview p {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  color: #555;
+}
+
+.document-preview li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.operator-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, .55);
+}
+
+.operator-editor {
+  width: min(720px, 100%);
+  padding: 28px;
+  background: #fff;
+}
+
+.operator-editor > div:first-child,
+.operator-editor-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.operator-editor label {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  font-weight: 900;
+}
+
+.operator-editor input,
+.operator-editor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #bbb;
+  padding: 14px;
+  font: inherit;
+}
+
+.operator-editor textarea {
+  min-height: 240px;
+  resize: vertical;
+}
+
+.operator-editor-actions {
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.operator-editor button.danger {
+  background: #ff4038;
+}
+
+@media (max-width: 900px) {
+  .management-page {
+    width: calc(100% - 32px);
+  }
+
+  .management-sections,
+  .document-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .document-level,
+  .document-preview {
+    border-right: 0;
+    border-bottom: 1px solid #ddd;
+  }
+}
+
 .ticks {
   position: relative;
   width: 100%;

@@ -301,10 +301,44 @@ const mapApplication = (
   ],
 });
 
+function CenterApplicationLevel({
+  step,
+  title,
+  empty,
+  items,
+  selectedId,
+  onSelect,
+}: {
+  step: string;
+  title: string;
+  empty: string;
+  items: Array<{ id: string; label: string; meta?: string }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <section className="operator-document-level">
+      <div><span>{step}</span><h3>{title}</h3></div>
+      {items.length === 0 ? <p>{empty}</p> : items.map((item) => (
+        <button
+          type="button"
+          key={item.id}
+          className={item.id === selectedId ? 'active' : ''}
+          onClick={() => onSelect(item.id)}
+        >
+          <strong>{item.label}</strong>
+          {item.meta && <span>{item.meta}</span>}
+        </button>
+      ))}
+    </section>
+  );
+}
+
 export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const route = useParams()['*'] ?? '';
   const [managedCenters, setManagedCenters] = useState<ManagedCenter[]>([]);
+  const [centersLoading, setCentersLoading] = useState(true);
   const [selectedCenter, setSelectedCenter] = useState<ManagedCenter | null>(null);
   const [activeTab, setActiveTab] = useState<CenterTab>('posts');
   const [postManagerTab, setPostManagerTab] = useState<PostManagerTab>('edit');
@@ -312,6 +346,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const [applicants, setApplicants] = useState<CenterApplicant[]>([]);
   const [editingPost, setEditingPost] = useState<CenterPost | null>(null);
   const [viewingApplicant, setViewingApplicant] = useState<CenterApplicant | null>(null);
+  const [applicationPostId, setApplicationPostId] = useState<number | null>(null);
+  const [applicationPublicId, setApplicationPublicId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [creatingPost, setCreatingPost] = useState(false);
   const [newPost, setNewPost] = useState({
@@ -350,6 +386,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
       } catch (error) {
         setNotice(error instanceof Error ? error.message : '센터 정보를 불러오지 못했습니다.');
         setManagedCenters([]);
+      } finally {
+        setCentersLoading(false);
       }
     };
     loadCenters();
@@ -383,6 +421,17 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
     () => applicants.filter((applicant) => applicant.centerId === selectedCenter?.id),
     [applicants, selectedCenter],
   );
+  const applicationPostApplicants = useMemo(
+    () => centerApplicants.filter((applicant) => applicant.postId === applicationPostId),
+    [applicationPostId, centerApplicants],
+  );
+  const selectedApplication = useMemo(
+    () =>
+      applicationPostApplicants.find(
+        (applicant) => applicant.publicId === applicationPublicId,
+      ) ?? null,
+    [applicationPostApplicants, applicationPublicId],
+  );
   const postApplicants = useMemo(
     () => applicants.filter((applicant) => applicant.postId === editingPost?.id),
     [applicants, editingPost],
@@ -406,6 +455,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
 
     const center = managedCenters.find((item) => String(item.id) === centerId);
     if (!center) {
+      if (centersLoading) return;
       navigate('/my-centers', { replace: true });
       return;
     }
@@ -452,18 +502,26 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
 
     if (section === 'applications') {
       setActiveTab('applicants');
-      const applicant = entityId
-        ? applicants.find(
-            (item) => item.centerId === center.id && item.publicId === entityId,
-          )
-        : null;
-      setViewingApplicant(applicant ?? null);
+      const numericPostId = entityId ? Number(entityId) : null;
+      const legacyApplicant =
+        entityId && Number.isNaN(numericPostId)
+          ? applicants.find(
+              (item) => item.centerId === center.id && item.publicId === entityId,
+            )
+          : null;
+      setApplicationPostId(
+        legacyApplicant?.postId ?? (numericPostId && !Number.isNaN(numericPostId) ? numericPostId : null),
+      );
+      setApplicationPublicId(legacyApplicant?.publicId ?? subSection ?? null);
+      setViewingApplicant(null);
       return;
     }
 
     setActiveTab('posts');
+    setApplicationPostId(null);
+    setApplicationPublicId(null);
     setViewingApplicant(null);
-  }, [applicants, managedCenters, navigate, posts, route]);
+  }, [applicants, centersLoading, managedCenters, navigate, posts, route]);
 
   useEffect(() => {
     if (!notice) return;
@@ -1057,12 +1115,12 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           className={activeTab === 'applicants' ? 'active' : ''}
           onClick={() => navigate(`/my-centers/${selectedCenter.id}/applications`)}
         >
-          신청자 목록
+          신청 관리
         </button>
         <span>
           {activeTab === 'posts'
             ? `총 ${centerPosts.length}개 모집글`
-            : `총 ${centerApplicants.length}명 신청자`}
+            : `총 ${centerApplicants.length}건 신청`}
         </span>
       </nav>
 
@@ -1117,74 +1175,109 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           ))}
         </div>
       ) : (
-        <div className="center-applicant-table" role="table" aria-label="센터 신청자 목록">
-          <div className="center-applicant-table-head" role="row">
-            <span role="columnheader">신청자</span>
-            <span role="columnheader">신청 모집글</span>
-            <span role="columnheader">신청일</span>
-            <span role="columnheader">상태</span>
-            <span role="columnheader">제출서류</span>
-            <span role="columnheader" aria-label="승인 관리" />
-          </div>
-          {centerApplicants.map((applicant) => (
-            <section
-              className="center-applicant-row"
-              role="row"
-              key={applicant.id}
-              tabIndex={0}
-              onClick={() =>
-                navigate(`/my-centers/${selectedCenter.id}/applications/${applicant.publicId}`)
+        <section className="operator-document-section center-application-management">
+          <div className="operator-document-flow center-application-flow">
+            <CenterApplicationLevel
+              step="01"
+              title="모집글"
+              empty="등록된 모집글이 없습니다."
+              items={centerPosts.map((post) => ({
+                id: String(post.id),
+                label: post.title,
+                meta: `${post.status} · 신청 ${centerApplicants.filter((item) => item.postId === post.id).length}건`,
+              }))}
+              selectedId={applicationPostId ? String(applicationPostId) : null}
+              onSelect={(id) =>
+                navigate(`/my-centers/${selectedCenter.id}/applications/${id}`)
               }
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  navigate(`/my-centers/${selectedCenter.id}/applications/${applicant.publicId}`);
-                }
-              }}
-            >
-              <div className="center-applicant-name" role="cell">
-                <strong>{applicant.name}</strong>
-                <span>{applicant.email}</span>
+            />
+            <CenterApplicationLevel
+              step="02"
+              title="신청자"
+              empty={
+                applicationPostId
+                  ? '이 모집글에 접수된 신청자가 없습니다.'
+                  : '모집글을 먼저 선택해주세요.'
+              }
+              items={applicationPostApplicants.map((applicant) => ({
+                id: applicant.publicId,
+                label: applicant.name,
+                meta: `${applicant.status} · ${applicant.appliedAt}`,
+              }))}
+              selectedId={applicationPublicId}
+              onSelect={(publicId) =>
+                navigate(
+                  `/my-centers/${selectedCenter.id}/applications/${applicationPostId}/${publicId}`,
+                )
+              }
+            />
+          </div>
+
+          <div className="operator-document-preview">
+            <div className="operator-document-preview-heading">
+              <div>
+                <span>03</span>
+                <h3>신청·제출 서류 확인</h3>
               </div>
-              <span role="cell">{applicant.postTitle}</span>
-              <span role="cell">{applicant.appliedAt}</span>
-              <strong
-                className={`center-applicant-status ${
-                  applicant.status === '승인 완료' ? 'approved' : ''
-                }`}
-                role="cell"
-              >
-                {applicant.status}
-              </strong>
-              <button
-                type="button"
-                className="document-view-button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/my-centers/${selectedCenter.id}/applications/${applicant.publicId}`);
-                }}
-                aria-label={`${applicant.name} 제출서류 보기`}
-              >
-                서류보기
-              </button>
-              {applicant.status === '검토 대기' ? (
-                <button
-                  type="button"
-                  className="applicant-approve-button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    approveApplicant(applicant.publicId);
-                  }}
-                  aria-label={`${applicant.name} 신청 승인`}
-                >
-                  승인
-                </button>
-              ) : (
-                <span className="approval-complete">승인됨</span>
+              {selectedApplication && (
+                <strong>{selectedApplication.status}</strong>
               )}
-            </section>
-          ))}
-        </div>
+            </div>
+            {!selectedApplication ? (
+              <div className="operator-document-empty">
+                모집글과 신청자를 순서대로 선택하면 신청 정보와 제출 서류가 표시됩니다.
+              </div>
+            ) : (
+              <>
+                <div className="operator-applicant-summary">
+                  <div><span>신청자</span><strong>{selectedApplication.name}</strong></div>
+                  <div><span>이메일</span><strong>{selectedApplication.email}</strong></div>
+                  <div><span>신청 모집글</span><strong>{selectedApplication.postTitle}</strong></div>
+                </div>
+                <section className="operator-commitment">
+                  <span>신청 동기·전달사항</span>
+                  <h4>{selectedApplication.name}님의 신청</h4>
+                  <p>{selectedApplication.motivation}</p>
+                </section>
+                <div className="operator-document-list">
+                  {selectedApplication.documents.length === 0 ? (
+                    <div className="center-application-document-empty">
+                      제출된 서류가 없습니다.
+                    </div>
+                  ) : (
+                    selectedApplication.documents.map((document, index) => (
+                      <div key={`${document}-${index}`}>
+                        <span>{String(index + 1).padStart(2, '0')}</span>
+                        <strong>{document}</strong>
+                        <button
+                          type="button"
+                          onClick={() => setNotice(`${document} 열람 화면을 확인했습니다.`)}
+                        >
+                          서류 열람
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="center-application-actions">
+                  <span>
+                    신청일 {selectedApplication.appliedAt} · 연락처 {selectedApplication.phone}
+                  </span>
+                  {selectedApplication.status === '검토 대기' ? (
+                    <button
+                      type="button"
+                      onClick={() => approveApplicant(selectedApplication.publicId)}
+                    >
+                      신청 승인
+                    </button>
+                  ) : (
+                    <strong>승인 완료</strong>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
       )}
       {notice && <div className="center-notice">{notice}</div>}
     </article>

@@ -83,6 +83,16 @@ public class OpportunityRepository {
         );
     }
 
+    public List<OpportunityResponse> findAllForOperator() {
+        return jdbcTemplate.query(
+                SELECT + """
+                        WHERE o.is_deleted = FALSE
+                        ORDER BY o.updated_at DESC, o.created_at DESC
+                        """,
+                this::map
+        );
+    }
+
     public Optional<OpportunityResponse> findPublicById(Long id) {
         return jdbcTemplate.query(
                 SELECT + """
@@ -177,6 +187,23 @@ public class OpportunityRepository {
         replaceRequiredDocuments(id, request.requiredDocuments());
     }
 
+    public int softDelete(Long id, String deletedBy) {
+        return jdbcTemplate.update("""
+                UPDATE opportunities
+                SET is_deleted = TRUE, deleted_at = CURRENT_TIMESTAMP,
+                    deleted_by = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND is_deleted = FALSE
+                """, deletedBy, id);
+    }
+
+    public boolean isCreatedBy(Long id, Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM opportunities
+                WHERE id = ? AND created_by = ? AND is_deleted = FALSE
+                """, Integer.class, id, userId);
+        return count != null && count > 0;
+    }
+
     public int transitionStatus(Long id, List<String> from, String to) {
         String placeholders = String.join(",", java.util.Collections.nCopies(from.size(), "?"));
         List<Object> args = new ArrayList<>();
@@ -267,6 +294,7 @@ public class OpportunityRepository {
                 rs.getString("status"),
                 rs.getLong("applicant_count"),
                 requiredDocuments(id),
+                nullableLong(rs.getObject("created_by")),
                 localDateTime(rs.getTimestamp("published_at")),
                 localDateTime(rs.getTimestamp("created_at"))
         );

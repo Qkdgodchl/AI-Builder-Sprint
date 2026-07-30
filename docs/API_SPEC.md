@@ -333,11 +333,11 @@ Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | POST | `/organization-applications` | CENTER_MANAGER | 센터 등록 신청 |
-| [ ] | [ ] | [ ] | GET | `/organization-applications/me` | CENTER_MANAGER | 내 센터 등록 요청 |
-| [ ] | [ ] | [ ] | GET | `/operator/organization-applications` | OPERATOR | 센터 요청 목록 |
-| [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/approve` | OPERATOR | 센터 승인 |
-| [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/reject` | OPERATOR | 센터 거절 |
+| [x] | [x] | [x] | POST | `/organization-applications` | CENTER_MANAGER | 센터 등록 신청 |
+| [x] | [x] | [x] | GET | `/organization-applications/me` | CENTER_MANAGER | 내 센터 등록 요청 |
+| [x] | [x] | [x] | GET | `/operator/organization-applications` | OPERATOR | 센터 요청 목록 |
+| [x] | [x] | [x] | POST | `/operator/organization-applications/{id}/approve` | OPERATOR | 센터 승인 |
+| [x] | [x] | [x] | POST | `/operator/organization-applications/{id}/reject` | OPERATOR | 센터 거절 |
 | [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/request-revision` | OPERATOR | 보완 요청 |
 | [x] | [x] | [x] | GET | `/organizations/{id}` | Public | 승인 센터 상세 |
 | [x] | [x] | [x] | GET | `/manager/organizations` | CENTER_MANAGER | 내가 관리하는 센터 |
@@ -349,15 +349,14 @@ Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`
 ```json
 {
   "name": "부산희망봉사센터",
-  "type": "NON_PROFIT",
+  "organizationType": "NON_PROFIT",
   "registrationNumber": "123-45-67890",
+  "representativeName": "권윤재",
+  "phone": "051-123-4567",
+  "email": "center@example.org",
   "address": "부산광역시 금정구 ...",
-  "contact": "051-123-4567",
-  "managerName": "권윤재",
   "description": "지역 봉사 프로그램을 운영합니다.",
-  "homepageUrl": "https://example.org",
-  "evidenceFileId": 902,
-  "canIssueDonationReceipt": true
+  "evidenceFileId": 902
 }
 ```
 
@@ -373,9 +372,9 @@ Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`
 - 다른 센터 관리자가 ID를 바꿔 수정·대시보드 조회 → `403`
 - `SUSPENDED`, `DELETED` 센터의 관리자 기능 → `403` 또는 `409`
 
-현재 MVP에서는 관리자 권한 신청에 센터 기본 정보와 증빙을 함께 받고, 운영진이 관리자
-신청을 승인할 때 `organizations`와 `organization_managers`를 한 트랜잭션으로 생성한다.
-따라서 별도 `/organization-applications` API는 아직 구현하지 않았고 체크하지 않는다.
+첫 센터는 관리자 권한 승인 시 함께 생성한다. 추가 센터는
+`/organization-applications`로 신청하며, 운영진 승인 시 `organizations`와
+`organization_managers`가 한 트랜잭션으로 생성된다.
 
 ---
 
@@ -395,6 +394,7 @@ Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`
 |---|---|---|---|---|---|---|
 | [x] | [x] | [x] | GET | `/opportunities` | Public | 공개 모집글 검색·필터 |
 | [x] | [x] | [x] | GET | `/opportunities/{opportunityId}` | Public | 공개 모집글 상세 |
+| [x] | [x] | [x] | DELETE | `/opportunities/{opportunityId}` | 작성자 또는 OPERATOR | 일반 목록·상세 화면에서 모집글 소프트 삭제 |
 | [x] | [x] | [x] | POST | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 모집글 초안 작성 |
 | [x] | [x] | [x] | GET | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 센터 모집글 목록 |
 | [x] | [x] | [x] | GET | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 비공개 포함 상세 |
@@ -402,7 +402,17 @@ Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`
 | [x] | [x] | [x] | POST | `/manager/opportunities/{opportunityId}/publish` | 해당 센터 관리자 | 모집글 공개 |
 | [x] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/close` | 해당 센터 관리자 | 모집 마감 |
 | [x] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/cancel` | 해당 센터 관리자 | 모집 취소 |
-| [ ] | [ ] | [ ] | DELETE | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 소프트 삭제 |
+| [x] | [x] | [x] | GET | `/operator/opportunities` | OPERATOR | 전체 모집글 관리 목록 |
+| [x] | [x] | [x] | GET | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 관리 상세 |
+| [x] | [x] | [x] | PATCH | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 강제 수정 |
+| [x] | [x] | [x] | DELETE | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 소프트 삭제 |
+
+삭제 권한 테스트:
+
+- 성공: 모집글 작성자 토큰 또는 운영진 토큰으로 삭제하면 `200`
+- 권한 실패: 작성자가 아닌 일반 사용자 토큰이면 `403`
+- 인증 실패: 토큰이 없거나 유효하지 않으면 `401`
+- 대상 없음: 존재하지 않거나 이미 삭제된 모집글이면 `404`
 
 목록 필터:
 
@@ -452,7 +462,7 @@ GET /api/v1/opportunities
 - 날짜 역전, 정원 0, 필수 문서 유형 오류 → `400`
 - 필수값 완성된 초안 공개 → `200`, 상태 `PUBLISHED`
 - 필수값 누락·이미 삭제된 글 공개 → `409`
-- 운영진 삭제 → `204`, `isDeleted`, 삭제자·시각·사유·감사 로그 저장
+- 운영진 삭제 → `200`, `isDeleted`, 삭제자·시각·감사 로그 저장
 - 일반 목록과 상세에서 삭제 즉시 제외 확인
 
 ---
@@ -811,12 +821,19 @@ Idempotency-Key: commitment-72-version-1
 | [ ] | [ ] | [ ] | POST | `/community/posts` | USER | 게시글 작성 |
 | [ ] | [ ] | [ ] | GET | `/community/posts/{id}` | Public | 게시글 상세 |
 | [ ] | [ ] | [ ] | PATCH | `/community/posts/{id}` | 작성자 | 게시글 수정 |
-| [ ] | [ ] | [ ] | DELETE | `/community/posts/{id}` | 작성자 | 게시글 삭제 |
+| [x] | [x] | [x] | DELETE | `/api/posts/{id}` | 작성자 또는 OPERATOR | 현재 커뮤니티 목록·상세 화면에서 게시글 소프트 삭제 |
 | [ ] | [ ] | [ ] | POST | `/community/posts/{id}/reactions` | USER | 응원 추가·취소 |
 | [ ] | [ ] | [ ] | GET | `/community/posts/{id}/comments` | Public | 댓글 목록 |
 | [ ] | [ ] | [ ] | POST | `/community/posts/{id}/comments` | USER | 댓글 작성 |
 | [ ] | [ ] | [ ] | DELETE | `/community/comments/{id}` | 작성자 | 댓글 삭제 |
 | [ ] | [ ] | [ ] | POST | `/community/posts/{id}/reports` | USER | 게시글 신고 |
+
+커뮤니티 삭제 권한 테스트:
+
+- 성공: 게시글 작성자 토큰 또는 운영진 토큰으로 삭제하면 `200`
+- 권한 실패: 작성자가 아닌 일반 사용자 토큰이면 `403`
+- 인증 실패: 토큰이 없거나 유효하지 않으면 `401`
+- 대상 없음: 존재하지 않거나 이미 삭제된 게시글이면 `404`
 | [ ] | [ ] | [ ] | POST | `/community/comments/{id}/reports` | USER | 댓글 신고 |
 | [ ] | [ ] | [ ] | POST | `/activity-records/{id}/community-draft` | 활동 소유자 | AI 후기 초안 생성 |
 
@@ -859,7 +876,9 @@ Idempotency-Key: commitment-72-version-1
 | [ ] | [ ] | [ ] | GET | `/operator/organizations` | OPERATOR | 전체 센터 조회 |
 | [ ] | [ ] | [ ] | POST | `/operator/organizations/{id}/suspend` | OPERATOR | 센터 정지 |
 | [ ] | [ ] | [ ] | POST | `/operator/organizations/{id}/restore` | OPERATOR | 센터 복구 |
-| [ ] | [ ] | [ ] | DELETE | `/operator/community/posts/{id}` | OPERATOR | 커뮤니티 글 소프트 삭제 |
+| [x] | [x] | [x] | GET | `/operator/community/posts` | OPERATOR | 커뮤니티 관리 목록 |
+| [x] | [x] | [x] | PATCH | `/operator/community/posts/{id}` | OPERATOR | 커뮤니티 글 강제 수정 |
+| [x] | [x] | [x] | DELETE | `/operator/community/posts/{id}` | OPERATOR | 커뮤니티 글 소프트 삭제 |
 | [ ] | [ ] | [ ] | DELETE | `/operator/community/comments/{id}` | OPERATOR | 댓글 소프트 삭제 |
 | [ ] | [ ] | [ ] | GET | `/operator/reports` | OPERATOR | 신고 목록·필터 |
 | [ ] | [ ] | [ ] | POST | `/operator/reports/{id}/resolve` | OPERATOR | 신고 처리 |
@@ -879,13 +898,30 @@ Idempotency-Key: commitment-72-version-1
 - 사용자 정지 → `200`, 이후 로그인·보호 API 접근 차단
 - 센터 정지 → `200`, 공개 모집글 목록에서 즉시 제외, 새 모집글 작성 차단
 - 복구 → `200`, 복구 가능한 이전 상태만 회복
-- 게시글·댓글 삭제 → `204`, `isDeleted`, 삭제자·시각·사유 저장
+- 게시글 삭제 → `200`, `isDeleted`, 삭제자·시각 저장
 - 삭제 후 목록·검색·상세 → `404`
 - 모든 운영 작업에 `AdminAuditLog` 생성
 - 이유 누락 → `400`
 - 이미 삭제·정지된 대상 재처리 → `409`
 - 존재하지 않는 대상 → `404`
 - 운영진이 자기 계정 또는 마지막 최고 운영진을 정지하는 위험 작업은 정책에 따라 `409`
+
+### 15.2 전체 제출 서류 조회
+
+| 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
+|---|---|---|---|---|---|---|
+| [x] | [x] | [x] | GET | `/operator/documents` | OPERATOR | 전체 신청·약정·필수서류 목록 |
+| [x] | [x] | [x] | GET | `/operator/documents/{applicationPublicId}` | OPERATOR | 신청자별 제출 서류 상세 |
+
+운영 화면에서는 응답을 `organizationId → opportunityId → applicantUserId` 순서로 묶어
+`센터 → 모집글 → 신청자 → 약정서·필수서류` 흐름으로 표시한다.
+
+테스트 방법:
+
+- 운영진 전체 조회 → `200`, 센터·모집글·신청자와 약정 내용 포함
+- 센터 관리자 또는 일반 사용자 조회 → `403`
+- 존재하지 않는 신청 공개 ID 상세 → `404`
+- 숫자 내부 PK가 아닌 신청 `publicId(UUID)`를 상세 주소에 사용
 
 ---
 

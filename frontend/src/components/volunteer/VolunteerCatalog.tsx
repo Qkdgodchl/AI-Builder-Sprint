@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { VolunteerItem } from '../../types';
-import { fetchVolunteers } from '../../services/volunteerApi';
+import type { SessionUser, VolunteerItem } from '../../types';
+import { deleteOpportunity, fetchVolunteers } from '../../services/volunteerApi';
 import { OpportunityDetail } from './OpportunityDetail';
 import { ClmApplicationPreparation } from './ClmApplicationPreparation';
 
@@ -43,7 +43,12 @@ const getProgramLabel = (programType: ProgramType) => {
 
 const removeLeadingSymbol = (title: string) => title.replace(/^[^가-힣A-Za-z0-9]+/, '');
 
-export const VolunteerCatalog: React.FC = () => {
+interface VolunteerCatalogProps {
+  currentUser: SessionUser | null;
+  showToast: (message: string) => void;
+}
+
+export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser, showToast }) => {
   const [items, setItems] = useState<VolunteerItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [primaryFilter, setPrimaryFilter] = useState<PrimaryFilter>(null);
@@ -122,6 +127,24 @@ export const VolunteerCatalog: React.FC = () => {
     if (filter !== 'DONATION') setDonationFilter('ALL');
   };
 
+  const canDeleteItem = (item: CatalogItem) =>
+    Boolean(
+      currentUser &&
+        (currentUser.role === 'OPERATOR' || currentUser.id === item.createdByUserId),
+    );
+
+  const handleDeleteItem = async (item: CatalogItem) => {
+    if (!window.confirm(`"${item.title}" 프로그램을 삭제하시겠습니까?`)) return;
+    try {
+      await deleteOpportunity(item.id);
+      setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+      navigate('/volunteer');
+      showToast('프로그램을 삭제했습니다.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '프로그램 삭제에 실패했습니다.');
+    }
+  };
+
   if (selectedItem && isApplicationRoute) {
     return (
       <ClmApplicationPreparation
@@ -133,11 +156,14 @@ export const VolunteerCatalog: React.FC = () => {
   }
 
   if (selectedItem) {
+    const canDelete = canDeleteItem(selectedItem);
     return (
       <OpportunityDetail
         item={selectedItem}
         onBack={() => navigate('/volunteer')}
         onApply={() => navigate(`/volunteer/${selectedItem.id}/apply`)}
+        canDelete={canDelete}
+        onDelete={() => void handleDeleteItem(selectedItem)}
       />
     );
   }
@@ -248,17 +274,32 @@ export const VolunteerCatalog: React.FC = () => {
               <span className="opportunity-status" role="cell">
                 {item.availability}
               </span>
-              <button
-                type="button"
-                className="opportunity-action"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/volunteer/${item.id}`);
-                }}
-                aria-label={`${item.title} 상세 보기 및 신청`}
-              >
-                상세보기
-              </button>
+              <div className="opportunity-row-actions" role="cell">
+                <button
+                  type="button"
+                  className="opportunity-action"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/volunteer/${item.id}`);
+                  }}
+                  aria-label={`${item.title} 상세 보기 및 신청`}
+                >
+                  상세보기
+                </button>
+                {canDeleteItem(item) && (
+                  <button
+                    type="button"
+                    className="content-list-delete-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleDeleteItem(item);
+                    }}
+                    aria-label={`${item.title} 삭제`}
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </article>
           ))}
         </div>

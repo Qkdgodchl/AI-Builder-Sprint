@@ -115,6 +115,115 @@ public class ManagementRepository {
                 """, status, operatorId, reason, publicId);
     }
 
+    public boolean hasPendingOrganizationApplication(Long userId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM organization_applications
+                WHERE applicant_user_id = ? AND status = 'PENDING'
+                """, Integer.class, userId);
+        return count != null && count > 0;
+    }
+
+    public String createOrganizationApplication(Long userId, OrganizationApplicationRequest request) {
+        String publicId = java.util.UUID.randomUUID().toString();
+        jdbcTemplate.update("""
+                INSERT INTO organization_applications (
+                    public_id, applicant_user_id, name, organization_type,
+                    registration_number, representative_name, phone, email,
+                    address, description, proof_file_id, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                """,
+                publicId,
+                userId,
+                request.name().trim(),
+                request.organizationType().trim().toUpperCase(),
+                blankToNull(request.registrationNumber()),
+                request.representativeName().trim(),
+                blankToNull(request.phone()),
+                blankToNull(request.email()),
+                blankToNull(request.address()),
+                blankToNull(request.description()),
+                request.evidenceFileId()
+        );
+        return publicId;
+    }
+
+    public List<OrganizationApplicationResponse> findOrganizationApplicationsByUser(Long userId) {
+        return queryOrganizationApplications(
+                "WHERE oa.applicant_user_id = ? ORDER BY oa.created_at DESC",
+                userId
+        );
+    }
+
+    public List<OrganizationApplicationResponse> findOrganizationApplications(String status) {
+        if (status == null || status.isBlank()) {
+            return queryOrganizationApplications("ORDER BY oa.created_at DESC");
+        }
+        return queryOrganizationApplications(
+                "WHERE oa.status = ? ORDER BY oa.created_at DESC",
+                status.toUpperCase()
+        );
+    }
+
+    public Optional<OrganizationApplicationResponse> findOrganizationApplication(String publicId) {
+        return queryOrganizationApplications("WHERE oa.public_id = ?", publicId).stream().findFirst();
+    }
+
+    public void decideOrganizationApplication(
+            String publicId,
+            String status,
+            Long operatorId,
+            String reason
+    ) {
+        jdbcTemplate.update("""
+                UPDATE organization_applications
+                SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP,
+                    rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE public_id = ? AND status = 'PENDING'
+                """, status, operatorId, reason, publicId);
+    }
+
+    public Long createOrganizationForApprovedApplication(OrganizationApplicationResponse application) {
+        List<Long> existing = jdbcTemplate.query("""
+                SELECT o.id
+                FROM organizations o
+                JOIN organization_applications oa ON oa.id = o.source_application_id
+                WHERE oa.public_id = ? AND o.is_deleted = FALSE
+                """, (rs, rowNum) -> rs.getLong(1), application.publicId());
+        if (!existing.isEmpty()) {
+            return existing.get(0);
+        }
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO organizations (
+                        source_application_id, name, organization_type, registration_number,
+                        representative_name, phone, email, address, description,
+                        verification_status, created_at
+                    )
+                    SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, 'VERIFIED', CURRENT_TIMESTAMP
+                    FROM organization_applications
+                    WHERE public_id = ?
+                    """, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, application.name());
+            statement.setString(2, application.organizationType());
+            statement.setString(3, application.registrationNumber());
+            statement.setString(4, application.representativeName());
+            statement.setString(5, application.phone());
+            statement.setString(6, application.email());
+            statement.setString(7, application.address());
+            statement.setString(8, application.description());
+            statement.setString(9, application.publicId());
+            return statement;
+        }, keyHolder);
+        Long organizationId = keyHolder.getKey().longValue();
+        jdbcTemplate.update("""
+                INSERT INTO organization_managers (organization_id, user_id, manager_role)
+                VALUES (?, ?, 'OWNER')
+                """, organizationId, application.applicantUserId());
+        return organizationId;
+    }
+
     public Long ensureOrganizationForApprovedApplication(ManagerApplicationResponse application) {
         List<Long> existing = jdbcTemplate.query("""
                 SELECT om.organization_id
@@ -259,6 +368,38 @@ public class ManagementRepository {
                 rs.getString("planned_center_name"),
                 rs.getString("status"),
                 rs.getString("rejection_reason"),
+                toLocalDateTime(rs.getTimestamp("created_at")),
+                toLocalDateTime(rs.getTimestamp("reviewed_at"))
+        ), args);
+    }
+
+    private List<OrganizationApplicationResponse> queryOrganizationApplications(
+            String suffix,
+            Object... args
+    ) {
+        String sql = """
+                SELECT oa.*, u.email AS applicant_email, o.id AS created_organization_id
+                FROM organization_applications oa
+                JOIN users u ON u.id = oa.applicant_user_id
+                LEFT JOIN organizations o
+                  ON o.source_application_id = oa.id AND o.is_deleted = FALSE
+                """ + suffix;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new OrganizationApplicationResponse(
+                rs.getString("public_id"),
+                rs.getLong("applicant_user_id"),
+                rs.getString("applicant_email"),
+                rs.getString("name"),
+                rs.getString("organization_type"),
+                rs.getString("registration_number"),
+                rs.getString("representative_name"),
+                rs.getString("phone"),
+                rs.getString("email"),
+                rs.getString("address"),
+                rs.getString("description"),
+                nullableLong(rs.getObject("proof_file_id")),
+                rs.getString("status"),
+                rs.getString("rejection_reason"),
+                nullableLong(rs.getObject("created_organization_id")),
                 toLocalDateTime(rs.getTimestamp("created_at")),
                 toLocalDateTime(rs.getTimestamp("reviewed_at"))
         ), args);

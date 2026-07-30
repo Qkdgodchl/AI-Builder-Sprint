@@ -41,17 +41,22 @@ export const Header: React.FC<HeaderProps> = ({
   if (currentUser?.role === 'CENTER_MANAGER') {
     navigation.push({ label: 'MY CENTER', path: '/my-centers' });
   }
+  if (currentUser?.role === 'OPERATOR') {
+    navigation.push({ label: 'MANAGEMENT', path: '/management' });
+  }
 
   const usesContentDivider =
     location.pathname.startsWith('/volunteer') ||
     location.pathname.startsWith('/manager-application') ||
     location.pathname.startsWith('/my-centers') ||
+    location.pathname.startsWith('/management') ||
     location.pathname.startsWith('/my-page');
 
   const isPathActive = (path: string) => {
     if (path === '/community') return location.pathname.startsWith('/community');
     if (path === '/volunteer') return location.pathname.startsWith('/volunteer');
     if (path === '/my-centers') return location.pathname.startsWith('/my-centers');
+    if (path === '/management') return location.pathname.startsWith('/management');
     return location.pathname === path;
   };
 

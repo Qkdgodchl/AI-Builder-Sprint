@@ -9,6 +9,7 @@ export interface VolunteerItem {
   targetAmount?: number;
   currentAmount?: number;
   tags: string[];
+  createdByUserId?: number;
 }
 
 export interface PixelDiaryItem {

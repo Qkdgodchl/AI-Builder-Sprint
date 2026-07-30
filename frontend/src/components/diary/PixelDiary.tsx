@@ -3,13 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { PostItem } from '../../services/communityApi';
 import { fetchPosts, createPost, likePost, deletePost } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
+import type { SessionUser } from '../../types';
 
 interface PixelDiaryProps {
   onAddDiary: (tempIncrease: number) => void;
   showToast: (message: string) => void;
+  currentUser: SessionUser | null;
 }
 
-export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast }) => {
+export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, currentUser }) => {
   const navigate = useNavigate();
   const { id: urlPostId } = useParams<{ id?: string }>();
 
@@ -126,6 +128,12 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
     }
   };
 
+  const canDeletePost = (post: PostItem) =>
+    Boolean(
+      currentUser &&
+        (currentUser.role === 'OPERATOR' || currentUser.id === post.authorUserId),
+    );
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     playBeep(520, 0.1);
@@ -169,6 +177,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
   // [상세 보기 UI]
   if (selectedPost) {
+    const canDelete = canDeletePost(selectedPost);
     const likesCount = selectedPost.likeCount ?? (selectedPost as any).likes ?? 0;
     const viewsCount = selectedPost.viewCount ?? (selectedPost as any).views ?? 0;
     const textContent = selectedPost.content || selectedPost.contentSnippet || '';
@@ -181,14 +190,15 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
           <button type="button" className="detail-back-button" onClick={() => navigate('/community')}>
             목록으로 돌아가기
           </button>
-          <button
-            type="button"
-            className="detail-back-button"
-            style={{ color: '#ff3b30', fontWeight: 'bold' }}
-            onClick={() => handleDeletePost(selectedPost.id)}
-          >
-            🗑️ 게시글 삭제
-          </button>
+          {canDelete && (
+            <button
+              type="button"
+              className="content-delete-button"
+              onClick={() => handleDeletePost(selectedPost.id)}
+            >
+              게시글 삭제
+            </button>
+          )}
         </div>
 
         <header className="detail-hero">
@@ -457,17 +467,33 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast })
 
                 {/* Col 6: [상세보기] 버튼 (헤더 '상세 보기' 중앙 수직선 100% 일치) */}
                 <div
-                  style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '64px', padding: 0, margin: 0 }}
+                  className="opportunity-row-actions"
+                  style={{ height: '64px', padding: 0, margin: 0 }}
                   role="cell"
                 >
                   <button
                     type="button"
                     className="opportunity-action"
                     style={{ width: '92px', height: '36px', fontSize: '12px', fontWeight: 'bold', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px' }}
-                    onClick={() => navigate(`/community/posts/${post.id}`)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/community/posts/${post.id}`);
+                    }}
                   >
                     상세보기
                   </button>
+                  {canDeletePost(post) && (
+                    <button
+                      type="button"
+                      className="content-list-delete-button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDeletePost(post.id);
+                      }}
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
               </article>
             );

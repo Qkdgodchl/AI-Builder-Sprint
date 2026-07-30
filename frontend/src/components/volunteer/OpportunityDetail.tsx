@@ -10,6 +10,8 @@ interface OpportunityDetailProps {
   item: DetailItem;
   onBack: () => void;
   onApply: () => void;
+  canDelete: boolean;
+  onDelete: () => void;
 }
 
 const descriptions: Record<string, string> = {
@@ -54,6 +56,8 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
   item,
   onBack,
   onApply,
+  canDelete,
+  onDelete,
 }) => {
   const programNotices = notices[item.programType] ?? notices.DEFAULT;
   const isVolunteer = item.category === 'VOLUNTEER';
@@ -64,6 +68,11 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
         <button type="button" className="detail-back-button" onClick={onBack}>
           목록으로 돌아가기
         </button>
+        {canDelete && (
+          <button type="button" className="content-delete-button" onClick={onDelete}>
+            프로그램 삭제
+          </button>
+        )}
       </div>
 
       <header className="detail-hero">

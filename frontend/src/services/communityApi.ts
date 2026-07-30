@@ -6,6 +6,7 @@ export interface Author {
 
 export interface PostItem {
   id: number;
+  authorUserId?: number;
   author: Author | string;
   category: string;
   title: string;
@@ -21,6 +22,11 @@ export interface PostItem {
 }
 
 const API_BASE_URL = 'http://localhost:8080/api/posts';
+
+const normalizePost = (post: any): PostItem => ({
+  ...post,
+  author: post.author ?? post.authorNickname ?? '작성자 미등록',
+});
 
 /**
  * 백엔드 REST API에서 커뮤니티 게시글 목록 조회
@@ -47,10 +53,10 @@ export const fetchPosts = async (category?: string, sort: string = 'latest'): Pr
     
     if (result.success && result.data) {
       if (Array.isArray(result.data.content)) {
-        return result.data.content;
+        return result.data.content.map(normalizePost);
       }
       if (Array.isArray(result.data)) {
-        return result.data;
+        return result.data.map(normalizePost);
       }
     }
     
@@ -82,6 +88,9 @@ export const createPost = async (payload: CreatePostPayload): Promise<PostItem |
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(localStorage.getItem('pixel-care-access-token')
+          ? { Authorization: `Bearer ${localStorage.getItem('pixel-care-access-token')}` }
+          : {}),
       },
       body: JSON.stringify({
         title: payload.title,
@@ -97,7 +106,7 @@ export const createPost = async (payload: CreatePostPayload): Promise<PostItem |
     }
 
     const result = await response.json();
-    return result.data || null;
+    return result.data ? normalizePost(result.data) : null;
   } catch (error) {
     console.error('게시글 작성 오류:', error);
     return null;
@@ -113,6 +122,9 @@ export const deletePost = async (id: number): Promise<boolean> => {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
+        ...(localStorage.getItem('pixel-care-access-token')
+          ? { Authorization: `Bearer ${localStorage.getItem('pixel-care-access-token')}` }
+          : {}),
       },
     });
 

@@ -1,11 +1,13 @@
 package com.pixelcare.domain.opportunity.service;
 
 import com.pixelcare.domain.management.service.ManagementService;
+import com.pixelcare.domain.management.repository.OperatorAuditRepository;
 import com.pixelcare.domain.opportunity.dto.OpportunityRequest;
 import com.pixelcare.domain.opportunity.dto.OpportunityResponse;
 import com.pixelcare.domain.opportunity.repository.OpportunityRepository;
 import com.pixelcare.global.common.PageResponse;
 import com.pixelcare.global.error.ApiException;
+import com.pixelcare.global.auth.CurrentUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +28,16 @@ public class OpportunityService {
 
     private final OpportunityRepository repository;
     private final ManagementService managementService;
+    private final OperatorAuditRepository auditRepository;
 
     public OpportunityService(
             OpportunityRepository repository,
-            ManagementService managementService
+            ManagementService managementService,
+            OperatorAuditRepository auditRepository
     ) {
         this.repository = repository;
         this.managementService = managementService;
+        this.auditRepository = auditRepository;
     }
 
     public PageResponse<OpportunityResponse> search(
@@ -74,6 +79,14 @@ public class OpportunityService {
         return repository.findByOrganization(organizationId);
     }
 
+    public List<OpportunityResponse> operatorList() {
+        return repository.findAllForOperator();
+    }
+
+    public OpportunityResponse operatorDetail(Long id) {
+        return repository.findById(id).orElseThrow(() -> notFound());
+    }
+
     @Transactional
     public OpportunityResponse create(
             Long userId,
@@ -95,6 +108,47 @@ public class OpportunityService {
         validate(request);
         repository.update(id, request);
         return repository.findById(id).orElseThrow();
+    }
+
+    @Transactional
+    public OpportunityResponse operatorUpdate(Long operatorId, Long id, OpportunityRequest request) {
+        operatorDetail(id);
+        validate(request);
+        repository.update(id, request);
+        auditRepository.record(operatorId, "OPPORTUNITY_UPDATE", "OPPORTUNITY", id.toString());
+        return repository.findById(id).orElseThrow();
+    }
+
+    @Transactional
+    public void operatorDelete(Long operatorId, Long id) {
+        operatorDetail(id);
+        if (repository.softDelete(id, "OPERATOR:" + operatorId) == 0) {
+            throw notFound();
+        }
+        auditRepository.record(operatorId, "OPPORTUNITY_DELETE", "OPPORTUNITY", id.toString());
+    }
+
+    @Transactional
+    public void deleteAsUser(CurrentUser user, Long id) {
+        operatorDetail(id);
+        boolean operator = user.hasRole("OPERATOR");
+        boolean author = repository.isCreatedBy(id, user.id());
+        if (!operator && !author) {
+            throw new ApiException(
+                    HttpStatus.FORBIDDEN,
+                    "OPPORTUNITY_DELETE_FORBIDDEN",
+                    "모집글 작성자 또는 운영진만 삭제할 수 있습니다."
+            );
+        }
+        if (repository.softDelete(
+                id,
+                (operator ? "OPERATOR:" : "AUTHOR:") + user.id()
+        ) == 0) {
+            throw notFound();
+        }
+        if (operator) {
+            auditRepository.record(user.id(), "OPPORTUNITY_DELETE", "OPPORTUNITY", id.toString());
+        }
     }
 
     @Transactional
