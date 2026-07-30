@@ -34,15 +34,13 @@ public class Volunteer {
     @Column(name = "tag")
     private List<String> tags = new ArrayList<>();
 
-    private String link1365;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     public Volunteer() {}
 
     public Volunteer(Long id, String title, String category, String location, String organizer,
-                     Long targetAmount, Long currentAmount, List<String> tags, String link1365, LocalDateTime createdAt) {
+                     Long targetAmount, Long currentAmount, List<String> tags, LocalDateTime createdAt) {
         this.id = id;
         this.title = title;
         this.category = category != null ? category : "VOLUNTEER";
@@ -51,7 +49,6 @@ public class Volunteer {
         this.targetAmount = targetAmount;
         this.currentAmount = currentAmount;
         this.tags = tags != null ? tags : new ArrayList<>();
-        this.link1365 = link1365;
         this.createdAt = createdAt;
     }
 
@@ -89,9 +86,6 @@ public class Volunteer {
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
 
-    public String getLink1365() { return link1365; }
-    public void setLink1365(String link1365) { this.link1365 = link1365; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -108,7 +102,6 @@ public class Volunteer {
         private Long targetAmount;
         private Long currentAmount;
         private List<String> tags = new ArrayList<>();
-        private String link1365;
         private LocalDateTime createdAt;
 
         public VolunteerBuilder id(Long id) { this.id = id; return this; }
@@ -119,11 +112,10 @@ public class Volunteer {
         public VolunteerBuilder targetAmount(Long targetAmount) { this.targetAmount = targetAmount; return this; }
         public VolunteerBuilder currentAmount(Long currentAmount) { this.currentAmount = currentAmount; return this; }
         public VolunteerBuilder tags(List<String> tags) { this.tags = tags; return this; }
-        public VolunteerBuilder link1365(String link1365) { this.link1365 = link1365; return this; }
         public VolunteerBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
 
         public Volunteer build() {
-            return new Volunteer(id, title, category, location, organizer, targetAmount, currentAmount, tags, link1365, createdAt);
+            return new Volunteer(id, title, category, location, organizer, targetAmount, currentAmount, tags, createdAt);
         }
     }
 }

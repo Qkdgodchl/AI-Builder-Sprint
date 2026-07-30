@@ -26,7 +26,7 @@ CREATE TABLE comments (
     author_badge VARCHAR(100) NULL,
     content TEXT NOT NULL,
     parent_comment_id BIGINT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -57,7 +57,7 @@ CREATE TABLE users (
     account_status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     privacy_consent_at DATETIME(6) NULL,
     last_login_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -71,7 +71,7 @@ CREATE TABLE user_roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     role VARCHAR(50) NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_user_roles_user_role UNIQUE (user_id, role),
     CONSTRAINT fk_user_roles_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -81,7 +81,7 @@ CREATE TABLE user_interests (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     interest_code VARCHAR(50) NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_user_interests_user_code UNIQUE (user_id, interest_code),
     CONSTRAINT fk_user_interests_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -93,7 +93,7 @@ CREATE TABLE refresh_tokens (
     token_hash VARCHAR(255) NOT NULL,
     expires_at DATETIME(6) NOT NULL,
     revoked_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_refresh_tokens_hash UNIQUE (token_hash),
     CONSTRAINT fk_refresh_tokens_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -111,7 +111,7 @@ CREATE TABLE stored_files (
     size_bytes BIGINT NOT NULL,
     checksum VARCHAR(128) NULL,
     file_purpose VARCHAR(50) NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     deleted_at DATETIME(6) NULL,
     CONSTRAINT uk_stored_files_storage_key UNIQUE (storage_key),
     CONSTRAINT fk_stored_files_owner
@@ -125,7 +125,7 @@ CREATE TABLE chat_messages (
     sender VARCHAR(30) NOT NULL,
     message TEXT NOT NULL,
     recommended_missions_json TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -149,7 +149,7 @@ CREATE TABLE manager_applications (
     reviewed_by BIGINT NULL,
     reviewed_at DATETIME(6) NULL,
     rejection_reason TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_manager_applications_user
         FOREIGN KEY (applicant_user_id) REFERENCES users(id),
@@ -178,7 +178,7 @@ CREATE TABLE organization_applications (
     reviewed_by BIGINT NULL,
     reviewed_at DATETIME(6) NULL,
     rejection_reason TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_org_applications_user
         FOREIGN KEY (applicant_user_id) REFERENCES users(id),
@@ -204,7 +204,7 @@ CREATE TABLE organizations (
     description TEXT NULL,
     logo_file_id BIGINT NULL,
     verification_status VARCHAR(30) NOT NULL DEFAULT 'VERIFIED',
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -222,7 +222,7 @@ CREATE TABLE organization_managers (
     organization_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     manager_role VARCHAR(30) NOT NULL DEFAULT 'MANAGER',
-    joined_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    joined_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     left_at DATETIME(6) NULL,
     CONSTRAINT uk_organization_managers_org_user
         UNIQUE (organization_id, user_id),
@@ -242,9 +242,9 @@ CREATE TABLE ai_consultations (
     consultation_status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     intent_summary TEXT NULL,
     extracted_preferences_json TEXT NULL,
-    started_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     completed_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_ai_consultations_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -260,7 +260,7 @@ CREATE TABLE ai_messages (
     content TEXT NOT NULL,
     metadata_json TEXT NULL,
     sequence_no INT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_ai_messages_consultation_sequence
         UNIQUE (consultation_id, sequence_no),
     CONSTRAINT fk_ai_messages_consultation
@@ -276,7 +276,7 @@ CREATE TABLE contract_templates (
     description TEXT NULL,
     status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     created_by BIGINT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_contract_templates_org
         FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE SET NULL,
@@ -292,7 +292,7 @@ CREATE TABLE contract_template_versions (
     body_template TEXT NOT NULL,
     change_note VARCHAR(500) NULL,
     created_by BIGINT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_contract_template_versions_template_version
         UNIQUE (template_id, version_no),
     CONSTRAINT fk_contract_template_versions_template
@@ -325,7 +325,7 @@ CREATE TABLE opportunities (
     status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
     created_by BIGINT NOT NULL,
     published_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -371,7 +371,7 @@ CREATE TABLE applications (
     reviewed_by BIGINT NULL,
     reviewed_at DATETIME(6) NULL,
     rejection_reason TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT uk_applications_opportunity_applicant
         UNIQUE (opportunity_id, applicant_user_id),
@@ -407,7 +407,7 @@ CREATE TABLE commitments (
     signed_at DATETIME(6) NULL,
     completed_at DATETIME(6) NULL,
     cancelled_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT uk_commitments_application UNIQUE (application_id),
     CONSTRAINT fk_commitments_application
@@ -434,7 +434,7 @@ CREATE TABLE commitment_versions (
     rendered_content TEXT NOT NULL,
     change_summary VARCHAR(1000) NULL,
     created_by BIGINT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_commitment_versions_commitment_version
         UNIQUE (commitment_id, version_no),
     CONSTRAINT fk_commitment_versions_commitment
@@ -457,7 +457,7 @@ CREATE TABLE consents (
     withdrawn_at DATETIME(6) NULL,
     ip_address VARCHAR(45) NULL,
     user_agent VARCHAR(1000) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_consents_user
         FOREIGN KEY (user_id) REFERENCES users(id),
     CONSTRAINT fk_consents_commitment
@@ -475,8 +475,8 @@ CREATE TABLE contract_documents (
     document_type VARCHAR(50) NOT NULL,
     document_status VARCHAR(30) NOT NULL DEFAULT 'GENERATED',
     checksum VARCHAR(128) NULL,
-    generated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    generated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_contract_documents_commitment
         FOREIGN KEY (commitment_id) REFERENCES commitments(id) ON DELETE CASCADE,
     CONSTRAINT fk_contract_documents_version
@@ -493,11 +493,11 @@ CREATE TABLE signature_requests (
     signer_user_id BIGINT NOT NULL,
     signer_email VARCHAR(255) NOT NULL,
     signature_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
-    requested_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    requested_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     expires_at DATETIME(6) NULL,
     signed_at DATETIME(6) NULL,
     failed_reason TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT uk_signature_requests_provider_id
         UNIQUE (provider, provider_request_id),
@@ -513,7 +513,7 @@ CREATE INDEX idx_signature_requests_commitment_status
 CREATE TABLE signature_request_documents (
     signature_request_id BIGINT NOT NULL,
     contract_document_id BIGINT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     PRIMARY KEY (signature_request_id, contract_document_id),
     CONSTRAINT fk_signature_request_docs_request
         FOREIGN KEY (signature_request_id) REFERENCES signature_requests(id)
@@ -532,7 +532,7 @@ CREATE TABLE processed_webhook_events (
     processing_status VARCHAR(30) NOT NULL DEFAULT 'RECEIVED',
     processed_at DATETIME(6) NULL,
     error_message TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_webhook_events_provider_external
         UNIQUE (provider, external_event_id)
 );
@@ -549,7 +549,7 @@ CREATE TABLE commitment_change_requests (
     reviewed_at DATETIME(6) NULL,
     decision_reason TEXT NULL,
     resulting_version_id BIGINT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_commitment_changes_commitment
         FOREIGN KEY (commitment_id) REFERENCES commitments(id) ON DELETE CASCADE,
@@ -583,7 +583,7 @@ CREATE TABLE activity_records (
     verified_by BIGINT NULL,
     verified_at DATETIME(6) NULL,
     rejection_reason TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     CONSTRAINT fk_activity_records_commitment
         FOREIGN KEY (commitment_id) REFERENCES commitments(id) ON DELETE CASCADE,
@@ -612,7 +612,7 @@ CREATE TABLE community_posts (
     like_count INT NOT NULL DEFAULT 0,
     comment_count INT NOT NULL DEFAULT 0,
     view_count INT NOT NULL DEFAULT 0,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -631,7 +631,7 @@ CREATE TABLE community_post_images (
     post_id BIGINT NOT NULL,
     file_id BIGINT NOT NULL,
     display_order INT NOT NULL DEFAULT 0,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_community_post_images_order UNIQUE (post_id, display_order),
     CONSTRAINT fk_community_post_images_post
         FOREIGN KEY (post_id) REFERENCES community_posts(id) ON DELETE CASCADE,
@@ -645,7 +645,7 @@ CREATE TABLE community_comments (
     author_user_id BIGINT NOT NULL,
     parent_comment_id BIGINT NULL,
     content TEXT NOT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at DATETIME(6) NULL,
@@ -667,7 +667,7 @@ CREATE TABLE post_reactions (
     post_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     reaction_type VARCHAR(30) NOT NULL DEFAULT 'LIKE',
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT uk_post_reactions_post_user_type
         UNIQUE (post_id, user_id, reaction_type),
     CONSTRAINT fk_post_reactions_post
@@ -687,7 +687,7 @@ CREATE TABLE reports (
     handled_by BIGINT NULL,
     handled_at DATETIME(6) NULL,
     resolution_note TEXT NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_reports_reporter
         FOREIGN KEY (reporter_user_id) REFERENCES users(id),
     CONSTRAINT fk_reports_handler
@@ -710,7 +710,7 @@ CREATE TABLE admin_audit_logs (
     before_json TEXT NULL,
     after_json TEXT NULL,
     ip_address VARCHAR(45) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_admin_audit_logs_actor
         FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -728,7 +728,7 @@ CREATE TABLE notifications (
     reference_id BIGINT NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     read_at DATETIME(6) NULL,
-    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     CONSTRAINT fk_notifications_user
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

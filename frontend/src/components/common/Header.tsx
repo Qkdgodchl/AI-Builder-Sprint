@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'HOME', path: '/ai' },
     { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
     { label: 'COMMUNITY', path: '/community' },
-    { label: 'MY PAGE', path: '/roadmap' },
+    { label: 'MY PAGE', path: currentUser ? '/my-page' : '/roadmap' },
   ];
 
   if (currentUser?.role === 'CENTER_MANAGER') {
@@ -45,7 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
   const usesContentDivider =
     location.pathname.startsWith('/volunteer') ||
     location.pathname.startsWith('/manager-application') ||
-    location.pathname.startsWith('/my-centers');
+    location.pathname.startsWith('/my-centers') ||
+    location.pathname.startsWith('/my-page');
 
   const isPathActive = (path: string) => {
     if (path === '/community') return location.pathname.startsWith('/community');

@@ -1,10 +1,10 @@
 # Pixel Care CLM 데이터베이스 설계
 
-> 문서 버전: `v1.2`
+> 문서 버전: `v1.3`
 >
-> 운영 DB: MySQL 8.0
+> 개발·운영 DB: MySQL 8.4 LTS
 >
-> 로컬 대체 DB: H2 MySQL Mode
+> 자동 테스트 DB: H2 또는 Testcontainers MySQL
 >
 > 스키마 적용 도구: Flyway
 
@@ -14,6 +14,8 @@
 
 팀원이 하나의 DB 서버를 공유할 필요는 없다. 각자 로컬 DB를 사용하되 Git에 커밋된 Flyway Migration을 동일하게 적용하면 스키마가 일치한다.
 
+로컬 개발에서는 저장소 루트의 `docker-compose.yml`로 MySQL 8.4를 실행한다. 접속정보와 외부 API 키는 `.env`에서 관리하고, Git에는 로컬 개발 기본값만 담은 `.env.example`을 커밋한다.
+
 | 위치 | 역할 | 기준 |
 |---|---|---|
 | `docs/DB_SCHEMA.md` | ERD, 테이블 설명, 관계와 정책 | 사람이 읽는 설계 기준 |
@@ -21,6 +23,18 @@
 | JPA Entity | 애플리케이션 객체 매핑 | Flyway 스키마와 일치해야 함 |
 
 `spring.jpa.hibernate.ddl-auto=validate`를 유지한다. Hibernate가 스키마를 임의 생성하지 않고 Flyway 스키마와 Entity가 다르면 실행 시 실패하도록 한다.
+
+### 로컬 DB 접속 기본값
+
+| 항목 | 기본값 |
+|---|---|
+| Host | `localhost` |
+| Port | `3307` (컨테이너 내부 `3306`) |
+| Database | `pixelcare` |
+| User | `pixelcare` |
+| JDBC URL | `jdbc:mysql://127.0.0.1:3307/pixelcare` |
+
+비밀번호는 `.env`에서만 관리한다. 운영 환경에서는 로컬 기본 비밀번호를 사용하지 않고 배포 환경의 Secret으로 주입한다.
 
 ### 필수 규칙
 
@@ -38,15 +52,20 @@
 
 현재 `V1__init_schema.sql`은 레거시 `volunteers`, `volunteer_tags`, `posts`를 생성한다. V1은 수정하지 않는다.
 
+`V2__create_clm_schema.sql`은 최초 작성 당시 H2에서만 검증되어 MySQL의 `DATETIME(6)` 기본값 정밀도와 맞지 않았다. 팀 공용 MySQL 도입 전에 `CURRENT_TIMESTAMP(6)`로 호환 문법을 보정했으며, 2026-07-30에 빈 MySQL 8.4 DB에서 V1~V3 전체 적용을 확인했다. 이 시점 이후 V1~V3은 수정하지 않고 V4 이상의 보정 Migration만 추가한다.
+
 | 버전 | 영역 | 테이블 | 상태 |
 |---|---|---|---|
-| V1 | 기존 초기 구조 | `volunteers`, `volunteer_tags`, `posts` | 적용됨 |
-| V2 | CLM 전체 기반 스키마 | 사용자, 기관, AI, 선행 기회, 신청, 약정, 전자서명, 이행, 커뮤니티, 운영·알림 | [x] 생성·H2 검증 완료 |
-| V3 | 공개 식별자 | 신청·약정·문서·서명 `public_id` | [x] 생성 |
-| V4+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
+| V1 | 기존 초기 구조 | `volunteers`, `volunteer_tags`, `posts` | [x] MySQL 8.4 적용 |
+| V2 | CLM 전체 기반 스키마 | 사용자, 기관, AI, 선행 기회, 신청, 약정, 전자서명, 이행, 커뮤니티, 운영·알림 | [x] MySQL 8.4 적용 |
+| V3 | 공개 식별자 | 신청·약정·문서·서명 `public_id` | [x] MySQL 8.4 적용 |
+| V4 | 외부 봉사 연동 제거 | 레거시 봉사 링크 컬럼과 연동 태그 제거 | [x] MySQL 8.4 적용 |
+| V5 | MVP API 연결 필드 | 로그인 토큰, 관리자 신청·센터·모집글·신청 필드 | [x] MySQL 8.4 적용 |
+| V6 | 관리자 증빙 연결 | 관리자 신청과 여러 업로드 파일의 연결 테이블 | [x] MySQL 8.4 적용 |
+| V7+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
 | 별도 버전 | 레거시 이전 | V1 데이터를 신규 도메인 테이블로 이전 | [ ] |
 
-`V2__create_clm_schema.sql`이 전체 기반 테이블을 한 번에 생성한다. 이후에는 V2를 수정하지 않고 V3부터 변경분만 추가한다.
+`V2__create_clm_schema.sql`이 전체 기반 테이블을 한 번에 생성한다. 이후에는 V1~V3을 수정하지 않고 V4부터 변경분만 추가한다.
 
 ### V2 호환 테이블
 
@@ -159,7 +178,20 @@ PK: `(user_id, role)`
 
 PK: `(user_id, interest)`
 
-## 5.4 `refresh_tokens`
+## 5.4 `access_tokens`
+
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| `id` | BIGINT | PK |
+| `user_id` | BIGINT | FK, NOT NULL |
+| `token_hash` | VARCHAR(64) | UNIQUE, NOT NULL |
+| `expires_at` | DATETIME(6) | NOT NULL |
+| `revoked_at` | DATETIME(6) | NULL |
+| `created_at` | DATETIME(6) | NOT NULL |
+
+Access Token도 원문을 저장하지 않으며 SHA-256 해시로만 조회한다.
+
+## 5.5 `refresh_tokens`
 
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
@@ -172,7 +204,7 @@ PK: `(user_id, interest)`
 
 Refresh Token 원문은 저장하지 않는다.
 
-## 5.5 `stored_files`
+## 5.6 `stored_files`
 
 | 컬럼 | 타입 | 제약 |
 |---|---|---|
@@ -196,23 +228,38 @@ Refresh Token 원문은 저장하지 않는다.
 |---|---|---|
 | `id` | BIGINT | PK |
 | `public_id` | CHAR(36) | UNIQUE, NOT NULL, 외부 식별자 |
-| `user_id` | BIGINT | FK, NOT NULL |
+| `applicant_user_id` | BIGINT | FK, NOT NULL |
 | `organization_name` | VARCHAR(200) | NOT NULL |
-| `position` | VARCHAR(100) | NOT NULL |
-| `contact` | VARCHAR(30) | NOT NULL |
-| `organization_type` | VARCHAR(50) | NOT NULL |
-| `registration_number` | VARCHAR(100) | NULL |
-| `evidence_file_id` | BIGINT | FK, NOT NULL |
-| `reason` | VARCHAR(1000) | NOT NULL |
+| `position` | VARCHAR(100) | NULL, API 생성 시 필수 |
+| `contact` | VARCHAR(30) | NULL, API 생성 시 필수 |
+| `organization_type` | VARCHAR(50) | NULL, API 생성 시 필수 |
+| `business_registration_number` | VARCHAR(50) | NULL |
+| `proof_file_id` | BIGINT | FK, NULL, 대표 증빙 |
+| `reason` | TEXT | NULL, API 생성 시 필수 |
+| `planned_center_name` | VARCHAR(255) | NULL |
 | `status` | VARCHAR(30) | NOT NULL |
 | `reviewed_by` | BIGINT | FK, NULL |
 | `reviewed_at` | DATETIME(6) | NULL |
-| `review_reason` | VARCHAR(500) | NULL |
+| `rejection_reason` | TEXT | NULL |
 | `created_at` | DATETIME(6) | NOT NULL |
 | `updated_at` | DATETIME(6) | NOT NULL |
 
 상태: `PENDING`, `APPROVED`, `REJECTED`, `CANCELLED`
 규칙: 사용자당 `PENDING` 신청 한 건
+
+### `manager_application_files`
+
+관리자 신청 한 건에 재직증명, 사업자등록증 등 여러 증빙파일을 연결한다.
+
+| 컬럼 | 타입 | 제약 |
+|---|---|---|
+| `id` | BIGINT | PK |
+| `manager_application_id` | BIGINT | FK, NOT NULL |
+| `file_id` | BIGINT | FK → `stored_files.id`, NOT NULL |
+| `document_type` | VARCHAR(50) | NOT NULL |
+| `created_at` | DATETIME(6) | NOT NULL |
+
+UNIQUE: `(manager_application_id, file_id)`
 
 ## 6.2 `organization_applications`
 
@@ -246,7 +293,6 @@ Refresh Token 원문은 저장하지 않는다.
 | `description` | TEXT | NULL |
 | `homepage_url` | VARCHAR(500) | NULL |
 | `verification_status` | VARCHAR(30) | NOT NULL |
-| `is_1365_provider` | BOOLEAN | DEFAULT FALSE |
 | `can_issue_donation_receipt` | BOOLEAN | DEFAULT FALSE |
 | `created_by` | BIGINT | FK, NOT NULL |
 | `approved_by` | BIGINT | FK, NULL |
@@ -298,7 +344,6 @@ PK: `(organization_id, user_id)`
 | `target_amount` | BIGINT | NULL |
 | `current_amount` | BIGINT | DEFAULT 0 |
 | `payment_cycle_options` | VARCHAR(100) | NULL |
-| `is_1365_recognized` | BOOLEAN | DEFAULT FALSE |
 | `cancellation_policy` | TEXT | NULL |
 | `status` | VARCHAR(30) | NOT NULL |
 | `created_by` | BIGINT | FK, NOT NULL |
@@ -654,7 +699,7 @@ cd backend
 
 - [ ] Migration 번호가 기존 파일과 겹치지 않는다.
 - [ ] 이미 적용된 Migration을 수정하지 않았다.
-- [ ] MySQL 8.0에서 처음부터 Migration이 성공한다.
+- [ ] MySQL 8.4에서 처음부터 Migration이 성공한다.
 - [ ] H2 MySQL Mode 또는 테스트 DB에서 동작한다.
 - [ ] Entity의 컬럼명·길이·nullable이 SQL과 일치한다.
 - [ ] FK, `UNIQUE`, INDEX가 설계와 일치한다.
@@ -663,12 +708,18 @@ cd backend
 - [ ] 실제 개인정보·비밀키가 포함되지 않았다.
 - [ ] `docs/DB_SCHEMA.md`를 함께 갱신했다.
 
-### V2 검증 기록
+### V1~V6 검증 기록
 
 - [x] Flyway가 빈 H2 MySQL Mode DB에 V1과 V2를 순서대로 적용
 - [x] Hibernate `ddl-auto=validate` 통과
 - [x] 현재 초기 데이터의 `volunteers`, `posts` 저장 성공
-- [ ] 팀 개발용 MySQL 8.0 컨테이너에서 재검증
+- [x] 팀 개발용 MySQL 8.4 컨테이너에서 V1~V6 전체 적용
+- [x] 외부 봉사 연동 전용 컬럼과 기존 연동 태그 제거 확인
+- [x] MySQL에 38개 테이블 생성 및 `flyway_schema_history` 성공 이력 확인
+- [x] `access_tokens`와 Refresh Token 이력 저장 및 만료·폐기 확인
+- [x] 관리자 승인 시 역할·센터·관리자 관계가 한 트랜잭션으로 생성되는지 확인
+- [x] 관리자 신청의 여러 증빙파일이 `manager_application_files`에 연결되는지 확인
+- [x] 모집글 생성·공개, 신청·약정 생성, 센터 승인까지 실제 MySQL 반영 확인
 
 ---
 

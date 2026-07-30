@@ -17,7 +17,6 @@ export interface AiChatMessage {
     location: string;
     organizer: string;
     tags: string[];
-    link1365?: string;
   };
   createdAt: string;
 }
@@ -55,8 +54,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
                     category: 'VOLUNTEER' as const,
                     location: firstCard.region || '부산 지역',
                     organizer: '픽셀 케어 연동 봉사단',
-                    tags: ['1365 연동', firstCard.badgeReward || 'LV1_SEED'],
-                    link1365: 'https://www.1365.go.kr',
+                    tags: ['봉사 추천', firstCard.badgeReward || 'LV1_SEED'],
                   };
                 }
               } catch (e) {}
@@ -109,7 +107,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
           location: firstCard.region || '부산 지역',
           organizer: '픽셀 케어 온기 센터',
           tags: ['Upstage AI 큐레이션', firstCard.badgeReward || 'LV2_WARMTH'],
-          link1365: 'https://www.1365.go.kr',
         };
       }
 
@@ -227,17 +224,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
                     >
                       ⚡ 간편 신청하기
                     </button>
-                    {msg.recommendedCard.link1365 && (
-                      <a
-                        href={msg.recommendedCard.link1365}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="pixel-button"
-                        style={{ fontSize: '12px', padding: '6px 12px', textDecoration: 'none' }}
-                      >
-                        🔗 1365 상세보기
-                      </a>
-                    )}
                   </div>
                 </div>
               )}

@@ -31,8 +31,7 @@ public class DataLoader implements CommandLineRunner {
                     "부산 동네 온기 봉사단",
                     null,
                     0L,
-                    List.of("1365 연동", "4시간 인정", "주말"),
-                    "https://www.1365.go.kr/vols/1365/act/volsList.do?searchKeyword=유기견",
+                    List.of("4시간 인정", "주말"),
                     null
             ));
 
@@ -44,8 +43,7 @@ public class DataLoader implements CommandLineRunner {
                     "그린 픽셀 에코 클럽",
                     null,
                     0L,
-                    List.of("1365 연동", "3시간 인정", "환경정화"),
-                    "https://www.1365.go.kr/vols/1365/act/volsList.do?searchKeyword=플로깅",
+                    List.of("3시간 인정", "환경정화"),
                     null
             ));
 
@@ -57,8 +55,7 @@ public class DataLoader implements CommandLineRunner {
                     "사랑의 픽셀 이웃",
                     null,
                     0L,
-                    List.of("1365 연동", "4시간 인정", "복지"),
-                    "https://www.1365.go.kr/vols/1365/act/volsList.do?searchKeyword=도시락",
+                    List.of("4시간 인정", "복지"),
                     null
             ));
 
@@ -71,7 +68,6 @@ public class DataLoader implements CommandLineRunner {
                     null,
                     0L,
                     List.of("정기후원", "아동·청소년"),
-                    null,
                     null
             ));
 
@@ -84,7 +80,6 @@ public class DataLoader implements CommandLineRunner {
                     null,
                     0L,
                     List.of("전문상담", "약정"),
-                    null,
                     null
             ));
 
@@ -97,7 +92,6 @@ public class DataLoader implements CommandLineRunner {
                     null,
                     0L,
                     List.of("세계유산", "보존사업"),
-                    null,
                     null
             ));
 
@@ -110,7 +104,6 @@ public class DataLoader implements CommandLineRunner {
                     null,
                     0L,
                     List.of("문화유산", "복원"),
-                    null,
                     null
             ));
 
@@ -123,7 +116,6 @@ public class DataLoader implements CommandLineRunner {
                     null,
                     0L,
                     List.of("고향사랑기부", "지역상생"),
-                    null,
                     null
             ));
         }

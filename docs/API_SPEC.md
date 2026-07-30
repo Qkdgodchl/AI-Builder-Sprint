@@ -2,7 +2,7 @@
 
 > 기준 기획: `CLM 기반 선행 플랫폼 최종 서비스 기획`
 >
-> 문서 버전: `v1.0-draft`
+> 문서 버전: `v1.1-mvp-implementation`
 >
 > Base URL: `/api/v1`
 >
@@ -60,9 +60,7 @@
 {
   "success": true,
   "data": {},
-  "message": "요청이 처리되었습니다.",
-  "traceId": "01J...",
-  "timestamp": "2026-07-29T10:00:00+09:00"
+  "message": "요청이 성공적으로 처리되었습니다."
 }
 ```
 
@@ -73,19 +71,7 @@
 ```json
 {
   "success": false,
-  "data": null,
-  "error": {
-    "code": "VALIDATION_FAILED",
-    "message": "입력값을 확인해주세요.",
-    "fieldErrors": [
-      {
-        "field": "email",
-        "reason": "올바른 이메일 형식이 아닙니다."
-      }
-    ]
-  },
-  "traceId": "01J...",
-  "timestamp": "2026-07-29T10:00:00+09:00"
+  "message": "입력값을 확인해주세요."
 }
 ```
 
@@ -107,7 +93,7 @@
 | `415 Unsupported Media Type` | 허용되지 않은 파일 형식 |
 | `422 Unprocessable Entity` | AI 구조화 실패, 문서 필드 검증 불일치 |
 | `429 Too Many Requests` | AI·외부 API 호출 제한 |
-| `502 Bad Gateway` | Upstage·모두싸인·1365의 잘못된 응답 |
+| `502 Bad Gateway` | Upstage·모두싸인의 잘못된 응답 |
 | `503 Service Unavailable` | 외부 서비스 또는 시스템 일시 장애 |
 
 ### 1.5 페이지네이션
@@ -155,7 +141,7 @@ Idempotency-Key: commitment-72-version-1
 - API 통합 테스트: `@SpringBootTest` + MockMvc
 - 외부 API: WireMock 또는 MockWebServer
 - 운영 DB 호환성 확인: Testcontainers MySQL
-- 인증: 테스트용 JWT 발급 헬퍼
+- 인증: 테스트용 opaque Access Token 발급 헬퍼
 
 ### 2.2 API를 하나 만들 때마다 실행할 테스트
 
@@ -201,6 +187,21 @@ curl -i -X GET \
 
 자동 테스트가 기준이며 `curl`은 보조 검증으로만 사용한다.
 
+### 2.4 현재 구현 검증 기록
+
+2026-07-30에 로컬 MySQL 8.4와 실제 백엔드를 연결해 다음 흐름을 검증했다.
+
+| 구간 | 성공 케이스 | 실패 케이스 | DB 확인 대상 |
+|---|---|---|---|
+| 인증 | 회원가입 `201`, 로그인·내 정보 `200` | 무인증 내 정보 `401`, 잘못된 로그인 `401` | `users`, `user_roles`, `access_tokens`, `refresh_tokens` |
+| 관리자 전환 | 신청 `201`, 운영진 승인 `200` | 중복 대기 신청 `409`, 일반 사용자 승인 `403` | `manager_applications`, `manager_application_files`, `organizations`, `organization_managers` |
+| 모집글 | 초안 `201`, 공개·목록·상세 `200` | 잘못된 상태 재공개 `409`, 타 센터 접근 `403`, 없는 글 `404` | `opportunities`, `opportunity_required_documents` |
+| 신청·CLM | 신청 `201`, 약정 제출 `200`, 센터 승인 `200` | 동일 사용자 중복 신청 `409` | `applications`, `commitments`, `commitment_versions`, `application_consents` |
+
+Controller 자동 테스트는 `AuthControllerTest`, `OpportunityControllerTest`에 성공·입력 오류·
+인증 실패·미존재 케이스를 두었고 `./gradlew test`로 실행한다. 체크표의 성공·실패 칸은
+실제로 검증한 항목만 표시하며, 구현만 끝난 항목은 후속 테스트가 추가될 때 체크한다.
+
 ---
 
 # Phase 1 — 핵심 MVP API
@@ -211,13 +212,13 @@ curl -i -X GET \
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | POST | `/auth/signup` | Public | 이메일 회원가입 |
-| [ ] | [ ] | [ ] | POST | `/auth/login` | Public | 로그인 |
-| [ ] | [ ] | [ ] | POST | `/auth/refresh` | Refresh Token | Access Token 재발급 |
-| [ ] | [ ] | [ ] | POST | `/auth/logout` | USER | 로그아웃·Refresh Token 폐기 |
-| [ ] | [ ] | [ ] | GET | `/users/me` | USER | 내 프로필·역할 조회 |
-| [ ] | [ ] | [ ] | PATCH | `/users/me` | USER | 프로필·관심 분야 수정 |
-| [ ] | [ ] | [ ] | POST | `/files` | USER | 증빙·이미지 파일 업로드 |
+| [x] | [x] | [x] | POST | `/auth/signup` | Public | 이메일 회원가입 |
+| [x] | [x] | [x] | POST | `/auth/login` | Public | 로그인 |
+| [x] | [x] | [ ] | POST | `/auth/refresh` | Refresh Token | Access Token 재발급 |
+| [x] | [x] | [ ] | POST | `/auth/logout` | USER | 로그아웃·Refresh Token 폐기 |
+| [x] | [x] | [x] | GET | `/users/me` | USER | 내 프로필·역할 조회 |
+| [x] | [ ] | [ ] | PATCH | `/users/me` | USER | 프로필·관심 분야 수정 |
+| [x] | [ ] | [ ] | POST | `/files` | USER | 증빙·이미지 파일 업로드 |
 
 ### 3.2 회원가입
 
@@ -280,13 +281,13 @@ curl -i -X GET \
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | POST | `/manager-applications` | USER | 센터 관리자 권한 신청 |
-| [ ] | [ ] | [ ] | GET | `/manager-applications/me` | USER | 내 신청 목록·상태 |
-| [ ] | [ ] | [ ] | GET | `/manager-applications/{id}` | 신청자·OPERATOR | 신청 상세 |
-| [ ] | [ ] | [ ] | POST | `/manager-applications/{id}/cancel` | 신청자 | 대기 신청 취소 |
-| [ ] | [ ] | [ ] | GET | `/operator/manager-applications` | OPERATOR | 신청 목록·필터 |
-| [ ] | [ ] | [ ] | POST | `/operator/manager-applications/{id}/approve` | OPERATOR | 신청 승인 |
-| [ ] | [ ] | [ ] | POST | `/operator/manager-applications/{id}/reject` | OPERATOR | 신청 거절 |
+| [x] | [x] | [x] | POST | `/manager-applications` | USER | 센터 관리자 권한 신청 |
+| [x] | [x] | [ ] | GET | `/manager-applications/me` | USER | 내 신청 목록·상태 |
+| [x] | [x] | [x] | GET | `/manager-applications/{id}` | 신청자·OPERATOR | 신청 상세 |
+| [x] | [ ] | [ ] | POST | `/manager-applications/{id}/cancel` | 신청자 | 대기 신청 취소 |
+| [x] | [x] | [x] | GET | `/operator/manager-applications` | OPERATOR | 신청 목록·필터 |
+| [x] | [x] | [x] | POST | `/operator/manager-applications/{id}/approve` | OPERATOR | 신청 승인 |
+| [x] | [ ] | [ ] | POST | `/operator/manager-applications/{id}/reject` | OPERATOR | 신청 거절 |
 
 신청 요청:
 
@@ -298,6 +299,7 @@ curl -i -X GET \
   "organizationType": "NON_PROFIT",
   "registrationNumber": "123-45-67890",
   "evidenceFileId": 901,
+  "evidenceFileIds": [901, 902],
   "reason": "센터 봉사 모집과 신청자를 관리하기 위해 신청합니다.",
   "plannedCenterName": "부산희망봉사센터"
 }
@@ -337,10 +339,10 @@ curl -i -X GET \
 | [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/approve` | OPERATOR | 센터 승인 |
 | [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/reject` | OPERATOR | 센터 거절 |
 | [ ] | [ ] | [ ] | POST | `/operator/organization-applications/{id}/request-revision` | OPERATOR | 보완 요청 |
-| [ ] | [ ] | [ ] | GET | `/organizations/{id}` | USER | 승인 센터 상세 |
-| [ ] | [ ] | [ ] | GET | `/manager/organizations` | CENTER_MANAGER | 내가 관리하는 센터 |
-| [ ] | [ ] | [ ] | PATCH | `/manager/organizations/{id}` | 해당 센터 관리자 | 센터 정보 수정 |
-| [ ] | [ ] | [ ] | GET | `/manager/organizations/{id}/dashboard` | 해당 센터 관리자 | 센터 대시보드 |
+| [x] | [x] | [x] | GET | `/organizations/{id}` | Public | 승인 센터 상세 |
+| [x] | [x] | [x] | GET | `/manager/organizations` | CENTER_MANAGER | 내가 관리하는 센터 |
+| [x] | [ ] | [ ] | PATCH | `/manager/organizations/{id}` | 해당 센터 관리자 | 센터 정보 수정 |
+| [x] | [x] | [x] | GET | `/manager/organizations/{id}/dashboard` | 해당 센터 관리자 | 센터 대시보드 |
 
 센터 등록 요청:
 
@@ -355,7 +357,6 @@ curl -i -X GET \
   "description": "지역 봉사 프로그램을 운영합니다.",
   "homepageUrl": "https://example.org",
   "evidenceFileId": 902,
-  "is1365Provider": true,
   "canIssueDonationReceipt": true
 }
 ```
@@ -371,6 +372,10 @@ curl -i -X GET \
 - 센터 수정 성공 → `200`
 - 다른 센터 관리자가 ID를 바꿔 수정·대시보드 조회 → `403`
 - `SUSPENDED`, `DELETED` 센터의 관리자 기능 → `403` 또는 `409`
+
+현재 MVP에서는 관리자 권한 신청에 센터 기본 정보와 증빙을 함께 받고, 운영진이 관리자
+신청을 승인할 때 `organizations`와 `organization_managers`를 한 트랜잭션으로 생성한다.
+따라서 별도 `/organization-applications` API는 아직 구현하지 않았고 체크하지 않는다.
 
 ---
 
@@ -388,15 +393,15 @@ curl -i -X GET \
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | GET | `/opportunities` | Public | 공개 모집글 검색·필터 |
-| [ ] | [ ] | [ ] | GET | `/opportunities/{opportunityId}` | Public | 공개 모집글 상세 |
-| [ ] | [ ] | [ ] | POST | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 모집글 초안 작성 |
-| [ ] | [ ] | [ ] | GET | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 센터 모집글 목록 |
-| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 비공개 포함 상세 |
-| [ ] | [ ] | [ ] | PATCH | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 초안·수정가능 모집글 수정 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/publish` | 해당 센터 관리자 | 모집글 공개 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/close` | 해당 센터 관리자 | 모집 마감 |
-| [ ] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/cancel` | 해당 센터 관리자 | 모집 취소 |
+| [x] | [x] | [x] | GET | `/opportunities` | Public | 공개 모집글 검색·필터 |
+| [x] | [x] | [x] | GET | `/opportunities/{opportunityId}` | Public | 공개 모집글 상세 |
+| [x] | [x] | [x] | POST | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 모집글 초안 작성 |
+| [x] | [x] | [x] | GET | `/manager/organizations/{organizationId}/opportunities` | 해당 센터 관리자 | 센터 모집글 목록 |
+| [x] | [x] | [x] | GET | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 비공개 포함 상세 |
+| [x] | [ ] | [ ] | PATCH | `/manager/opportunities/{opportunityId}` | 해당 센터 관리자 | 초안·수정가능 모집글 수정 |
+| [x] | [x] | [x] | POST | `/manager/opportunities/{opportunityId}/publish` | 해당 센터 관리자 | 모집글 공개 |
+| [x] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/close` | 해당 센터 관리자 | 모집 마감 |
+| [x] | [ ] | [ ] | POST | `/manager/opportunities/{opportunityId}/cancel` | 해당 센터 관리자 | 모집 취소 |
 | [ ] | [ ] | [ ] | DELETE | `/operator/opportunities/{opportunityId}` | OPERATOR | 모집글 소프트 삭제 |
 
 목록 필터:
@@ -432,7 +437,6 @@ GET /api/v1/opportunities
     "PRIVACY_CONSENT",
     "SAFETY_RULES"
   ],
-  "is1365Recognized": true,
   "cancellationPolicy": "활동 2일 전까지 취소 가능"
 }
 ```
@@ -525,15 +529,15 @@ APPLIED → DOCUMENT_PENDING → SIGNATURE_PENDING → IN_REVIEW
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | POST | `/opportunities/{opportunityId}/applications` | USER | 봉사·기부 신청 |
-| [ ] | [ ] | [ ] | GET | `/applications/me` | USER | 내 신청 목록 |
-| [ ] | [ ] | [ ] | GET | `/applications/{applicationPublicId}` | 신청자·해당 센터 관리자 | 신청 상세 |
-| [ ] | [ ] | [ ] | POST | `/applications/{applicationPublicId}/cancel` | 신청자 | 신청 취소 |
-| [ ] | [ ] | [ ] | GET | `/manager/opportunities/{opportunityId}/applications` | 해당 센터 관리자 | 모집글별 신청자 목록 |
-| [ ] | [ ] | [ ] | GET | `/manager/applications/{applicationPublicId}` | 해당 센터 관리자 | 신청자·문서 상세 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/request-revision` | 해당 센터 관리자 | 수정 요청 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/approve` | 해당 센터 관리자 | 신청 승인 |
-| [ ] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/reject` | 해당 센터 관리자 | 신청 거절 |
+| [x] | [x] | [x] | POST | `/opportunities/{opportunityId}/applications` | USER | 봉사·기부 신청 |
+| [x] | [x] | [x] | GET | `/applications/me` | USER | 내 신청 목록 |
+| [x] | [x] | [x] | GET | `/applications/{applicationPublicId}` | 신청자·해당 센터 관리자 | 신청 상세 |
+| [x] | [ ] | [ ] | POST | `/applications/{applicationPublicId}/cancel` | 신청자 | 신청 취소 |
+| [x] | [x] | [x] | GET | `/manager/opportunities/{opportunityId}/applications` | 해당 센터 관리자 | 모집글별 신청자 목록 |
+| [x] | [x] | [x] | GET | `/manager/applications/{applicationPublicId}` | 해당 센터 관리자 | 신청자·문서 상세 |
+| [x] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/request-revision` | 해당 센터 관리자 | 수정 요청 |
+| [x] | [x] | [x] | POST | `/manager/applications/{applicationPublicId}/approve` | 해당 센터 관리자 | 신청 승인 |
+| [x] | [ ] | [ ] | POST | `/manager/applications/{applicationPublicId}/reject` | 해당 센터 관리자 | 신청 거절 |
 
 신청 요청:
 
@@ -585,9 +589,9 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 |---|---|---|---|---|---|---|
 | [ ] | [ ] | [ ] | POST | `/applications/{applicationId}/commitments` | 신청자 | 신청 기반 약정 초안 생성 |
 | [ ] | [ ] | [ ] | GET | `/commitments/me` | USER | 내 약정 목록 |
-| [ ] | [ ] | [ ] | GET | `/commitments/{id}` | 약정 소유자·해당 센터 관리자 | 약정 상세 |
-| [ ] | [ ] | [ ] | PATCH | `/commitments/{id}` | 약정 소유자 | 초안·수정요청 상태 편집 |
-| [ ] | [ ] | [ ] | POST | `/commitments/{id}/submit-review` | 약정 소유자 | 사용자 검토 완료 |
+| [x] | [x] | [x] | GET | `/commitments/{publicId}` | 약정 소유자·해당 센터 관리자 | 약정 상세 |
+| [x] | [x] | [x] | PATCH | `/commitments/{publicId}` | 약정 소유자 | 초안·수정요청 상태 편집 |
+| [x] | [x] | [x] | POST | `/commitments/{publicId}/submit-review` | 약정 소유자 | 사용자 검토 완료 |
 | [ ] | [ ] | [ ] | POST | `/commitments/{id}/documents` | 약정 소유자·센터 관리자 | 유형별 문서 생성 |
 | [ ] | [ ] | [ ] | GET | `/commitments/{id}/documents` | 약정 소유자·해당 센터 관리자 | 문서 목록 |
 | [ ] | [ ] | [ ] | GET | `/documents/{id}` | 문서 접근 권한자 | 문서 메타데이터 |
@@ -596,6 +600,10 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 | [ ] | [ ] | [ ] | POST | `/documents/{id}/validate` | 문서 접근 권한자 | Information Extract 재검증 |
 | [ ] | [ ] | [ ] | POST | `/manager/documents/{id}/request-revision` | 해당 센터 관리자 | 문서 수정 요청 |
 | [ ] | [ ] | [ ] | POST | `/manager/documents/{id}/cancel` | 해당 센터 관리자 | 문서 취소 |
+
+현재 MVP에서는 신청 생성 트랜잭션 안에서 약정 초안과 첫 버전, 동의 이력을 자동 생성한다.
+따라서 별도 `POST /applications/{applicationId}/commitments`는 아직 구현하지 않는다.
+전자서명·서명 완료 PDF 생성은 외부 연동 단계이므로 체크하지 않았다.
 
 약정 초안:
 
@@ -925,15 +933,6 @@ Idempotency-Key: commitment-72-version-1
 - [ ] Webhook 서명 검증
 - [ ] 중복·역순 Webhook
 - [ ] `4xx`, `5xx`, timeout 후 재조회
-
-### 17.3 1365
-
-- [ ] 부산 지역 목록 정상 파싱
-- [ ] 빈 목록
-- [ ] XML/JSON 형식 오류
-- [ ] 인증키 오류
-- [ ] timeout·`5xx`
-- [ ] 외부 장애 시 저장된 데이터 또는 명확한 오류 응답
 
 ---
 

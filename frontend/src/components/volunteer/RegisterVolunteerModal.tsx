@@ -16,8 +16,7 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [organizer, setOrganizer] = useState('');
-  const [tagsInput, setTagsInput] = useState('1365 연동, 4시간 인정');
-  const [link1365, setLink1365] = useState('https://www.1365.go.kr');
+  const [tagsInput, setTagsInput] = useState('4시간 인정, 주말');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -41,8 +40,7 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
         location: location.trim(),
         organizer: organizer.trim(),
         category: 'VOLUNTEER',
-        tags: parsedTags.length > 0 ? parsedTags : ['1365 연동', '봉사'],
-        link1365: link1365.trim() || 'https://www.1365.go.kr',
+        tags: parsedTags.length > 0 ? parsedTags : ['봉사'],
       });
 
       playBeep(600, 0.2);
@@ -50,8 +48,7 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
       setTitle('');
       setLocation('');
       setOrganizer('');
-      setTagsInput('1365 연동, 4시간 인정');
-      setLink1365('https://www.1365.go.kr');
+      setTagsInput('4시간 인정, 주말');
       onClose();
     } catch (err) {
       console.error(err);
@@ -68,7 +65,7 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
           <span>🤝</span> 픽셀 봉사 미션 API 신규 등록
         </div>
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
-          API 백엔드로 신규 봉사 데이터를 직접 등록합니다. (1365 공공데이터 연동 포맷)
+          서비스에 신규 봉사 프로그램을 직접 등록합니다.
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -125,23 +122,9 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
               type="text"
               className="pixel-input"
               style={{ width: '100%' }}
-              placeholder="예: 1365 연동, 4시간 인정, 주말"
+              placeholder="예: 4시간 인정, 주말, 환경정화"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-            />
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>
-              🔗 1365 원문 URL
-            </label>
-            <input
-              type="text"
-              className="pixel-input"
-              style={{ width: '100%' }}
-              placeholder="https://www.1365.go.kr"
-              value={link1365}
-              onChange={(e) => setLink1365(e.target.value)}
             />
           </div>
 

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import type { UserRole } from '../../types';
+import type { SessionUser } from '../../types';
+import { login, signup } from '../../services/authApi';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAuthenticate: (email: string, nickname: string, role: UserRole) => void;
+  onAuthenticate: (user: SessionUser) => void;
 }
 
 type AuthView = 'login' | 'signup';
@@ -34,13 +35,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleLoginSubmit = (event: React.FormEvent) => {
+  const handleLoginSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const normalizedEmail = email.trim();
-    onAuthenticate(normalizedEmail, normalizedEmail.split('@')[0] || '픽셀 사용자', 'USER');
+    setFormError('');
+    try {
+      onAuthenticate(await login(email.trim(), password));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : '로그인에 실패했습니다.');
+    }
   };
 
-  const handleSignupSubmit = (event: React.FormEvent) => {
+  const handleSignupSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError('');
 
@@ -49,7 +54,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
-    onAuthenticate(email.trim(), nickname.trim(), 'USER');
+    try {
+      onAuthenticate(await signup({
+        email: email.trim(),
+        password,
+        name: name.trim(),
+        nickname: nickname.trim(),
+        privacyConsent: privacyAgreed,
+      }));
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : '회원가입에 실패했습니다.');
+    }
   };
 
   const switchView = (nextView: AuthView) => {
@@ -228,16 +243,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <button
             type="button"
             className="manager-demo-login"
-            onClick={() =>
-              onAuthenticate('manager@pixelcare.demo', '데모 센터 관리자', 'CENTER_MANAGER')
-            }
+            onClick={async () => {
+              setFormError('');
+              try {
+                onAuthenticate(await login('manager@pixelcare.demo', 'Manager123!'));
+              } catch (error) {
+                setFormError(error instanceof Error ? error.message : '데모 로그인에 실패했습니다.');
+              }
+            }}
           >
             센터 관리자 데모로 로그인
           </button>
         )}
 
         <p className="auth-modal-note">
-          현재는 화면 확인용 계정 흐름입니다. 실제 인증과 소셜 로그인은 백엔드 연동 시 적용됩니다.
+          이메일 로그인과 회원가입은 실제 계정 DB에 저장됩니다. 소셜 로그인은 준비 중입니다.
         </p>
       </section>
     </div>

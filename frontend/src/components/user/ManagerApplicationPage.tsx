@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import type { SessionUser } from '../../types';
+import {
+  submitManagerApplication,
+  uploadEvidence,
+} from '../../services/managementApi';
 
 interface ManagerApplicationPageProps {
   currentUser: SessionUser;
@@ -23,10 +27,40 @@ export const ManagerApplicationPage: React.FC<ManagerApplicationPageProps> = ({
   const [employmentProof, setEmploymentProof] = useState<File | null>(null);
   const [registrationProof, setRegistrationProof] = useState<File | null>(null);
   const [agreed, setAgreed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    onSubmit(centerName.trim());
+    if (!employmentProof || !registrationProof) return;
+    setSubmitting(true);
+    setErrorMessage('');
+    try {
+      const [employmentProofId, registrationProofId] = await Promise.all([
+        uploadEvidence(employmentProof),
+        uploadEvidence(registrationProof),
+      ]);
+      await submitManagerApplication({
+        organizationName: centerName.trim(),
+        plannedCenterName: centerName.trim(),
+        position: applicantPosition.trim(),
+        contact: phone.trim(),
+        organizationType: centerType,
+        registrationNumber: registrationNumber.trim(),
+        evidenceFileId: employmentProofId,
+        evidenceFileIds: [employmentProofId, registrationProofId],
+        reason: [
+          reason.trim(),
+          `대표자: ${representativeName.trim()}`,
+          `주소: ${address.trim()}`,
+        ].join('\n'),
+      });
+      onSubmit(centerName.trim());
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '관리자 신청에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -239,7 +273,10 @@ export const ManagerApplicationPage: React.FC<ManagerApplicationPageProps> = ({
           </label>
           <div>
             <p>제출 후 운영진 검토 전까지 신청 내용을 수정하거나 취소할 수 있습니다.</p>
-            <button type="submit">관리자 권한 검토 요청</button>
+            {errorMessage && <p className="auth-form-error">{errorMessage}</p>}
+            <button type="submit" disabled={submitting}>
+              {submitting ? '제출 중...' : '관리자 권한 검토 요청'}
+            </button>
           </div>
         </footer>
       </form>

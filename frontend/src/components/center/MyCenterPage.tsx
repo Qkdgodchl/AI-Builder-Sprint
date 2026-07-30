@@ -1,6 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
+import {
+  closeManagedOpportunity,
+  createManagedOpportunity,
+  fetchManagedOpportunities,
+  fetchManagedOrganizations,
+  fetchOrganizationDashboard,
+  publishManagedOpportunity,
+  updateManagedOpportunity,
+  type ManagedOpportunity,
+} from '../../services/managementApi';
+import {
+  approveApplication,
+  fetchOpportunityApplications,
+  type ApplicationResponse,
+} from '../../services/applicationApi';
 
 interface MyCenterPageProps {
   currentUser: SessionUser;
@@ -32,6 +47,7 @@ interface CenterPost {
   status: PostStatus;
   applicantCount: number;
   description: string;
+  raw: ManagedOpportunity;
 }
 
 interface CenterApplicant {
@@ -49,7 +65,8 @@ interface CenterApplicant {
   documents: string[];
 }
 
-const managedCenters: ManagedCenter[] = [
+/* 이전 화면 확인용 하드코딩 데이터. 실제 화면은 아래 API 매핑만 사용한다.
+const initialManagedCenters: ManagedCenter[] = [
   {
     id: 1,
     name: '픽셀케어 데모 센터',
@@ -240,18 +257,123 @@ const initialApplicants: CenterApplicant[] = [
     documents: ['참여 신청서.pdf', '활동 서약서.pdf'],
   },
 ];
+*/
+
+const formatPeriod = (start?: string, end?: string) => {
+  if (!start && !end) return '상시 모집';
+  const format = (value?: string) => value ? value.slice(0, 10).replaceAll('-', '.') : '-';
+  return `${format(start)} – ${format(end)}`;
+};
+
+const mapOpportunity = (opportunity: ManagedOpportunity): CenterPost => ({
+  id: opportunity.id,
+  centerId: opportunity.organizationId,
+  title: opportunity.title,
+  category: opportunity.type === 'VOLUNTEER' ? '봉사' : '기부',
+  period: formatPeriod(
+    opportunity.recruitmentStartDateTime,
+    opportunity.recruitmentEndDateTime,
+  ),
+  status: opportunity.status === 'PUBLISHED' ? '공개 중' : '마감',
+  applicantCount: opportunity.applicantCount,
+  description: opportunity.description,
+  raw: opportunity,
+});
+
+const mapApplication = (
+  application: ApplicationResponse,
+  index: number,
+): CenterApplicant => ({
+  id: index + 1,
+  publicId: application.publicId,
+  centerId: application.organizationId,
+  postId: application.opportunityId,
+  name: application.applicantName || '이름 미등록',
+  email: application.applicantEmail,
+  phone: '-',
+  postTitle: application.opportunityTitle,
+  appliedAt: application.submittedAt?.slice(0, 10) || '-',
+  status: application.status === 'APPROVED' ? '승인 완료' : '검토 대기',
+  motivation: application.specialConditions || '별도 전달사항이 없습니다.',
+  documents: [
+    ...(application.commitment ? [application.commitment.title] : []),
+    ...application.documents.map((document) => document.name),
+  ],
+});
 
 export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const route = useParams()['*'] ?? '';
+  const [managedCenters, setManagedCenters] = useState<ManagedCenter[]>([]);
   const [selectedCenter, setSelectedCenter] = useState<ManagedCenter | null>(null);
   const [activeTab, setActiveTab] = useState<CenterTab>('posts');
   const [postManagerTab, setPostManagerTab] = useState<PostManagerTab>('edit');
-  const [posts, setPosts] = useState<CenterPost[]>(initialPosts);
-  const [applicants, setApplicants] = useState<CenterApplicant[]>(initialApplicants);
+  const [posts, setPosts] = useState<CenterPost[]>([]);
+  const [applicants, setApplicants] = useState<CenterApplicant[]>([]);
   const [editingPost, setEditingPost] = useState<CenterPost | null>(null);
   const [viewingApplicant, setViewingApplicant] = useState<CenterApplicant | null>(null);
   const [notice, setNotice] = useState('');
+  const [creatingPost, setCreatingPost] = useState(false);
+  const [newPost, setNewPost] = useState({
+    type: 'VOLUNTEER',
+    title: '',
+    description: '',
+    region: '',
+    location: '',
+    recruitmentCapacity: '10',
+    recruitmentEndDateTime: '',
+    activityStartDateTime: '',
+    activityEndDateTime: '',
+  });
+
+  useEffect(() => {
+    const loadCenters = async () => {
+      try {
+        const organizations = await fetchManagedOrganizations();
+        const centers = await Promise.all(
+          organizations.map(async (organization) => {
+            const dashboard = await fetchOrganizationDashboard(organization.id);
+            return {
+              id: organization.id,
+              name: organization.name,
+              type: organization.organizationType,
+              region: organization.address || '지역 미등록',
+              status: organization.verificationStatus,
+              publishedPosts: dashboard.publicOpportunities,
+              completedPosts: dashboard.closedOpportunities,
+              pendingApplicants: dashboard.pendingApplications,
+              monthlyParticipants: dashboard.monthlyParticipants,
+            } satisfies ManagedCenter;
+          }),
+        );
+        setManagedCenters(centers);
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '센터 정보를 불러오지 못했습니다.');
+        setManagedCenters([]);
+      }
+    };
+    loadCenters();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCenter) return;
+    const loadCenterData = async () => {
+      try {
+        const opportunities = await fetchManagedOpportunities(selectedCenter.id);
+        const mappedPosts = opportunities.map(mapOpportunity);
+        setPosts(mappedPosts);
+        const applicationGroups = await Promise.all(
+          opportunities.map((opportunity) => fetchOpportunityApplications(opportunity.id)),
+        );
+        setApplicants(applicationGroups.flat().map((application, index) =>
+          mapApplication(application, index),
+        ));
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : '센터 운영 데이터를 불러오지 못했습니다.');
+      }
+    };
+    loadCenterData();
+  }, [selectedCenter?.id]);
 
   const centerPosts = useMemo(
     () => posts.filter((post) => post.centerId === selectedCenter?.id),
@@ -289,6 +411,15 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
     }
 
     setSelectedCenter(center);
+
+    if (section === 'posts' && entityId === 'new') {
+      setCreatingPost(true);
+      setEditingPost(null);
+      setViewingApplicant(null);
+      setActiveTab('posts');
+      return;
+    }
+    setCreatingPost(false);
 
     if (section === 'posts' && entityId) {
       const post = posts.find(
@@ -332,7 +463,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
 
     setActiveTab('posts');
     setViewingApplicant(null);
-  }, [applicants, navigate, posts, route]);
+  }, [applicants, managedCenters, navigate, posts, route]);
 
   useEffect(() => {
     if (!notice) return;
@@ -348,15 +479,77 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
     navigate('/my-centers');
   };
 
-  const savePost = (event: React.FormEvent<HTMLFormElement>) => {
+  const savePost = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingPost) return;
-    setPosts((current) =>
-      current.map((post) => (post.id === editingPost.id ? editingPost : post)),
-    );
-    const center = managedCenters.find((item) => item.id === editingPost.centerId);
-    navigate(center ? `/my-centers/${center.id}` : '/my-centers');
-    setNotice('모집글 수정 내용을 저장했습니다.');
+    try {
+      const raw = editingPost.raw;
+      await updateManagedOpportunity(editingPost.id, {
+        type: editingPost.category === '봉사' ? 'VOLUNTEER' : raw.type,
+        category: raw.category,
+        title: editingPost.title,
+        summary: raw.summary,
+        description: editingPost.description,
+        region: raw.region,
+        location: raw.location,
+        participationMode: raw.participationMode,
+        recruitmentCapacity: raw.recruitmentCapacity,
+        recruitmentStartDateTime: raw.recruitmentStartDateTime,
+        recruitmentEndDateTime: raw.recruitmentEndDateTime,
+        activityStartDateTime: raw.activityStartDateTime,
+        activityEndDateTime: raw.activityEndDateTime,
+        eligibility: raw.eligibility,
+        targetAmount: raw.targetAmount,
+        cancellationPolicy: raw.cancellationPolicy,
+        requiredDocuments: raw.requiredDocuments,
+      });
+      if (editingPost.status === '마감' && raw.status === 'PUBLISHED') {
+        await closeManagedOpportunity(editingPost.id);
+      }
+      setPosts((current) =>
+        current.map((post) => (post.id === editingPost.id ? editingPost : post)),
+      );
+      const center = managedCenters.find((item) => item.id === editingPost.centerId);
+      navigate(center ? `/my-centers/${center.id}` : '/my-centers');
+      setNotice('모집글 수정 내용을 DB에 저장했습니다.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '모집글 수정에 실패했습니다.');
+    }
+  };
+
+  const createPost = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedCenter) return;
+    try {
+      const created = await createManagedOpportunity(selectedCenter.id, {
+        type: newPost.type,
+        category: newPost.type === 'VOLUNTEER' ? '봉사' : '기부',
+        title: newPost.title,
+        summary: newPost.description.slice(0, 120),
+        description: newPost.description,
+        region: newPost.region,
+        location: newPost.location,
+        participationMode: 'OFFLINE',
+        recruitmentCapacity: Number(newPost.recruitmentCapacity),
+        recruitmentEndDateTime: newPost.recruitmentEndDateTime || null,
+        activityStartDateTime: newPost.activityStartDateTime || null,
+        activityEndDateTime: newPost.activityEndDateTime || null,
+        requiredDocuments: [
+          {
+            code: 'CLM_COMMITMENT',
+            name: '선행 약정서',
+            description: '신청 과정에서 작성하는 CLM 약정서',
+            required: true,
+          },
+        ],
+      });
+      const published = await publishManagedOpportunity(created.id);
+      setPosts((current) => [mapOpportunity(published), ...current]);
+      navigate(`/my-centers/${selectedCenter.id}`);
+      setNotice('모집글을 작성하고 공개했습니다.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '모집글 작성에 실패했습니다.');
+    }
   };
 
   const openPostManagement = (post: CenterPost) => {
@@ -364,16 +557,21 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
     if (center) navigate(`/my-centers/${center.id}/posts/${post.id}`);
   };
 
-  const approveApplicant = (applicantId: number) => {
-    setApplicants((current) =>
-      current.map((applicant) =>
-        applicant.id === applicantId ? { ...applicant, status: '승인 완료' } : applicant,
-      ),
-    );
-    setViewingApplicant((current) =>
-      current?.id === applicantId ? { ...current, status: '승인 완료' } : current,
-    );
-    setNotice('신청자를 승인했습니다.');
+  const approveApplicant = async (publicId: string) => {
+    try {
+      await approveApplication(publicId);
+      setApplicants((current) =>
+        current.map((applicant) =>
+          applicant.publicId === publicId ? { ...applicant, status: '승인 완료' } : applicant,
+        ),
+      );
+      setViewingApplicant((current) =>
+        current?.publicId === publicId ? { ...current, status: '승인 완료' } : current,
+      );
+      setNotice('신청자를 승인하고 DB에 기록했습니다.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '신청 승인에 실패했습니다.');
+    }
   };
 
   if (!selectedCenter) {
@@ -425,6 +623,112 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
             </section>
           ))}
         </div>
+      </article>
+    );
+  }
+
+  if (creatingPost) {
+    return (
+      <article className="center-editor-page">
+        <div className="my-center-detail-nav">
+          <button type="button" onClick={() => navigate(`/my-centers/${selectedCenter.id}`)}>
+            모집글 목록으로 돌아가기
+          </button>
+          <span>모집글 작성</span>
+        </div>
+        <header className="center-editor-header">
+          <p>새 프로그램</p>
+          <h2>모집글 작성</h2>
+          <span>{selectedCenter.name}</span>
+        </header>
+        <form className="center-editor-form" onSubmit={createPost}>
+          <label>
+            <span>구분</span>
+            <select
+              value={newPost.type}
+              onChange={(event) => setNewPost({ ...newPost, type: event.target.value })}
+            >
+              <option value="VOLUNTEER">봉사</option>
+              <option value="DONATION">기부</option>
+              <option value="LEGACY_DONATION">유산기부</option>
+              <option value="HERITAGE_SPONSORSHIP">문화유산 후원</option>
+            </select>
+          </label>
+          <label>
+            <span>모집글 제목</span>
+            <input
+              value={newPost.title}
+              onChange={(event) => setNewPost({ ...newPost, title: event.target.value })}
+              required
+            />
+          </label>
+          <label className="wide">
+            <span>상세 설명</span>
+            <textarea
+              value={newPost.description}
+              onChange={(event) => setNewPost({ ...newPost, description: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            <span>지역</span>
+            <input
+              value={newPost.region}
+              onChange={(event) => setNewPost({ ...newPost, region: event.target.value })}
+            />
+          </label>
+          <label>
+            <span>활동 장소</span>
+            <input
+              value={newPost.location}
+              onChange={(event) => setNewPost({ ...newPost, location: event.target.value })}
+            />
+          </label>
+          <label>
+            <span>모집 인원</span>
+            <input
+              type="number"
+              min="1"
+              value={newPost.recruitmentCapacity}
+              onChange={(event) =>
+                setNewPost({ ...newPost, recruitmentCapacity: event.target.value })
+              }
+              required
+            />
+          </label>
+          <label>
+            <span>모집 마감</span>
+            <input
+              type="datetime-local"
+              value={newPost.recruitmentEndDateTime}
+              onChange={(event) =>
+                setNewPost({ ...newPost, recruitmentEndDateTime: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span>활동 시작</span>
+            <input
+              type="datetime-local"
+              value={newPost.activityStartDateTime}
+              onChange={(event) =>
+                setNewPost({ ...newPost, activityStartDateTime: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span>활동 종료</span>
+            <input
+              type="datetime-local"
+              value={newPost.activityEndDateTime}
+              onChange={(event) =>
+                setNewPost({ ...newPost, activityEndDateTime: event.target.value })
+              }
+            />
+          </label>
+          <button type="submit">작성 완료 및 공개</button>
+        </form>
+        {notice && <div className="center-notice">{notice}</div>}
       </article>
     );
   }
@@ -597,7 +901,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
                       className="applicant-approve-button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        approveApplicant(applicant.id);
+                        approveApplicant(applicant.publicId);
                       }}
                       aria-label={`${applicant.name} 신청 승인`}
                     >
@@ -686,7 +990,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           <button
             type="button"
             className="applicant-detail-approve"
-            onClick={() => approveApplicant(viewingApplicant.id)}
+            onClick={() => approveApplicant(viewingApplicant.publicId)}
           >
             신청 승인하기
           </button>
@@ -711,7 +1015,10 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           <h2>{selectedCenter.name}</h2>
           <span>{selectedCenter.region} · {selectedCenter.type}</span>
         </div>
-        <button type="button" disabled>
+        <button
+          type="button"
+          onClick={() => navigate(`/my-centers/${selectedCenter.id}/posts/new`)}
+        >
           모집글 작성
         </button>
       </header>
@@ -866,7 +1173,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
                   className="applicant-approve-button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    approveApplicant(applicant.id);
+                    approveApplicant(applicant.publicId);
                   }}
                   aria-label={`${applicant.name} 신청 승인`}
                 >

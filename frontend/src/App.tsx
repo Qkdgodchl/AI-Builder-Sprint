@@ -9,9 +9,11 @@ import { PixelDiary } from './components/diary/PixelDiary';
 import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { AuthModal } from './components/auth/AuthModal';
 import { ManagerApplicationPage } from './components/user/ManagerApplicationPage';
+import { MyPage } from './components/user/MyPage';
 import { MyCenterPage } from './components/center/MyCenterPage';
 import { playBeep } from './services/soundFx';
-import type { SessionUser, UserRole } from './types';
+import { logout as logoutApi } from './services/authApi';
+import type { SessionUser } from './types';
 
 const loadStoredUser = (): SessionUser | null => {
   const storedUser = localStorage.getItem('pixel-care-user');
@@ -19,13 +21,9 @@ const loadStoredUser = (): SessionUser | null => {
 
   try {
     const parsed = JSON.parse(storedUser) as SessionUser;
-    if (parsed.email && parsed.role) return parsed;
+    if (parsed.id && parsed.email && parsed.role) return parsed;
   } catch {
-    return {
-      email: storedUser,
-      nickname: storedUser.split('@')[0] || '픽셀 사용자',
-      role: 'USER',
-    };
+    localStorage.removeItem('pixel-care-user');
   }
 
   return null;
@@ -87,25 +85,21 @@ export function App() {
     setTemperature((prev) => Math.min(99.9, prev + val));
   };
 
-  const handleAuthenticate = (email: string, nickname: string, role: UserRole) => {
-    const user: SessionUser = { email, nickname, role };
+  const handleAuthenticate = (user: SessionUser) => {
     localStorage.setItem('pixel-care-user', JSON.stringify(user));
     setCurrentUser(user);
     setIsAuthModalOpen(false);
-    triggerToast(`${nickname}님, 로그인했습니다.`);
+    triggerToast(`${user.nickname}님, 로그인했습니다.`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutApi();
     localStorage.removeItem('pixel-care-user');
     setCurrentUser(null);
     triggerToast('로그아웃되었습니다.');
   };
 
   const handleManagerApplicationSubmit = (centerName: string) => {
-    localStorage.setItem(
-      'pixel-care-manager-application',
-      JSON.stringify({ centerName, status: 'PENDING', submittedAt: new Date().toISOString() }),
-    );
     navigate('/roadmap');
     triggerToast(`${centerName} 센터 관리자 신청이 접수되었습니다.`);
   };
@@ -131,6 +125,16 @@ export function App() {
           <Route path="/community/posts/:id" element={<PixelDiary onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
           <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
+          <Route
+            path="/my-page"
+            element={
+              currentUser ? (
+                <MyPage currentUser={currentUser} />
+              ) : (
+                <Navigate to="/volunteer" replace />
+              )
+            }
+          />
           <Route
             path="/manager-application"
             element={
