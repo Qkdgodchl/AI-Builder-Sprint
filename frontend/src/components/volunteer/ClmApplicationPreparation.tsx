@@ -24,7 +24,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   onBack,
 }) => {
   const isVolunteer = item.category === 'VOLUNTEER';
-  const documentName = isVolunteer ? '봉사 참여 약정서' : '후원 및 기부 약정서';
+  const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-PC-01호)' : '후원 및 기부 약정서 (제2026-PC-02호)';
+
   const [specialConditions, setSpecialConditions] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
@@ -39,8 +40,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [applicantEmail, setApplicantEmail] = useState('user@pixelcare.com');
   const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isDocViewModalOpen, setIsDocViewModalOpen] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const [requestingSign, setRequestingSign] = useState(false);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
 
   // 캔버스 마우스/터치 서명 관련 상태
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -117,7 +121,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#111';
 
@@ -137,7 +141,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     setHasDrawn(false);
   };
 
-  // 전자서명 최종 제출 처리
+  // 전자서명 최종 제출 처리 및 서명 이미지 보존
   const handleConfirmSignature = async () => {
     if (!clmDoc) return;
     if (!hasDrawn) {
@@ -145,12 +149,18 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       return;
     }
 
+    // 캔버스 자필 서명 DataURL 추출
+    const canvas = canvasRef.current;
+    if (canvas) {
+      setSignatureDataUrl(canvas.toDataURL('image/png'));
+    }
+
     try {
       const updated = await completeClmSign(clmDoc.id);
       if (updated && updated.status === 'SIGNED') {
         setIsSigned(true);
         setIsSigningModalOpen(false);
-        alert('✍️ 마우스 자필 전자서명이 작성되었으며 모두싸인 CLM DB에 보존 처리되었습니다!');
+        alert('✍️ 자필 서명이 성공적으로 반영되었으며 완료된 약정서 증서가 발급되었습니다!');
       }
     } catch (err) {
       console.error(err);
@@ -247,27 +257,41 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <div className="clm-section-heading">
               <div>
                 <span>STEP 02</span>
-                <h3>서류 작성 & 신청자 정보</h3>
+                <h3>서류 작성 & 서식 열람</h3>
               </div>
               <span className={`clm-status ${canStartSigning ? 'complete' : 'pending'}`}>
                 {canStartSigning ? '작성 완료' : '작성 중'}
               </span>
             </div>
 
-            <div className="clm-document-card">
+            <div className="clm-document-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <span>필수 서류</span>
-                <strong>{documentName} (모두싸인 연동)</strong>
+                <span>공식 서식 양식</span>
+                <strong>{documentName}</strong>
                 <p>
-                  참여 조건, 활동 또는 후원 내용, 개인정보 동의 항목이 포함됩니다.
+                  참여 조건, 안전 수칙 준수, 픽셀 온기 보상 및 보안 동의 항목 포함
                 </p>
               </div>
-              <span className="clm-status complete">온라인 작성</span>
+              <button
+                type="button"
+                style={{
+                  padding: '8px 14px',
+                  background: '#faf0ca',
+                  border: '1.5px solid #111',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontSize: '13px'
+                }}
+                onClick={() => setIsPreviewModalOpen(true)}
+              >
+                📄 약정서 전문 미리보기
+              </button>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
               <label style={{ flex: 1 }}>
-                신청자 이름
+                신청자 성명
                 <input
                   type="text"
                   className="pixel-input"
@@ -294,7 +318,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 value={specialConditions}
                 onChange={(event) => setSpecialConditions(event.target.value)}
                 placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
-                rows={4}
+                rows={3}
               />
             </label>
 
@@ -320,7 +344,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 checked={portraitConsent}
                 onChange={(event) => setPortraitConsent(event.target.checked)}
               />
-              <span>활동 사진의 초상권 활용에 동의합니다. (선택)</span>
+              <span>활동 사진의 초상권 활용 및 온기 뱃지 기록에 동의합니다. (선택)</span>
             </label>
           </section>
 
@@ -340,11 +364,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               <strong>{isSigned ? '✅ 자필 전자서명 완료됨' : '모두싸인 자필 전자서명'}</strong>
               <p>
                 {isSigned
-                  ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 법적 효력이 있는 서명이 보존되었습니다.`
+                  ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 법적 효력이 있는 자필 전자서명이 보존되었습니다.`
                   : '약정서를 확인한 뒤 마우스 또는 손가락으로 자필 전자서명을 작성합니다.'}
               </p>
 
-              {!isSigned && (
+              {!isSigned ? (
                 <button
                   type="button"
                   style={{
@@ -362,11 +386,27 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 >
                   {requestingSign ? '서명 창 로딩 중...' : '✍️ 모두싸인 자필 서명하기 (마우스 드로잉)'}
                 </button>
-              )}
-
-              {isSigned && (
-                <div style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '15px', marginTop: '10px' }}>
-                  ✍️ 서명 완료일시: {new Date().toLocaleString('ko-KR')}
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '15px' }}>
+                    ✍️ 서명 완료일시: {new Date().toLocaleString('ko-KR')}
+                  </div>
+                  <button
+                    type="button"
+                    style={{
+                      padding: '8px 18px',
+                      background: '#2ec4b6',
+                      color: '#fff',
+                      border: '2px solid #111',
+                      borderRadius: '6px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontSize: '13px'
+                    }}
+                    onClick={() => setIsDocViewModalOpen(true)}
+                  >
+                    🔍 서명 완료된 약정 증서 열람하기
+                  </button>
                 </div>
               )}
             </div>
@@ -410,27 +450,70 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         </aside>
       </div>
 
-      {/* 모두싸인 자필 서명 마우스 캔버스 모달 */}
-      {isSigningModalOpen && clmDoc && (
+      {/* 1. 약정서 전문 미리보기 모달 */}
+      {isPreviewModalOpen && (
         <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.75)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 9999,
-          padding: '20px'
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '20px'
         }}>
           <div style={{
-            background: '#fff',
-            width: '100%',
-            maxWidth: '560px',
-            borderRadius: '16px',
-            border: '3px solid #111',
-            padding: '24px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-            textAlign: 'center'
+            background: '#fffef9', width: '100%', maxWidth: '640px', maxHeight: '85vh',
+            borderRadius: '16px', border: '3px solid #111', padding: '28px', overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'left'
+          }}>
+            <h2 style={{ textAlign: 'center', fontSize: '20px', borderBottom: '2px solid #111', paddingBottom: '12px', marginBottom: '20px' }}>
+              📜 {documentName}
+            </h2>
+
+            <div style={{ fontSize: '14px', lineHeight: 1.7, color: '#222' }}>
+              <p><b>[문서 번호]</b> PC-CLM-2026-0814</p>
+              <p><b>[신청 프로그램]</b> {item.title} ({item.organizer})</p>
+              <p><b>[신청자]</b> {applicantName} ({applicantEmail})</p>
+
+              <hr style={{ margin: '16px 0', borderColor: '#eee' }} />
+
+              <h4 style={{ color: '#ff70a6' }}>제 1 조 (목적)</h4>
+              <p>본 약정은 픽셀 케어(Pixel Care) 플랫폼을 통하여 <b>{item.organizer}</b>이 주관하는 <b>[{item.title}]</b> 활동에 참여 및 후원함에 있어, 신청자와 주관기관 간의 권리와 의무 사항을 규정함을 목적으로 합니다.</p>
+
+              <h4 style={{ color: '#ff70a6' }}>제 2 조 (신청자의 성실 의무 및 안전 수칙)</h4>
+              <p>1. 신청자는 동행 및 후원 수칙을 성실히 이행하며, 주관기관의 현장 안내 및 안전 지침을 준수합니다.<br/>
+              2. 무단 불참이나 타인에게 피해를 주는 행위를 하지 않으며, 일정 변경 시 사전 통보합니다.</p>
+
+              <h4 style={{ color: '#ff70a6' }}>제 3 조 (픽셀 온기 보상 및 뱃지 자격)</h4>
+              <p>본 약정을 완료하고 활동을 성실히 수행한 용사는 픽셀 온기 온도계 +0.5°C 상승 및 픽셀 뱃지 자격을 획득합니다.</p>
+
+              <h4 style={{ color: '#ff70a6' }}>제 4 조 (전자서명의 법적 효력)</h4>
+              <p>본 약정서는 모두싸인(Modusign API v2) 규격에 따라 작성되었으며, 전자서명법 제3조에 의하여 서명 날인된 종이 문서와 동일한 법적 효력을 갖습니다.</p>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <button
+                type="button"
+                style={{
+                  padding: '10px 24px', background: '#111', color: '#fff',
+                  border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
+                }}
+                onClick={() => setIsPreviewModalOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 모두싸인 자필 서명 마우스 캔버스 모달 */}
+      {isSigningModalOpen && clmDoc && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff', width: '100%', maxWidth: '560px',
+            borderRadius: '16px', border: '3px solid #111', padding: '24px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center'
           }}>
             <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', color: '#111' }}>
               ✍️ 모두싸인 (Modusign) 자필 전자서명 작성
@@ -440,7 +523,6 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               <span style={{ color: '#ff70a6', fontWeight: 'bold' }}>아래 하얀 창에 마우스나 손가락으로 직접 서명을 그려주세요!</span>
             </p>
 
-            {/* 마우스/터치 자필 서명 HTML5 Canvas */}
             <div style={{ position: 'relative', marginBottom: '16px' }}>
               <canvas
                 ref={canvasRef}
@@ -454,25 +536,16 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 onTouchEnd={stopDrawing}
                 onTouchMove={draw}
                 style={{
-                  border: '2px dashed #ff70a6',
-                  background: '#ffffff',
-                  borderRadius: '12px',
-                  cursor: 'crosshair',
-                  touchAction: 'none',
-                  display: 'block',
-                  margin: '0 auto'
+                  border: '2px dashed #ff70a6', background: '#ffffff',
+                  borderRadius: '12px', cursor: 'crosshair', touchAction: 'none',
+                  display: 'block', margin: '0 auto'
                 }}
               />
               {!hasDrawn && (
                 <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  pointerEvents: 'none',
-                  color: '#aaa',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
+                  position: 'absolute', top: '50%', left: '50%',
+                  transform: 'translate(-50%, -50%)', pointerEvents: 'none',
+                  color: '#aaa', fontSize: '14px', fontWeight: 'bold'
                 }}>
                   🖊️ 마우스로 이곳에 서명하세요
                 </div>
@@ -484,12 +557,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 type="button"
                 onClick={clearCanvas}
                 style={{
-                  padding: '6px 14px',
-                  fontSize: '12px',
-                  background: '#fff',
-                  border: '1px solid #777',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
+                  padding: '6px 14px', fontSize: '12px', background: '#fff',
+                  border: '1px solid #777', borderRadius: '6px', cursor: 'pointer'
                 }}
               >
                 🔄 서명 다시 그리기 (지우기)
@@ -503,12 +572,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               <button
                 type="button"
                 style={{
-                  padding: '12px 20px',
-                  background: '#ccc',
-                  border: '2px solid #111',
-                  borderRadius: '8px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
+                  padding: '12px 20px', background: '#ccc', border: '2px solid #111',
+                  borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
                 }}
                 onClick={() => setIsSigningModalOpen(false)}
               >
@@ -517,18 +582,105 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               <button
                 type="button"
                 style={{
-                  padding: '12px 24px',
-                  background: hasDrawn ? '#2ec4b6' : '#aaa',
-                  color: '#fff',
-                  border: '2px solid #111',
-                  borderRadius: '8px',
-                  fontWeight: 'bold',
-                  cursor: hasDrawn ? 'pointer' : 'not-allowed'
+                  padding: '12px 24px', background: hasDrawn ? '#2ec4b6' : '#aaa',
+                  color: '#fff', border: '2px solid #111', borderRadius: '8px',
+                  fontWeight: 'bold', cursor: hasDrawn ? 'pointer' : 'not-allowed'
                 }}
                 disabled={!hasDrawn}
                 onClick={handleConfirmSignature}
               >
                 ✍️ 서명 제출 및 완성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. 서명 완료된 최종 계약/약정 증서 열람 모달 */}
+      {isDocViewModalOpen && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff', width: '100%', maxWidth: '620px', maxHeight: '90vh',
+            borderRadius: '16px', border: '3px solid #2ec4b6', padding: '28px', overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)', textAlign: 'left', position: 'relative'
+          }}>
+            {/* 공식 직인 뱃지 */}
+            <div style={{
+              position: 'absolute', top: '24px', right: '24px',
+              width: '80px', height: '80px', borderRadius: '50%',
+              border: '3px double #ff3b30', color: '#ff3b30', display: 'flex',
+              flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+              transform: 'rotate(-12deg)', fontWeight: 'bold', fontSize: '11px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.9)'
+            }}>
+              <span>픽셀케어</span>
+              <span>전자서명</span>
+              <span>[검증완료]</span>
+            </div>
+
+            <h2 style={{ textAlign: 'center', fontSize: '20px', color: '#111', marginBottom: '8px' }}>
+              🎖️ 픽셀케어 전자서명 완료 증서
+            </h2>
+            <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '24px' }}>
+              Modusign API v2 전자서명법 제3조에 의거 보존된 전자약정서입니다.
+            </p>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
+              <tbody>
+                <tr>
+                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd', width: '110px' }}>문서번호</th>
+                  <td style={{ padding: '8px 12px', border: '1px solid #ddd' }}>{clmDoc?.modusignDocumentId || 'MODU-2026-0814'}</td>
+                </tr>
+                <tr>
+                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>신청 프로그램</th>
+                  <td style={{ padding: '8px 12px', border: '1px solid #ddd', fontWeight: 'bold' }}>{item.title}</td>
+                </tr>
+                <tr>
+                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>주관 기관</th>
+                  <td style={{ padding: '8px 12px', border: '1px solid #ddd' }}>{item.organizer}</td>
+                </tr>
+                <tr>
+                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>서명인 성명</th>
+                  <td style={{ padding: '8px 12px', border: '1px solid #ddd' }}>{applicantName} ({applicantEmail})</td>
+                </tr>
+                <tr>
+                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>서명 완료일시</th>
+                  <td style={{ padding: '8px 12px', border: '1px solid #ddd', color: '#2ec4b6', fontWeight: 'bold' }}>
+                    {new Date().toLocaleString('ko-KR')}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* 실제 자필 서명 렌더링 박스 */}
+            <div style={{
+              background: '#fafafa', border: '2px dashed #2ec4b6', borderRadius: '12px',
+              padding: '16px', textAlign: 'center', marginBottom: '24px'
+            }}>
+              <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '8px' }}>
+                [보존된 서명인 자필 전자서명]
+              </span>
+              {signatureDataUrl ? (
+                <img src={signatureDataUrl} alt="자필 서명" style={{ height: '80px', objectFit: 'contain' }} />
+              ) : (
+                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#111' }}>✍️ {applicantName} (인)</span>
+              )}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                type="button"
+                style={{
+                  padding: '10px 24px', background: '#2ec4b6', color: '#fff',
+                  border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
+                }}
+                onClick={() => setIsDocViewModalOpen(false)}
+              >
+                확인 및 닫기
               </button>
             </div>
           </div>
