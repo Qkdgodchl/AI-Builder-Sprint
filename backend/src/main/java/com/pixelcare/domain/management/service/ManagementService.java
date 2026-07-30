@@ -2,6 +2,7 @@ package com.pixelcare.domain.management.service;
 
 import com.pixelcare.domain.management.dto.*;
 import com.pixelcare.domain.management.repository.ManagementRepository;
+import com.pixelcare.domain.management.repository.OperatorAuditRepository;
 import com.pixelcare.domain.user.repository.UserAccountRepository;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.http.HttpStatus;
@@ -15,10 +16,16 @@ public class ManagementService {
 
     private final ManagementRepository repository;
     private final UserAccountRepository userRepository;
+    private final OperatorAuditRepository auditRepository;
 
-    public ManagementService(ManagementRepository repository, UserAccountRepository userRepository) {
+    public ManagementService(
+            ManagementRepository repository,
+            UserAccountRepository userRepository,
+            OperatorAuditRepository auditRepository
+    ) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.auditRepository = auditRepository;
     }
 
     @Transactional
@@ -64,6 +71,65 @@ public class ManagementService {
     }
 
     @Transactional
+    public OrganizationApplicationResponse applyOrganization(
+            Long userId,
+            OrganizationApplicationRequest request
+    ) {
+        if (repository.hasPendingOrganizationApplication(userId)) {
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "PENDING_APPLICATION_EXISTS",
+                    "이미 검토 중인 센터 신청이 있습니다."
+            );
+        }
+        String publicId = repository.createOrganizationApplication(userId, request);
+        return getOrganizationApplication(publicId, userId, false);
+    }
+
+    public List<OrganizationApplicationResponse> myOrganizationApplications(Long userId) {
+        return repository.findOrganizationApplicationsByUser(userId);
+    }
+
+    public OrganizationApplicationResponse getOrganizationApplication(
+            String publicId,
+            Long requesterId,
+            boolean operator
+    ) {
+        OrganizationApplicationResponse application = repository.findOrganizationApplication(publicId)
+                .orElseThrow(() -> notFound("센터 신청을 찾을 수 없습니다."));
+        if (!operator && !application.applicantUserId().equals(requesterId)) {
+            throw forbidden();
+        }
+        return application;
+    }
+
+    public List<OrganizationApplicationResponse> organizationApplicationsForOperator(String status) {
+        return repository.findOrganizationApplications(status);
+    }
+
+    @Transactional
+    public OrganizationApplicationResponse decideOrganizationApplication(
+            String publicId,
+            Long operatorId,
+            String decision,
+            String reason
+    ) {
+        OrganizationApplicationResponse application = repository.findOrganizationApplication(publicId)
+                .orElseThrow(() -> notFound("센터 신청을 찾을 수 없습니다."));
+        requirePending(application.status());
+        repository.decideOrganizationApplication(publicId, decision, operatorId, reason);
+        if ("APPROVED".equals(decision)) {
+            userRepository.grantRole(application.applicantUserId(), "CENTER_MANAGER");
+            repository.createOrganizationForApprovedApplication(application);
+        }
+        auditRepository.record(
+                operatorId, "ORGANIZATION_APPLICATION_" + decision,
+                "ORGANIZATION_APPLICATION", publicId
+        );
+        return repository.findOrganizationApplication(publicId).orElseThrow();
+    }
+
+    @Transactional
     public ManagerApplicationResponse decideManagerApplication(
             String publicId,
             Long operatorId,
@@ -78,6 +144,10 @@ public class ManagementService {
             userRepository.grantRole(application.applicantUserId(), "CENTER_MANAGER");
             repository.ensureOrganizationForApprovedApplication(application);
         }
+        auditRepository.record(
+                operatorId, "MANAGER_APPLICATION_" + decision,
+                "MANAGER_APPLICATION", publicId
+        );
         return repository.findManagerApplication(publicId).orElseThrow();
     }
 
@@ -114,7 +184,11 @@ public class ManagementService {
     }
 
     private void requirePending(ManagerApplicationResponse application) {
-        if (!"PENDING".equals(application.status())) {
+        requirePending(application.status());
+    }
+
+    private void requirePending(String status) {
+        if (!"PENDING".equals(status)) {
             throw new ApiException(
                     HttpStatus.CONFLICT,
                     "INVALID_APPLICATION_STATE",

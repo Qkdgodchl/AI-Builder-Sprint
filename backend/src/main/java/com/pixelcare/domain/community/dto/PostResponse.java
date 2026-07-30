@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 public class PostResponse {
 
     private Long id;
+    private Long authorUserId;
     private String category;
     private String title;
     private String content;
@@ -21,6 +22,7 @@ public class PostResponse {
 
     public PostResponse(Post post) {
         this.id = post.getId();
+        this.authorUserId = post.getAuthorUserId();
         this.category = post.getCategory();
         this.title = post.getTitle();
         this.content = post.getContent();
@@ -34,6 +36,7 @@ public class PostResponse {
     }
 
     public Long getId() { return id; }
+    public Long getAuthorUserId() { return authorUserId; }
     public String getCategory() { return category; }
     public String getTitle() { return title; }
     public String getContent() { return content; }

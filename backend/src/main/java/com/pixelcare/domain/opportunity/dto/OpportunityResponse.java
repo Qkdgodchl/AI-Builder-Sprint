@@ -27,6 +27,7 @@ public record OpportunityResponse(
         String status,
         long applicantCount,
         List<RequiredDocumentResponse> requiredDocuments,
+        Long createdByUserId,
         LocalDateTime publishedAt,
         LocalDateTime createdAt
 ) {

@@ -82,6 +82,7 @@ export interface ManagedOpportunity {
     description?: string;
     required: boolean;
   }>;
+  createdByUserId?: number;
 }
 
 export const fetchManagedOpportunities = (organizationId: number) =>

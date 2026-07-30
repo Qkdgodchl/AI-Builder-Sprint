@@ -65,6 +65,14 @@ public class ApplicationService {
         return repository.findByUser(userId);
     }
 
+    public List<ApplicationResponse> operatorApplications() {
+        return repository.findAllForOperator();
+    }
+
+    public ApplicationResponse operatorDetail(String publicId) {
+        return repository.findByPublicId(publicId).orElseThrow(() -> notFound());
+    }
+
     public ApplicationResponse detail(Long userId, boolean manager, String publicId) {
         ApplicationResponse application = repository.findByPublicId(publicId)
                 .orElseThrow(() -> notFound());

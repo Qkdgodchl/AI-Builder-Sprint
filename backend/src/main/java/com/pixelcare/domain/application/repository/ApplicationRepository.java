@@ -162,6 +162,15 @@ public class ApplicationRepository {
         );
     }
 
+    public List<ApplicationResponse> findAllForOperator() {
+        return jdbcTemplate.query(
+                SELECT + """
+                        ORDER BY org.name, o.title, u.name, a.created_at DESC
+                        """,
+                this::map
+        );
+    }
+
     public List<ApplicationResponse> findByOpportunity(Long opportunityId) {
         return jdbcTemplate.query(
                 SELECT + " WHERE a.opportunity_id = ? ORDER BY a.created_at DESC",

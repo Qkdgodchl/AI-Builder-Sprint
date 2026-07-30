@@ -240,20 +240,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {view === 'login' && (
-          <button
-            type="button"
-            className="manager-demo-login"
-            onClick={async () => {
-              setFormError('');
-              try {
-                onAuthenticate(await login('manager@pixelcare.demo', 'Manager123!'));
-              } catch (error) {
-                setFormError(error instanceof Error ? error.message : '데모 로그인에 실패했습니다.');
-              }
-            }}
-          >
-            센터 관리자 데모로 로그인
-          </button>
+          <>
+            <button
+              type="button"
+              className="manager-demo-login"
+              onClick={async () => {
+                setFormError('');
+                try {
+                  onAuthenticate(await login('manager@pixelcare.demo', 'Manager123!'));
+                } catch (error) {
+                  setFormError(error instanceof Error ? error.message : '데모 로그인에 실패했습니다.');
+                }
+              }}
+            >
+              센터 관리자 데모로 로그인
+            </button>
+            <button
+              type="button"
+              className="manager-demo-login"
+              onClick={async () => {
+                setFormError('');
+                try {
+                  onAuthenticate(await login('operator@pixelcare.local', 'Operator123!'));
+                } catch (error) {
+                  setFormError(error instanceof Error ? error.message : '운영진 로그인에 실패했습니다.');
+                }
+              }}
+            >
+              운영진 데모로 로그인
+            </button>
+          </>
         )}
 
         <p className="auth-modal-note">

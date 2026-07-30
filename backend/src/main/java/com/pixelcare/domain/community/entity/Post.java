@@ -11,6 +11,9 @@ public class Post extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "author_user_id")
+    private Long authorUserId;
+
     @Column(nullable = false)
     private String title;
 
@@ -39,8 +42,21 @@ public class Post extends BaseTimeEntity {
     public Post() {}
 
     public Post(String title, String content, String authorNickname, String authorBadge, String category, String imageUrl) {
+        this(title, content, null, authorNickname, authorBadge, category, imageUrl);
+    }
+
+    public Post(
+            String title,
+            String content,
+            Long authorUserId,
+            String authorNickname,
+            String authorBadge,
+            String category,
+            String imageUrl
+    ) {
         this.title = title;
         this.content = content;
+        this.authorUserId = authorUserId;
         this.authorNickname = authorNickname;
         this.authorBadge = authorBadge != null ? authorBadge : "LV1_SEED";
         this.category = category != null ? category : "GENERAL";
@@ -48,6 +64,7 @@ public class Post extends BaseTimeEntity {
     }
 
     public Long getId() { return id; }
+    public Long getAuthorUserId() { return authorUserId; }
     public String getTitle() { return title; }
     public String getContent() { return content; }
     public String getAuthorNickname() { return authorNickname; }
@@ -58,7 +75,8 @@ public class Post extends BaseTimeEntity {
     public Integer getCommentCount() { return commentCount; }
     public Integer getViewCount() { return viewCount; }
 
-    public void update(String title, String content, String imageUrl) {
+    public void update(String category, String title, String content, String imageUrl) {
+        this.category = category != null ? category : this.category;
         this.title = title;
         this.content = content;
         this.imageUrl = imageUrl;
