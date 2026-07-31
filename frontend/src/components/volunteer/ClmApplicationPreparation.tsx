@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import type { VolunteerItem } from '../../types';
 import {
   createApplication,
   submitCommitment,
 } from '../../services/applicationApi';
-import { requestClmSign, completeClmSign } from '../../services/clmApi';
+import { requestClmSign, fetchClmDocument, refreshClmSecureLink } from '../../services/clmApi';
 import type { ClmDocumentDto } from '../../services/clmApi';
 
 interface ApplicationItem extends VolunteerItem {
@@ -44,12 +44,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [isDocViewModalOpen, setIsDocViewModalOpen] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const [requestingSign, setRequestingSign] = useState(false);
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string>('');
-
-  // 캔버스 마우스/터치 서명 관련 상태
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasDrawn, setHasDrawn] = useState(false);
+  const [checkingSignature, setCheckingSignature] = useState(false);
+  const [signatureStatusMessage, setSignatureStatusMessage] = useState('');
 
   const canStartSigning = privacyConsent && thirdPartyConsent;
 
@@ -68,104 +64,47 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         applicantEmail: applicantEmail.trim() || 'user@pixelcare.com',
       });
 
-      if (doc) {
-        setClmDoc(doc);
-        setIsSigningModalOpen(true);
-        setHasDrawn(false);
-      } else {
-        alert('모두싸인 서명 요청 문서 생성에 실패했습니다.');
-      }
+      setClmDoc(doc);
+      setSignatureStatusMessage('');
+      setIsSigningModalOpen(true);
     } catch (err) {
       console.error(err);
-      alert('서명 요청 처리 중 오류가 발생했습니다.');
+      alert(err instanceof Error ? err.message : '서명 요청 처리 중 오류가 발생했습니다.');
     } finally {
       setRequestingSign(false);
     }
   };
 
-  // 캔버스 드로잉 로직 (마우스 / 터치)
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    draw(e);
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.beginPath();
-    }
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing && e.type !== 'mousedown' && e.type !== 'touchstart') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    let clientX = 0;
-    let clientY = 0;
-
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else {
-      const mouseEvent = e as React.MouseEvent<HTMLCanvasElement>;
-      clientX = mouseEvent.clientX;
-      clientY = mouseEvent.clientY;
-    }
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#111';
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setHasDrawn(true);
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDrawn(false);
-  };
-
-  // 전자서명 최종 제출 처리 및 서명 이미지 보존
-  const handleConfirmSignature = async () => {
+  const handleCheckSignature = async () => {
     if (!clmDoc) return;
-    if (!hasDrawn) {
-      alert('마우스 또는 터치로 캔버스에 직접 자필 서명을 남겨주세요!');
-      return;
-    }
-
-    // 캔버스 자필 서명 DataURL 추출
-    const canvas = canvasRef.current;
-    if (canvas) {
-      setSignatureDataUrl(canvas.toDataURL('image/png'));
-    }
-
+    setCheckingSignature(true);
+    setSignatureStatusMessage('');
     try {
-      const updated = await completeClmSign(clmDoc.id);
-      if (updated && updated.status === 'SIGNED') {
+      const updated = await fetchClmDocument(clmDoc.id);
+      setClmDoc(updated);
+      if (updated.status === 'SIGNED') {
         setIsSigned(true);
         setIsSigningModalOpen(false);
-        alert('✍️ 자필 서명이 성공적으로 반영되었으며 완료된 약정서 증서가 발급되었습니다!');
+        alert('모두싸인 전자서명 완료가 확인되었습니다.');
+      } else {
+        setSignatureStatusMessage('아직 서명이 완료되지 않았습니다. 모두싸인에서 서명을 끝낸 뒤 다시 확인해 주세요.');
       }
     } catch (err) {
       console.error(err);
-      alert('서명 완료 처리 중 오류가 발생했습니다.');
+      setSignatureStatusMessage(
+        err instanceof Error && err.message.includes('잠시')
+          ? err.message
+          : '상태 확인 요청이 잠시 겹쳤습니다. 서명을 마친 뒤 잠시 후 다시 눌러주세요.',
+      );
+    } finally {
+      setCheckingSignature(false);
     }
+  };
+
+  const handleReopenSigning = async () => {
+    if (!clmDoc) return;
+    const updated = await refreshClmSecureLink(clmDoc.id);
+    setClmDoc(updated);
   };
 
   const handleSubmit = async () => {
@@ -361,11 +300,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
             <div className="clm-signature-placeholder" style={{ borderColor: isSigned ? '#2ec4b6' : 'var(--pc-dark)' }}>
               <span>MODUSIGN E-SIGNATURE</span>
-              <strong>{isSigned ? '✅ 자필 전자서명 완료됨' : '모두싸인 자필 전자서명'}</strong>
+              <strong>{isSigned ? '전자서명 완료' : '모두싸인 전자서명'}</strong>
               <p>
                 {isSigned
-                  ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 법적 효력이 있는 자필 전자서명이 보존되었습니다.`
-                  : '약정서를 확인한 뒤 마우스 또는 손가락으로 자필 전자서명을 작성합니다.'}
+                  ? `문서 ID: ${clmDoc?.modusignDocumentId || 'MODU_SIGNED'} · 완료된 전자서명 문서가 보존되었습니다.`
+                  : '약정서를 확인한 뒤 모두싸인 보안 서명창에서 전자서명을 진행합니다.'}
               </p>
 
               {!isSigned ? (
@@ -384,7 +323,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   disabled={!canStartSigning || requestingSign}
                   onClick={handleStartModusign}
                 >
-                  {requestingSign ? '서명 창 로딩 중...' : '✍️ 모두싸인 자필 서명하기 (마우스 드로잉)'}
+                  {requestingSign ? '서명 창 로딩 중...' : '모두싸인 전자서명 시작'}
                 </button>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
@@ -411,7 +350,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               )}
             </div>
             <p className="clm-placeholder-note">
-              모두싸인(Modusign API v2) 공식 규격과 연동하여 마우스 자필 서명이 CLM DB에 안전하게 보존됩니다.
+                모두싸인 보안 서명창에서 작성한 전자서명 문서가 픽셀케어 CLM에 안전하게 보관됩니다.
             </p>
           </section>
         </div>
@@ -503,7 +442,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         </div>
       )}
 
-      {/* 2. 모두싸인 자필 서명 마우스 캔버스 모달 */}
+      {/* 2. 모두싸인 SECURE_LINK 진행 안내 */}
       {isSigningModalOpen && clmDoc && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -511,57 +450,41 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           zIndex: 9999, padding: '20px'
         }}>
           <div style={{
-            background: '#fff', width: '100%', maxWidth: '560px',
+            background: '#fff', width: '100%', maxWidth: '900px',
             borderRadius: '16px', border: '3px solid #111', padding: '24px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.5)', textAlign: 'center'
           }}>
             <h3 style={{ fontSize: '18px', margin: '0 0 8px 0', color: '#111' }}>
-              ✍️ 모두싸인 (Modusign) 자필 전자서명 작성
+              모두싸인 전자서명
             </h3>
             <p style={{ fontSize: '13px', color: '#555', marginBottom: '16px', lineHeight: 1.4 }}>
-              <b>{clmDoc.volunteerTitle}</b> 약정서 서명 패드입니다.<br/>
-              <span style={{ color: '#ff70a6', fontWeight: 'bold' }}>아래 하얀 창에 마우스나 손가락으로 직접 서명을 그려주세요!</span>
+              <b>{clmDoc.volunteerTitle}</b> 약정서가 모두싸인 보안 서명창에서 열렸습니다.<br/>
+              서명을 완료한 뒤 아래의 ‘서명 완료 확인’을 눌러주세요.
             </p>
 
-            <div style={{ position: 'relative', marginBottom: '16px' }}>
-              <canvas
-                ref={canvasRef}
-                width={500}
-                height={180}
-                onMouseDown={startDrawing}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onMouseMove={draw}
-                onTouchStart={startDrawing}
-                onTouchEnd={stopDrawing}
-                onTouchMove={draw}
-                style={{
-                  border: '2px dashed #ff70a6', background: '#ffffff',
-                  borderRadius: '12px', cursor: 'crosshair', touchAction: 'none',
-                  display: 'block', margin: '0 auto'
-                }}
-              />
-              {!hasDrawn && (
-                <div style={{
-                  position: 'absolute', top: '50%', left: '50%',
-                  transform: 'translate(-50%, -50%)', pointerEvents: 'none',
-                  color: '#aaa', fontSize: '14px', fontWeight: 'bold'
-                }}>
-                  🖊️ 마우스로 이곳에 서명하세요
-                </div>
-              )}
-            </div>
+            <iframe
+              title="모두싸인 보안 전자서명"
+              src={clmDoc.signingUrl}
+              style={{
+                width: '100%',
+                height: '520px',
+                border: '2px solid #111',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                background: '#fff',
+              }}
+            />
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <button
                 type="button"
-                onClick={clearCanvas}
+                onClick={handleReopenSigning}
                 style={{
                   padding: '6px 14px', fontSize: '12px', background: '#fff',
                   border: '1px solid #777', borderRadius: '6px', cursor: 'pointer'
                 }}
               >
-                🔄 서명 다시 그리기 (지우기)
+                서명창 다시 열기
               </button>
               <span style={{ fontSize: '11px', color: '#888' }}>
                 문서 코드: {clmDoc.modusignDocumentId}
@@ -582,16 +505,21 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               <button
                 type="button"
                 style={{
-                  padding: '12px 24px', background: hasDrawn ? '#2ec4b6' : '#aaa',
+                  padding: '12px 24px', background: '#2ec4b6',
                   color: '#fff', border: '2px solid #111', borderRadius: '8px',
-                  fontWeight: 'bold', cursor: hasDrawn ? 'pointer' : 'not-allowed'
+                  fontWeight: 'bold', cursor: 'pointer'
                 }}
-                disabled={!hasDrawn}
-                onClick={handleConfirmSignature}
+                onClick={handleCheckSignature}
+                disabled={checkingSignature}
               >
-                ✍️ 서명 제출 및 완성
+                {checkingSignature ? '확인 중...' : '서명 완료 확인'}
               </button>
             </div>
+            {signatureStatusMessage && (
+              <p role="status" style={{ margin: '12px 0 0', color: '#b54708', fontSize: '13px', fontWeight: 700 }}>
+                {signatureStatusMessage}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -656,19 +584,15 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               </tbody>
             </table>
 
-            {/* 실제 자필 서명 렌더링 박스 */}
+            {/* 서명 원본은 모두싸인에 보존되며 픽셀케어에는 상태와 문서 식별자를 보존한다. */}
             <div style={{
               background: '#fafafa', border: '2px dashed #2ec4b6', borderRadius: '12px',
               padding: '16px', textAlign: 'center', marginBottom: '24px'
             }}>
               <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '8px' }}>
-                [보존된 서명인 자필 전자서명]
+                [모두싸인 전자서명 검증 상태]
               </span>
-              {signatureDataUrl ? (
-                <img src={signatureDataUrl} alt="자필 서명" style={{ height: '80px', objectFit: 'contain' }} />
-              ) : (
-                <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#111' }}>✍️ {applicantName} (인)</span>
-              )}
+              <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#111' }}>서명 완료</span>
             </div>
 
             <div style={{ textAlign: 'center' }}>

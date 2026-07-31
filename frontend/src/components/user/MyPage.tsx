@@ -4,6 +4,13 @@ import type { SessionUser } from '../../types';
 import { fetchMyApplications, type ApplicationResponse } from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
+import {
+  fetchMyClmDocuments,
+  fetchClmDocumentFiles,
+  loadClmDocumentFile,
+  type ClmDocumentDto,
+  type ClmDocumentFileDto,
+} from '../../services/clmApi';
 
 interface MyPageProps {
   currentUser: SessionUser;
@@ -38,20 +45,25 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [applications, setApplications] = useState<ApplicationResponse[]>([]);
   const [posts, setPosts] = useState<PostItem[]>([]);
+  const [clmDocuments, setClmDocuments] = useState<ClmDocumentDto[]>([]);
+  const [clmFiles, setClmFiles] = useState<ClmDocumentFileDto[]>([]);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState('');
+  const [previewPdfTitle, setPreviewPdfTitle] = useState('');
   const [nickname, setNickname] = useState(currentUser.nickname);
   const [phone, setPhone] = useState('');
   const [region, setRegion] = useState('');
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    Promise.all([fetchMyProfile(), fetchMyApplications(), fetchMyPosts()])
-      .then(([nextProfile, nextApplications, nextPosts]) => {
+    Promise.all([fetchMyProfile(), fetchMyApplications(), fetchMyPosts(), fetchMyClmDocuments()])
+      .then(([nextProfile, nextApplications, nextPosts, nextClmDocuments]) => {
         setProfile(nextProfile);
         setNickname(nextProfile.nickname);
         setPhone(nextProfile.phone || '');
         setRegion(nextProfile.region || '');
         setApplications(nextApplications);
         setPosts(nextPosts);
+        setClmDocuments(nextClmDocuments);
       })
       .catch((error) => {
         setNotice(error instanceof Error ? error.message : '마이페이지를 불러오지 못했습니다.');
@@ -67,6 +79,23 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     [applications, entityId],
   );
 
+  const selectedClmDocument = useMemo(
+    () => selectedApplication
+      ? clmDocuments.find((document) => document.volunteerId === selectedApplication.opportunityId) ?? null
+      : null,
+    [clmDocuments, selectedApplication],
+  );
+
+  useEffect(() => {
+    if (!selectedClmDocument || selectedClmDocument.status !== 'SIGNED') {
+      setClmFiles([]);
+      return;
+    }
+    fetchClmDocumentFiles(selectedClmDocument.id)
+      .then(setClmFiles)
+      .catch((error) => setNotice(error instanceof Error ? error.message : '전자서명 파일을 불러오지 못했습니다.'));
+  }, [selectedClmDocument]);
+
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
@@ -77,6 +106,26 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '프로필 저장에 실패했습니다.');
     }
+  };
+
+  const previewClmFile = async (
+    documentId: number,
+    file: ClmDocumentFileDto,
+  ) => {
+    try {
+      const url = await loadClmDocumentFile(documentId, file.id);
+      if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(url);
+      setPreviewPdfTitle(file.fileType === 'SIGNED_DOCUMENT' ? '서명 완료 약정서' : '감사추적인증서');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '전자서명 파일을 열지 못했습니다.');
+    }
+  };
+
+  const closePdfPreview = () => {
+    if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
+    setPreviewPdfUrl('');
+    setPreviewPdfTitle('');
   };
 
   return (
@@ -176,6 +225,33 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 </div>
               ))
             )}
+            {selectedClmDocument && (
+              <>
+                <div className="user-application-heading">
+                  <h3>모두싸인 완료 서류</h3>
+                  <span>{selectedClmDocument.status === 'SIGNED' ? `총 ${clmFiles.length}건` : '서명 진행 중'}</span>
+                </div>
+                {selectedClmDocument.status === 'SIGNED' && clmFiles.length === 0 ? (
+                  <p className="user-application-empty">완료 파일을 보관하는 중입니다.</p>
+                ) : (
+                  clmFiles.map((file, index) => (
+                    <button
+                      type="button"
+                      className="user-document-row"
+                      key={file.id}
+                      onClick={() => previewClmFile(selectedClmDocument.id, file)}
+                    >
+                      <span>{String(index + 1).padStart(2, '0')}</span>
+                      <div>
+                        <strong>{file.fileType === 'SIGNED_DOCUMENT' ? '서명 완료 약정서' : '감사추적인증서'}</strong>
+                        <p>{file.originalName} · {(file.sizeBytes / 1024).toFixed(1)}KB</p>
+                      </div>
+                      <em>PDF 열람</em>
+                    </button>
+                  ))
+                )}
+              </>
+            )}
           </div>
         </section>
       ) : (
@@ -250,6 +326,21 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
             </section>
           )}
         </>
+      )}
+      {previewPdfUrl && (
+        <div className="auth-modal-backdrop" role="presentation">
+          <section className="auth-modal" role="dialog" aria-modal="true" aria-label={previewPdfTitle}>
+            <div className="user-application-heading">
+              <h3>{previewPdfTitle}</h3>
+              <button type="button" onClick={closePdfPreview}>닫기</button>
+            </div>
+            <iframe
+              title={previewPdfTitle}
+              src={previewPdfUrl}
+              style={{ width: '100%', height: '70vh', border: '1px solid #111' }}
+            />
+          </section>
+        </div>
       )}
       {notice && <div className="center-notice">{notice}</div>}
     </article>

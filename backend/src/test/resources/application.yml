@@ -25,5 +25,11 @@ app:
 
 modusign:
   api:
+    email:
     key:
     base-url: https://api.modusign.co.kr
+    template-id:
+    participant-role: 신청자
+    redirect-url: http://127.0.0.1:5173/my-page
+  webhook:
+    secret: test-webhook-secret

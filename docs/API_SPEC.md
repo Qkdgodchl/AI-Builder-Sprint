@@ -662,11 +662,41 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
+| [x] | [x] | [ ] | POST | `/clm/documents/request-sign` | 로그인 사용자 | 템플릿 문서 생성 및 `SECURE_LINK` 최초 발급 |
+| [x] | [x] | [ ] | POST | `/clm/documents/{id}/secure-link` | 서류 소유자 | 만료된 보안 서명 링크 재발급 |
+| [x] | [x] | [ ] | GET | `/clm/documents/{id}` | 서류 소유자·OPERATOR | 저장 상태 조회 및 외부 완료 상태 동기화 |
+| [x] | [x] | [ ] | GET | `/clm/documents/my` | 로그인 사용자 | 본인 제출 서류 목록 조회 |
+| [x] | [x] | [ ] | GET | `/clm/documents/{id}/files` | 서류 소유자·OPERATOR | 보관된 완료 PDF·감사추적인증서 목록 |
+| [x] | [x] | [ ] | GET | `/clm/documents/{id}/files/{fileId}/download` | 서류 소유자·OPERATOR | 보관된 PDF 열람·다운로드 |
+| [x] | [ ] | [ ] | POST | `/webhooks/modusign` | Modusign | 서명 상태 Webhook |
 | [ ] | [ ] | [ ] | POST | `/commitments/{id}/signature-requests` | 약정 소유자 | 모두싸인 서명 요청 |
 | [ ] | [ ] | [ ] | GET | `/signature-requests/{id}` | 약정 소유자·해당 센터 관리자 | 서명 상태 조회 |
 | [ ] | [ ] | [ ] | POST | `/signature-requests/{id}/retry` | 약정 소유자·해당 센터 관리자 | 실패 서명 요청 재시도 |
 | [ ] | [ ] | [ ] | POST | `/signature-requests/{id}/sync` | 해당 센터 관리자·OPERATOR | 모두싸인 상태 즉시 동기화 |
-| [ ] | [ ] | [ ] | POST | `/webhooks/modusign` | Modusign | 서명 상태 Webhook |
+
+현재 MVP 구현은 모두싸인 템플릿 기반 `SECURE_LINK` 방식을 사용한다. 서명 링크는 약 10분 동안만
+유효하므로 영구 링크로 취급하지 않고, 사용자가 서명창을 열 때 재발급할 수 있다. 서명 완료 여부는
+클라이언트가 임의로 변경하지 않는다. 운영 환경에서는 Webhook으로 확정하며, 로컬 개발처럼 외부에서
+Webhook에 접근할 수 없는 환경에서는 `GET /clm/documents/{id}`가 모두싸인 문서 상태를 한 번 조회하여
+완료 상태와 결과 파일을 동기화한다. 모두싸인의 순간 호출 제한을 피하기 위해 한 번의 상세 조회 결과로
+상태 확인과 파일 보관을 함께 처리한다.
+로컬·사설 주소는 공개 HTTPS iframe에서 접근할 수 없으므로 `redirectUrl`로 전달하지 않는다.
+프론트는 사용자가 서명을 마친 뒤 완료 확인 버튼을 눌렀을 때 상태를 동기화한다. 서명 도중의 확인이나
+모두싸인 호출 제한은 오류 팝업으로 처리하지 않고, 서명 모달 안에 재시도 안내를 표시한다.
+배포 환경에서 공개 HTTPS `MODUSIGN_REDIRECT_URL`을 설정한 경우에만 모두싸인에 복귀 주소를 전달한다.
+`document_all_signed` 이벤트가 수신되면 문서 상세의 `file.downloadUrl`과
+`auditTrail.downloadUrl`을 즉시 내려받아 `app.storage.path/clm`에 영구 보관하고,
+DB에는 파일 유형·경로·크기·SHA-256 해시를 기록한다. 임시 다운로드 URL은 문자열 재인코딩 없이
+그대로 요청하고, 응답이 실제 PDF 매직 바이트(`%PDF-`)로 시작할 때만 저장한다.
+
+필수 서버 환경변수:
+
+- `MODUSIGN_USER_EMAIL`: API 키를 발급한 모두싸인 계정 이메일
+- `MODUSIGN_API_KEY`: 서버 전용 API 키
+- `MODUSIGN_TEMPLATE_ID`: 신청 약정서 템플릿 ID
+- `MODUSIGN_PARTICIPANT_ROLE`: 템플릿에 설정한 참여자 역할과 정확히 같은 문자열
+- `MODUSIGN_REDIRECT_URL`: 서명 후 돌아올 픽셀케어 주소
+- `MODUSIGN_WEBHOOK_SECRET`: 모두싸인 Webhook 사용자 지정 헤더에 함께 등록할 비밀값
 
 서명 요청:
 
@@ -695,6 +725,9 @@ Idempotency-Key: commitment-72-version-1
 - 다른 key로 동일 약정 중복 요청 → `409`
 - 모두싸인 `4xx` → 매핑된 `400/409`, `5xx`·timeout → `503`
 - 상태 조회 성공 → `200`, 외부 응답 오류 → `502`
+- 로컬 Webhook 미수신 상태에서 완료 문서 조회 → `SIGNED` 동기화 및 완료 PDF 2종 보관
+- 모두싸인 순간 호출 제한 → 중복 상세 조회 없이 1회 호출, 초과 시 `429` 원인 메시지 반환
+- 임시 다운로드 URL 응답이 PDF가 아님 → 파일 저장하지 않고 `502`
 - 실패 요청 재시도 → `200`, 성공·진행 중 요청 재시도 → `409`
 - Webhook 서명 검증 실패 → `401`
 - 유효 Webhook → `200`, 내부 상태 전이·완료 시각 저장
@@ -963,11 +996,15 @@ Idempotency-Key: commitment-72-version-1
 
 ### 17.2 모두싸인
 
-- [ ] 서명 요청 정상 생성
+- [ ] 템플릿 기반 `SECURE_LINK` 서명 요청 정상 생성
+- [ ] Basic 인증이 `Base64(계정 이메일:API 키)` 형식인지 확인
+- [ ] 응답의 문서 ID와 참여자 ID 저장
+- [ ] 만료된 보안 서명 링크 재발급
 - [ ] idempotency key 재호출
 - [ ] 상태 조회
 - [ ] 완료 PDF·감사추적인증서 다운로드
-- [ ] Webhook 서명 검증
+- [ ] 다운로드 URL 만료 전에 로컬 저장소 보관 및 SHA-256 검증
+- [ ] Webhook 사용자 지정 비밀 헤더 검증
 - [ ] 중복·역순 Webhook
 - [ ] `4xx`, `5xx`, timeout 후 재조회
 

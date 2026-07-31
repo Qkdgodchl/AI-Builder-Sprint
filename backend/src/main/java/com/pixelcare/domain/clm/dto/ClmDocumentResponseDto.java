@@ -13,7 +13,9 @@ public class ClmDocumentResponseDto {
     private String applicantEmail;
     private String applicantPhone;
     private String modusignDocumentId;
+    private String signingMethod;
     private String signingUrl;
+    private LocalDateTime signingUrlExpiresAt;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime signedAt;
@@ -22,7 +24,8 @@ public class ClmDocumentResponseDto {
 
     public ClmDocumentResponseDto(Long id, Long volunteerId, String volunteerTitle,
                                   String applicantName, String applicantEmail, String applicantPhone,
-                                  String modusignDocumentId, String signingUrl, String status,
+                                  String modusignDocumentId, String signingMethod, String signingUrl,
+                                  LocalDateTime signingUrlExpiresAt, String status,
                                   LocalDateTime createdAt, LocalDateTime signedAt) {
         this.id = id;
         this.volunteerId = volunteerId;
@@ -31,7 +34,9 @@ public class ClmDocumentResponseDto {
         this.applicantEmail = applicantEmail;
         this.applicantPhone = applicantPhone;
         this.modusignDocumentId = modusignDocumentId;
+        this.signingMethod = signingMethod;
         this.signingUrl = signingUrl;
+        this.signingUrlExpiresAt = signingUrlExpiresAt;
         this.status = status;
         this.createdAt = createdAt;
         this.signedAt = signedAt;
@@ -46,7 +51,9 @@ public class ClmDocumentResponseDto {
                 doc.getApplicantEmail(),
                 doc.getApplicantPhone(),
                 doc.getModusignDocumentId(),
+                doc.getSigningMethod(),
                 doc.getSigningUrl(),
+                doc.getSigningUrlExpiresAt(),
                 doc.getStatus(),
                 doc.getCreatedAt(),
                 doc.getSignedAt()
@@ -60,7 +67,9 @@ public class ClmDocumentResponseDto {
     public String getApplicantEmail() { return applicantEmail; }
     public String getApplicantPhone() { return applicantPhone; }
     public String getModusignDocumentId() { return modusignDocumentId; }
+    public String getSigningMethod() { return signingMethod; }
     public String getSigningUrl() { return signingUrl; }
+    public LocalDateTime getSigningUrlExpiresAt() { return signingUrlExpiresAt; }
     public String getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getSignedAt() { return signedAt; }
