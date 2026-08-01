@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { VolunteerItem } from '../../types';
+import React, { useEffect, useState } from 'react';
+import type { SessionUser, VolunteerItem } from '../../types';
 import {
   createApplication,
   submitCommitment,
@@ -13,6 +13,7 @@ import {
   updateConsultationIntent,
 } from '../../services/consultationApi';
 import type { ConsultationResponse, PledgeIntent } from '../../services/consultationApi';
+import { fetchMyProfile } from '../../services/authApi';
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -22,12 +23,14 @@ interface ApplicationItem extends VolunteerItem {
 interface ClmApplicationPreparationProps {
   item: ApplicationItem;
   typeLabel: string;
+  currentUser: SessionUser | null;
   onBack: () => void;
 }
 
 export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps> = ({
   item,
   typeLabel,
+  currentUser,
   onBack,
 }) => {
   const isVolunteer = item.category === 'VOLUNTEER';
@@ -58,8 +61,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [commitmentPublicId, setCommitmentPublicId] = useState<string | null>(null);
 
   // 모두싸인 (Modusign) 전자서명 상태
-  const [applicantName] = useState('로그인 사용자');
-  const [applicantEmail] = useState('로그인 계정 이메일');
+  const [applicantName, setApplicantName] = useState(currentUser?.nickname || '');
+  const [applicantEmail, setApplicantEmail] = useState(currentUser?.email || '');
   const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
   const [docFiles, setDocFiles] = useState<ClmDocumentFileDto[]>([]);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
@@ -68,6 +71,32 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [requestingSign, setRequestingSign] = useState(false);
   const [checkingSignature, setCheckingSignature] = useState(false);
   const [signatureStatusMessage, setSignatureStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (!currentUser) {
+      setApplicantName('');
+      setApplicantEmail('');
+      return;
+    }
+
+    setApplicantName(currentUser.nickname);
+    setApplicantEmail(currentUser.email);
+
+    let active = true;
+    fetchMyProfile()
+      .then((profile) => {
+        if (!active) return;
+        setApplicantName(profile.name?.trim() || profile.nickname || currentUser.nickname);
+        setApplicantEmail(profile.email || currentUser.email);
+      })
+      .catch((error) => {
+        console.error('서명자 프로필 조회 실패:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
 
   const handleOpenDocView = async () => {
     setIsDocViewModalOpen(true);
