@@ -18,7 +18,61 @@ type ProgramType =
 interface CatalogItem extends VolunteerItem {
   programType: ProgramType;
   availability: string;
+  broadRegion: string;
 }
+
+const regionOrder = [
+  '서울',
+  '부산',
+  '대구',
+  '인천',
+  '광주',
+  '대전',
+  '울산',
+  '세종',
+  '경기',
+  '강원',
+  '충북',
+  '충남',
+  '전북',
+  '전남',
+  '경북',
+  '경남',
+  '제주',
+  '전국',
+  '해외',
+  '기타',
+];
+
+const broadRegionPatterns: Array<{ label: string; patterns: string[] }> = [
+  { label: '서울', patterns: ['서울특별시', '서울'] },
+  { label: '부산', patterns: ['부산광역시', '부산'] },
+  { label: '대구', patterns: ['대구광역시', '대구'] },
+  { label: '인천', patterns: ['인천광역시', '인천'] },
+  { label: '광주', patterns: ['광주광역시', '광주'] },
+  { label: '대전', patterns: ['대전광역시', '대전'] },
+  { label: '울산', patterns: ['울산광역시', '울산'] },
+  { label: '세종', patterns: ['세종특별자치시', '세종'] },
+  { label: '경기', patterns: ['경기도', '경기'] },
+  { label: '강원', patterns: ['강원특별자치도', '강원도', '강원'] },
+  { label: '충북', patterns: ['충청북도', '충북'] },
+  { label: '충남', patterns: ['충청남도', '충남'] },
+  { label: '전북', patterns: ['전북특별자치도', '전라북도', '전북'] },
+  { label: '전남', patterns: ['전라남도', '전남'] },
+  { label: '경북', patterns: ['경상북도', '경북'] },
+  { label: '경남', patterns: ['경상남도', '경남'] },
+  { label: '제주', patterns: ['제주특별자치도', '제주도', '제주'] },
+];
+
+const getBroadRegion = (location: string) => {
+  const normalized = location.trim();
+  if (/전국|온라인|비대면/.test(normalized)) return '전국';
+  if (/전 세계|해외|국외/.test(normalized)) return '해외';
+
+  return broadRegionPatterns.find(({ patterns }) =>
+    patterns.some((pattern) => normalized.startsWith(pattern)),
+  )?.label || '기타';
+};
 
 const donationFilters: Array<{ value: DonationFilter; label: string }> = [
   { value: 'ALL', label: '전체 기부' },
@@ -53,6 +107,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
   const [loading, setLoading] = useState<boolean>(true);
   const [primaryFilter, setPrimaryFilter] = useState<PrimaryFilter>(null);
   const [donationFilter, setDonationFilter] = useState<DonationFilter>('ALL');
+  const [regionFilter, setRegionFilter] = useState('ALL');
   const navigate = useNavigate();
   const route = useParams()['*'] ?? '';
 
@@ -85,6 +140,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
         ...item,
         title: removeLeadingSymbol(item.title),
         programType,
+        broadRegion: getBroadRegion(item.location),
         availability:
           programType === 'LEGACY'
             ? '상담 가능'
@@ -99,7 +155,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
     return apiPrograms;
   }, [items]);
 
-  const filteredItems = useMemo(() => {
+  const categoryFilteredItems = useMemo(() => {
     if (!primaryFilter) return catalogItems;
 
     if (primaryFilter === 'VOLUNTEER') {
@@ -119,6 +175,23 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
     return catalogItems.filter((item) => item.programType === donationFilter);
   }, [catalogItems, donationFilter, primaryFilter]);
 
+  const availableRegions = useMemo(() => {
+    const regions = new Set(categoryFilteredItems.map((item) => item.broadRegion));
+    return regionOrder.filter((region) => regions.has(region));
+  }, [categoryFilteredItems]);
+
+  const regionCounts = useMemo(() => {
+    return categoryFilteredItems.reduce<Record<string, number>>((counts, item) => {
+      counts[item.broadRegion] = (counts[item.broadRegion] || 0) + 1;
+      return counts;
+    }, {});
+  }, [categoryFilteredItems]);
+
+  const filteredItems = useMemo(() => {
+    if (regionFilter === 'ALL') return categoryFilteredItems;
+    return categoryFilteredItems.filter((item) => item.broadRegion === regionFilter);
+  }, [categoryFilteredItems, regionFilter]);
+
   const [routeId, routeAction] = route.split('/');
   const selectedItem = routeId
     ? catalogItems.find((item) => String(item.id) === routeId) ?? null
@@ -132,6 +205,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
   const handlePrimaryFilter = (filter: Exclude<PrimaryFilter, null>) => {
     setPrimaryFilter((current) => (current === filter ? null : filter));
     if (filter !== 'DONATION') setDonationFilter('ALL');
+    setRegionFilter('ALL');
   };
 
   const canDeleteItem = (item: CatalogItem) =>
@@ -184,6 +258,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
           onClick={() => {
             setPrimaryFilter(null);
             setDonationFilter('ALL');
+            setRegionFilter('ALL');
           }}
         >
           전체
@@ -214,21 +289,44 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
         </span>
       </nav>
 
-      <div className="opportunity-sub-nav-slot">
-        <nav
-          className={`opportunity-sub-nav ${primaryFilter === 'DONATION' ? 'visible' : ''}`}
-          aria-label="기부 세부 분류"
-          aria-hidden={primaryFilter !== 'DONATION'}
-        >
-          {donationFilters.map((filter) => (
+      {primaryFilter === 'DONATION' && (
+        <div className="opportunity-sub-nav-slot">
+          <nav className="opportunity-sub-nav visible" aria-label="기부 세부 분류">
+            {donationFilters.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                className={donationFilter === filter.value ? 'active' : ''}
+                onClick={() => {
+                  setDonationFilter(filter.value);
+                  setRegionFilter('ALL');
+                }}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      <div className="opportunity-region-filter">
+        <span className="opportunity-region-label">지역</span>
+        <nav className="opportunity-region-nav" aria-label="광역 지역별 프로그램">
+          <button
+            type="button"
+            className={regionFilter === 'ALL' ? 'active' : ''}
+            onClick={() => setRegionFilter('ALL')}
+          >
+            전체 지역 <small>{categoryFilteredItems.length}</small>
+          </button>
+          {availableRegions.map((region) => (
             <button
-              key={filter.value}
+              key={region}
               type="button"
-              className={donationFilter === filter.value ? 'active' : ''}
-              onClick={() => setDonationFilter(filter.value)}
-              tabIndex={primaryFilter === 'DONATION' ? 0 : -1}
+              className={regionFilter === region ? 'active' : ''}
+              onClick={() => setRegionFilter(region)}
             >
-              {filter.label}
+              {region} <small>{regionCounts[region]}</small>
             </button>
           ))}
         </nav>
@@ -237,7 +335,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
       {loading && items.length === 0 ? (
         <div className="opportunity-state">프로그램을 불러오는 중입니다.</div>
       ) : filteredItems.length === 0 ? (
-        <div className="opportunity-state">이 분류에 등록된 프로그램이 없습니다.</div>
+        <div className="opportunity-state">선택한 지역에 등록된 프로그램이 없습니다.</div>
       ) : (
         <div className="opportunity-table" role="table" aria-label="봉사 및 기부 프로그램">
           <div className="opportunity-table-head" role="row">

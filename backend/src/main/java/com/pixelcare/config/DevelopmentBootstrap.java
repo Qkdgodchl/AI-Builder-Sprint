@@ -136,13 +136,6 @@ public class DevelopmentBootstrap implements CommandLineRunner {
     }
 
     private void seedOpportunities(Long managerId, Long organizationId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM opportunities",
-                Integer.class
-        );
-        if (count != null && count > 0) {
-            return;
-        }
         jdbcTemplate.update("""
                 INSERT INTO opportunities (
                     organization_id, opportunity_type, category, title, summary,
@@ -162,7 +155,13 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                        v.title,
                        v.organizer,
                        CONCAT(v.title, ' 프로그램의 상세 안내입니다.'),
-                       CASE WHEN v.location LIKE '부산%' THEN 'BUSAN' ELSE 'NATIONWIDE' END,
+                       CASE
+                           WHEN v.location LIKE '서울%' THEN 'SEOUL'
+                           WHEN v.location LIKE '부산%' THEN 'BUSAN'
+                           WHEN v.location LIKE '대구%' THEN 'DAEGU'
+                           WHEN v.location LIKE '광주%' THEN 'GWANGJU'
+                           ELSE 'NATIONWIDE'
+                       END,
                        v.location,
                        'OFFLINE',
                        CASE WHEN v.category = 'VOLUNTEER' THEN 30 ELSE NULL END,
@@ -172,6 +171,11 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                        ?,
                        CURRENT_TIMESTAMP
                 FROM volunteers v
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM opportunities o
+                    WHERE o.title = v.title
+                )
                 """, organizationId, managerId);
         jdbcTemplate.update("""
                 INSERT INTO opportunity_required_documents (
@@ -180,8 +184,14 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 )
                 SELECT id, 'PARTICIPATION_PLEDGE', '참여 약정서',
                        '프로그램 참여 조건과 준수사항을 확인합니다.', TRUE, 0
-                FROM opportunities
-                WHERE opportunity_type = 'VOLUNTEER'
+                FROM opportunities o
+                WHERE o.opportunity_type = 'VOLUNTEER'
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM opportunity_required_documents d
+                      WHERE d.opportunity_id = o.id
+                        AND d.document_code = 'PARTICIPATION_PLEDGE'
+                  )
                 """);
     }
 }

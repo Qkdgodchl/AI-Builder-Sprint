@@ -55,7 +55,7 @@ function parseCard(raw: any): RecommendedCard | null {
   };
 }
 
-export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
+export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenModal }) => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<AiChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');

@@ -353,6 +353,72 @@ body.theme-ai {
   text-underline-offset: 5px;
 }
 
+.opportunity-region-filter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 58px;
+  border-bottom: 1px solid #cfcfcf;
+  padding: 10px var(--pc-list-gutter);
+  background: #f4f4f1;
+}
+
+.opportunity-region-label {
+  flex: 0 0 auto;
+  color: var(--pc-dark);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
+.opportunity-region-nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.opportunity-region-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.opportunity-region-nav button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d1d1cd;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #ffffff;
+  color: #666762;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.opportunity-region-nav button:hover {
+  border-color: var(--pc-dark);
+  color: var(--pc-dark);
+}
+
+.opportunity-region-nav button.active {
+  border-color: var(--pc-dark);
+  background: var(--pc-dark);
+  color: #ffffff;
+}
+
+.opportunity-region-nav button small {
+  color: inherit;
+  font-size: 8px;
+  font-weight: 800;
+  opacity: 0.65;
+}
+
 .opportunity-table {
   width: 100%;
 }
@@ -1283,6 +1349,17 @@ body.theme-ai {
 
   .magazine-stat-value {
     font-size: 16px;
+  }
+
+  .opportunity-region-filter {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding-block: 12px;
+  }
+
+  .opportunity-region-nav {
+    width: 100%;
   }
 
   .detail-hero h2 {
@@ -3855,5 +3932,4 @@ body.theme-ai {
   font-size: 32px;
   user-select: none;
 }
-
 

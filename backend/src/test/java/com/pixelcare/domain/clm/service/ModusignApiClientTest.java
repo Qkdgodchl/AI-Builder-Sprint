@@ -45,6 +45,16 @@ class ModusignApiClientTest {
         String expectedBasic = "Basic " + Base64.getEncoder()
                 .encodeToString("owner@example.com:secret-key".getBytes(StandardCharsets.UTF_8));
 
+        server.expect(requestTo("https://api.modusign.test/templates/template-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", expectedBasic))
+                .andRespond(withSuccess(
+                        """
+                        {"participants":[{"role":"신청자"}]}
+                        """,
+                        MediaType.APPLICATION_JSON
+                ));
+
         server.expect(requestTo("https://api.modusign.test/documents/request-with-template"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", expectedBasic))
