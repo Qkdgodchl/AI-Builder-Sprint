@@ -118,6 +118,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     if (!clmDoc) return;
     const updated = await refreshClmSecureLink(clmDoc.id);
     setClmDoc(updated);
+    return updated;
   };
 
   const handleSubmit = async () => {
@@ -517,8 +518,15 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   cursor: 'pointer', boxShadow: '0 4px 10px rgba(255,59,48,0.3)',
                   display: 'inline-flex', alignItems: 'center', gap: '8px'
                 }}
-                onClick={() => {
-                  window.open(clmDoc.signingUrl, 'ModusignWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+                onClick={async () => {
+                  try {
+                    const updated = await handleReopenSigning();
+                    if (updated?.signingUrl) {
+                      window.open(updated.signingUrl, 'ModusignWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes');
+                    }
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : '서명 링크를 다시 발급하지 못했습니다.');
+                  }
                 }}
               >
                 🚀 모두싸인 서약창 열기 (팝업)
