@@ -10,4 +10,6 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
     List<ChatMessage> findByUserIdAndIsDeletedFalseOrderByCreatedAtAsc(Long userId);
+
+    void deleteByUserId(Long userId);
 }

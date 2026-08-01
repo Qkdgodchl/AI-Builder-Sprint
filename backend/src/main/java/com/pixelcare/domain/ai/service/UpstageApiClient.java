@@ -3,6 +3,7 @@ package com.pixelcare.domain.ai.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pixelcare.domain.ai.dto.AiRecommendResponse;
+import com.pixelcare.domain.ai.dto.PledgeIntent;
 import com.pixelcare.domain.ai.dto.RecommendedCardDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class UpstageApiClient {
@@ -29,6 +31,16 @@ public class UpstageApiClient {
     public UpstageApiClient() {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+    }
+
+    public record StructuredIntent(PledgeIntent intent, String source) {}
+
+    /**
+     * 약정처럼 민감할 수 있는 자연어는 외부 전송 동의를 받기 전까지 로컬 폴백으로만 처리한다.
+     * 외부 AI 어댑터는 이 경계 안에서 별도 동의 정책과 함께 연결한다.
+     */
+    public Optional<StructuredIntent> structurePledgeIntent(String userInput, String previousIntentJson) {
+        return Optional.empty();
     }
 
     /**

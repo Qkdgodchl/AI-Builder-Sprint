@@ -33,11 +33,13 @@ public class ModusignWebhookController {
     ) {
         verifySecret(suppliedSecret);
         String eventType = body.path("event").path("type").asText();
+        String eventId = body.path("event").path("id").asText();
         String documentId = body.path("document").path("id").asText();
         if (eventType.isBlank() || documentId.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MODUSIGN_WEBHOOK", "웹훅 이벤트 또는 문서 ID가 없습니다.");
         }
-        clmDocumentService.applyWebhookEvent(documentId, eventType);
+        if (eventId.isBlank()) eventId = sha256(body.toString());
+        clmDocumentService.applyWebhookEvent(eventId, documentId, eventType, body.toString());
         return ApiResponse.success(null, "웹훅을 처리했습니다.");
     }
 
@@ -49,6 +51,16 @@ public class ModusignWebhookController {
         byte[] actual = suppliedSecret == null ? new byte[0] : suppliedSecret.getBytes(StandardCharsets.UTF_8);
         if (!MessageDigest.isEqual(expected, actual)) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_MODUSIGN_WEBHOOK_SECRET", "웹훅 인증에 실패했습니다.");
+        }
+    }
+
+    private String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", impossible);
         }
     }
 }

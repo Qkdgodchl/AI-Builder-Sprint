@@ -171,6 +171,21 @@ public class ApplicationService {
         return repository.findCommitment(commitmentPublicId).orElseThrow();
     }
 
+    @Transactional
+    public ApplicationResponse.CommitmentSummary renewCommitment(
+            Long userId, String commitmentPublicId, CommitmentRenewalRequest request
+    ) {
+        ApplicationResponse.CommitmentSummary current = commitment(userId, commitmentPublicId);
+        if (!"ACTIVE".equals(current.status())) {
+            throw conflict("활성 상태의 정기 약정만 갱신할 수 있습니다.");
+        }
+        if (!Set.of("MONTHLY", "ANNUAL").contains(current.pledgeFrequency())) {
+            throw conflict("월간 또는 연간 약정만 갱신할 수 있습니다.");
+        }
+        repository.renewCommitment(commitmentPublicId, userId, request);
+        return repository.findCommitment(commitmentPublicId).orElseThrow();
+    }
+
     private ApiException conflict(String message) {
         return new ApiException(HttpStatus.CONFLICT, "APPLICATION_STATE_CONFLICT", message);
     }

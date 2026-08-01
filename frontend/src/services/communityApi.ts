@@ -1,3 +1,5 @@
+import { API_ORIGIN } from './apiClient';
+
 export interface Author {
   id: number;
   nickname: string;
@@ -21,7 +23,7 @@ export interface PostItem {
   createdAt: string;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api/posts';
+const API_BASE_URL = `${API_ORIGIN}/api/posts`;
 
 const normalizePost = (post: any): PostItem => ({
   ...post,
@@ -256,7 +258,7 @@ export const createComment = async (
 export const deleteComment = async (commentId: number): Promise<boolean> => {
   try {
     const token = localStorage.getItem('pixel-care-access-token');
-    const response = await fetch(`http://localhost:8080/api/comments/${commentId}`, {
+    const response = await fetch(`${API_ORIGIN}/api/comments/${commentId}`, {
       method: 'DELETE',
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

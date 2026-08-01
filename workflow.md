@@ -24,7 +24,11 @@
 ### 🔮 2.1 서비스 내부 AI 연동 파이프라인 (Upstage Solar LLM)
 - **Upstage Solar LLM 단일 집중 챗봇 (`Pixel AI Mate`)**:
   - 메인 홈 중앙에 대화형 AI 챗봇 탑재. 사용자의 상황/감정에 맞는 **맞춤형 봉사 미션 및 기부 펀딩 추천 카드 생성**.
-  - **Upstage API 가점 (+5점)**: Upstage Solar LLM API (`src/js/upstageApi.js`)를 통합하여 개인화 추천 구현.
+  - **Upstage API 가점 (+5점)**: Spring 기반 Upstage Solar 어댑터를 통합하여 실제 DB 후보만 개인화 추천.
+- **AI 약정 의사 구조화**:
+  - 기부·봉사·고향사랑기부·유산기부 자연어를 유형·수혜자·금액·주기·지역·답례품 스키마로 정리.
+  - 사용자가 결과를 직접 수정·확정한 뒤에만 신청·약정 스냅샷에 연결.
+  - 민감 약정 문장의 외부 전송 동의 전에는 동일 스키마의 로컬 폴백을 사용.
 - **Smart Failover Mock Engine**:
   - API 키 미입력 및 네트워크 장애 시에도 완벽한 시연이 가능하도록 고도화된 폴백 모의 응답 지원.
 
@@ -40,7 +44,7 @@
 
 ### 🗺️ 3.1 서비스 이용 흐름 (User Journey Flow)
 ```
-[1. 메인 AI 대화] ➔ [2. 맞춤 봉사/기부 추천] ➔ [3. CLM 약정 신청] ➔ [4. 픽셀 일기 작성] ➔ [5. 뱃지/온도계 보상]
+[1. AI 의사 정리] ➔ [2. 사용자 수정·확정] ➔ [3. 신청·약정 선생성] ➔ [4. 모두싸인 전자서명] ➔ [5. 체결·갱신 관리]
 ```
 
 1. **메인 홈 중앙 AI 대화창**: "주말에 센텀시티 근처에서 할 수 있는 따뜻한 봉사 추천해줘" ➔ Solar LLM이 퀘스트 추천.
@@ -55,7 +59,8 @@
 
 ### 🛡️ 3.2 코드 품질 & 오류 처리 (Code Quality & Robustness)
 - **Web Audio API**: 브라우저 자동재생 제한 정책(Autoplay Policy)을 예외 처리하는 사용자 인터랙션 기반 8-bit 사운드 엔진 (`src/js/soundFx.js`).
-- **모듈화 구조**: Vanilla JS/CSS 기반의 가볍고 빠른 렌더링 + 상태 관리 라이브러리 없이 `localStorage` 기반 데이터 보존.
+- **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·MySQL 백엔드를 분리하고, 인증된 REST API와 Flyway로 상태를 영속화.
+- **전자서명 견고성**: Webhook event ID 멱등 처리, 종결 상태 단조 전이, 실패 상태 기록, 완료 PDF·감사추적 자료 보관.
 
 ---
 
@@ -67,15 +72,16 @@
 
 ### Module 1. 🤖 메인 AI 대화창 (Pixel AI Mate Chatbot Module)
 - 메인 홈 중앙에 귀여운 픽셀 AI 챗봇 대화창 UI 구현 (말풍선, AI 프로필 모션, 프롬프트 추천 칩).
-- Upstage Solar LLM 연동 (`src/js/upstageApi.js`) 및 대화 응답 내 [바로 참가하기] 카드 출력.
+- Upstage Solar LLM 추천 연동 및 대화 응답 내 [바로 참가하기] 카드 출력.
 
 ### Module 2. 🤝 봉사 & 기부 탭 (Volunteer & Donation Module - 하이브리드)
 - 봉사 모집 및 기부 펀딩 카탈로그 UI.
-- CLM 약정서 작성과 전자서명으로 이어지는 봉사·기부 신청 화면.
+- AI 의사 확인 → 신청·약정 생성 → 모두싸인 전자서명 → 체결·갱신으로 이어지는 CLM 화면.
+- 부산 고향사랑 월 3만원 정기기부·답례품 미선택 시나리오 제공.
 
 ### Module 3. 📖 픽셀 일기장 & 커뮤니티 (Pixel Diary Module)
 - 레트로 픽셀 일기장 피드 UI (감정/날씨 스티커 😊🥰🌱🔥, 날짜, 픽셀 사진 첨부).
-- 응원 픽셀 하트(❤️) 보내기 인터랙션 & `localStorage` 저장.
+- 응원 픽셀 하트(❤️), 조회수, 댓글을 인증된 백엔드 API로 저장.
 
 ### Module 4. 🏆 뱃지 도감 & 온기 온도계 (Badge & Thermometer Module)
 - 프로필 픽셀 뱃지(LV1~LV5 레전드 트로피) 도감 UI.

@@ -1367,7 +1367,7 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
               <h4 style={{ margin: '0 0 8px 0', color: '#111' }}>📌 서약 및 약정 내용 본문</h4>
               <p style={{ margin: 0, color: '#333' }}>
                 1. 본 신청자는 <b>[{selectedDocModal.postTitle}]</b> 활동에 지침을 성실히 준수하며 안전 수칙을 지킬 것을 약정합니다.<br/>
-                2. 개인정보 수집·이용 및 주관기관 정보 제공 동의를 완료하였으며, 본 서류는 전자서명법 제3조에 의거 자필 서명이 포함되어 법적 효력을 갖습니다.
+                2. 개인정보 수집·이용 및 주관기관 정보 제공 동의와 모두싸인 전자서명 완료 상태를 확인할 수 있습니다.
               </p>
             </div>
 

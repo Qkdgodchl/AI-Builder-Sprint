@@ -20,6 +20,11 @@ export interface ApplicationResponse {
     status: string;
     title: string;
     renderedContent: string;
+    commitmentType?: string;
+    pledgeAmount?: number;
+    pledgeFrequency?: string;
+    renewalDueAt?: string;
+    renewalStatus?: 'NOT_APPLICABLE' | 'SCHEDULED' | 'DUE';
   };
   documents: Array<{
     code: string;
@@ -33,6 +38,7 @@ export interface ApplicationResponse {
 export const createApplication = (
   opportunityId: number,
   payload: {
+    consultationId?: number;
     participationDate?: string;
     specialConditions?: string;
     privacyConsent: boolean;

@@ -30,6 +30,7 @@ public class ApplicationRepository {
                    c.public_id AS commitment_public_id,
                    c.commitment_status, c.title AS commitment_title,
                    c.effective_from, c.effective_to, c.current_version_no,
+                   c.commitment_type, c.pledge_amount, c.pledge_frequency, c.renewal_due_at,
                    cv.rendered_content
             FROM applications a
             JOIN opportunities o ON o.id = a.opportunity_id
@@ -70,6 +71,7 @@ public class ApplicationRepository {
             OpportunityResponse opportunity,
             ApplicationCreateRequest request
     ) {
+        String intentJson = confirmedIntent(userId, request.consultationId());
         String publicId = UUID.randomUUID().toString();
         KeyHolder keyHolder = new GeneratedKeyHolder();
         String answersJson = json(Map.of(
@@ -99,7 +101,7 @@ public class ApplicationRepository {
             return statement;
         }, keyHolder);
         Long applicationId = keyHolder.getKey().longValue();
-        createCommitment(userId, applicationId, opportunity, request);
+        createCommitment(userId, applicationId, opportunity, request, intentJson);
         return publicId;
     }
 
@@ -107,7 +109,8 @@ public class ApplicationRepository {
             Long userId,
             Long applicationId,
             OpportunityResponse opportunity,
-            ApplicationCreateRequest request
+            ApplicationCreateRequest request,
+            String intentJson
     ) {
         String commitmentPublicId = UUID.randomUUID().toString();
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -117,12 +120,22 @@ public class ApplicationRepository {
         LocalDate effectiveTo = opportunity.activityEndDateTime() == null
                 ? effectiveFrom
                 : opportunity.activityEndDateTime().toLocalDate();
+        Map<String, Object> intent = intentMap(intentJson);
+        String commitmentType = string(intent.get("pledgeType"));
+        if (commitmentType.isBlank()) commitmentType = opportunity.type();
+        java.math.BigDecimal pledgeAmount = decimal(intent.get("amount"));
+        String pledgeFrequency = string(intent.get("frequency"));
+        LocalDate renewalDueAt = "MONTHLY".equals(pledgeFrequency)
+                ? (effectiveFrom == null ? LocalDate.now() : effectiveFrom).plusMonths(1)
+                : null;
+        String finalCommitmentType = commitmentType;
         jdbcTemplate.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO commitments (
                         public_id, application_id, opportunity_id, user_id, organization_id,
-                        commitment_status, title, effective_from, effective_to
-                    ) VALUES (?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?)
+                        commitment_status, title, commitment_type, pledge_amount, pledge_frequency,
+                        renewal_due_at, intent_snapshot, effective_from, effective_to
+                    ) VALUES (?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, commitmentPublicId);
             statement.setLong(2, applicationId);
@@ -130,8 +143,13 @@ public class ApplicationRepository {
             statement.setLong(4, userId);
             statement.setLong(5, opportunity.organizationId());
             statement.setString(6, opportunity.title() + " 참여 약정");
-            statement.setDate(7, effectiveFrom == null ? null : Date.valueOf(effectiveFrom));
-            statement.setDate(8, effectiveTo == null ? null : Date.valueOf(effectiveTo));
+            statement.setString(7, finalCommitmentType);
+            statement.setBigDecimal(8, pledgeAmount);
+            statement.setString(9, pledgeFrequency.isBlank() ? null : pledgeFrequency);
+            statement.setDate(10, renewalDueAt == null ? null : Date.valueOf(renewalDueAt));
+            statement.setString(11, intentJson);
+            statement.setDate(12, effectiveFrom == null ? null : Date.valueOf(effectiveFrom));
+            statement.setDate(13, effectiveTo == null ? null : Date.valueOf(effectiveTo));
             return statement;
         }, keyHolder);
         Long commitmentId = keyHolder.getKey().longValue();
@@ -143,7 +161,8 @@ public class ApplicationRepository {
                 request.specialConditions(),
                 request.privacyConsent(),
                 request.thirdPartyConsent(),
-                request.portraitConsent()
+                request.portraitConsent(),
+                intentJson
         );
         saveConsents(
                 userId,
@@ -238,7 +257,8 @@ public class ApplicationRepository {
     public Optional<ApplicationResponse.CommitmentSummary> findCommitment(String commitmentPublicId) {
         List<ApplicationResponse.CommitmentSummary> result = jdbcTemplate.query("""
                 SELECT c.public_id, c.commitment_status, c.title, c.effective_from,
-                       c.effective_to, c.current_version_no, cv.rendered_content
+                       c.effective_to, c.current_version_no, cv.rendered_content,
+                       c.commitment_type, c.pledge_amount, c.pledge_frequency, c.renewal_due_at
                 FROM commitments c
                 JOIN commitment_versions cv
                   ON cv.commitment_id = c.id AND cv.version_no = c.current_version_no
@@ -250,7 +270,12 @@ public class ApplicationRepository {
                 toLocalDate(rs.getDate("effective_from")),
                 toLocalDate(rs.getDate("effective_to")),
                 rs.getInt("current_version_no"),
-                rs.getString("rendered_content")
+                rs.getString("rendered_content"),
+                rs.getString("commitment_type"),
+                rs.getBigDecimal("pledge_amount"),
+                rs.getString("pledge_frequency"),
+                toLocalDate(rs.getDate("renewal_due_at")),
+                renewalStatus(toLocalDate(rs.getDate("renewal_due_at")))
         ), commitmentPublicId);
         return result.stream().findFirst();
     }
@@ -302,6 +327,7 @@ public class ApplicationRepository {
                 privacy,
                 thirdParty,
                 portrait
+                , null
         );
         saveConsents(userId, commitmentId, privacy, thirdParty, portrait);
     }
@@ -320,6 +346,51 @@ public class ApplicationRepository {
                 """, publicId);
     }
 
+    public void renewCommitment(String publicId, Long userId, CommitmentRenewalRequest request) {
+        Map<String, Object> current = jdbcTemplate.queryForMap("""
+                SELECT id, current_version_no, pledge_frequency, renewal_due_at, effective_to
+                FROM commitments WHERE public_id = ? AND user_id = ? AND commitment_status = 'ACTIVE'
+                """, publicId, userId);
+        Long commitmentId = ((Number) current.get("id")).longValue();
+        String frequency = string(current.get("pledge_frequency"));
+        LocalDate base = current.get("renewal_due_at") instanceof Date date
+                ? date.toLocalDate() : LocalDate.now();
+        LocalDate nextDue = switch (frequency) {
+            case "MONTHLY" -> base.plusMonths(1);
+            case "ANNUAL" -> base.plusYears(1);
+            default -> throw new com.pixelcare.global.error.ApiException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "RENEWAL_NOT_APPLICABLE", "정기 약정만 갱신할 수 있습니다.");
+        };
+        int nextVersion = ((Number) current.get("current_version_no")).intValue() + 1;
+        LocalDate effectiveTo = request == null || request.effectiveTo() == null
+                ? (current.get("effective_to") instanceof Date date ? date.toLocalDate() : nextDue)
+                : request.effectiveTo();
+        jdbcTemplate.update("""
+                UPDATE commitments
+                SET renewal_due_at = ?, effective_to = ?, current_version_no = ?,
+                    commitment_status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """, Date.valueOf(nextDue), Date.valueOf(effectiveTo), nextVersion, commitmentId);
+        jdbcTemplate.update("""
+                INSERT INTO commitment_versions (
+                    commitment_id, version_no, template_version_id, terms_json,
+                    rendered_content, change_summary, created_by
+                )
+                SELECT commitment_id, ?, template_version_id, terms_json,
+                       rendered_content, ?, ?
+                FROM commitment_versions
+                WHERE commitment_id = ? AND version_no = ?
+                """, nextVersion, "정기 약정 갱신: 다음 갱신일 " + nextDue, userId,
+                commitmentId, nextVersion - 1);
+        jdbcTemplate.update("""
+                INSERT INTO commitment_change_requests (
+                    commitment_id, requested_by, request_type, requested_changes_json,
+                    reason, status, reviewed_by, reviewed_at
+                ) VALUES (?, ?, 'RENEWAL', ?, '사용자 정기 약정 갱신', 'APPROVED', ?, CURRENT_TIMESTAMP)
+                """, commitmentId, userId, json(Map.of("renewalDueAt", nextDue.toString())), userId);
+    }
+
     private void insertCommitmentVersion(
             Long commitmentId,
             int version,
@@ -328,14 +399,15 @@ public class ApplicationRepository {
             String specialConditions,
             boolean privacy,
             boolean thirdParty,
-            boolean portrait
+            boolean portrait,
+            String intentJson
     ) {
-        Map<String, Object> terms = Map.of(
-                "specialConditions", specialConditions == null ? "" : specialConditions,
-                "privacyConsent", privacy,
-                "thirdPartyConsent", thirdParty,
-                "portraitConsent", portrait
-        );
+        Map<String, Object> terms = new java.util.LinkedHashMap<>();
+        terms.put("specialConditions", specialConditions == null ? "" : specialConditions);
+        terms.put("privacyConsent", privacy);
+        terms.put("thirdPartyConsent", thirdParty);
+        terms.put("portraitConsent", portrait);
+        if (intentJson != null) terms.put("confirmedAiIntent", intentMap(intentJson));
         String rendered = """
                 [참여 약정서]
                 프로그램: %s
@@ -396,7 +468,12 @@ public class ApplicationRepository {
                         toLocalDate(rs.getDate("effective_from")),
                         toLocalDate(rs.getDate("effective_to")),
                         rs.getInt("current_version_no"),
-                        rs.getString("rendered_content")
+                        rs.getString("rendered_content"),
+                        rs.getString("commitment_type"),
+                        rs.getBigDecimal("pledge_amount"),
+                        rs.getString("pledge_frequency"),
+                        toLocalDate(rs.getDate("renewal_due_at")),
+                        renewalStatus(toLocalDate(rs.getDate("renewal_due_at")))
                 );
         return new ApplicationResponse(
                 publicId,
@@ -449,11 +526,49 @@ public class ApplicationRepository {
         }
     }
 
+    private String confirmedIntent(Long userId, Long consultationId) {
+        if (consultationId == null) return null;
+        List<String> matches = jdbcTemplate.query("""
+                SELECT extracted_preferences_json FROM ai_consultations
+                WHERE id = ? AND user_id = ? AND consultation_status = 'CONFIRMED'
+                """, (rs, rowNum) -> rs.getString(1), consultationId, userId);
+        if (matches.isEmpty()) {
+            throw new com.pixelcare.global.error.ApiException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "AI_CONSULTATION_NOT_CONFIRMED",
+                    "확정된 AI 약정 상담만 신청서에 연결할 수 있습니다."
+            );
+        }
+        return matches.getFirst();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> intentMap(String value) {
+        if (value == null || value.isBlank()) return Map.of();
+        try { return objectMapper.readValue(value, Map.class); }
+        catch (JsonProcessingException e) { return Map.of(); }
+    }
+
+    private static String string(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static java.math.BigDecimal decimal(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) return null;
+        try { return new java.math.BigDecimal(String.valueOf(value)); }
+        catch (NumberFormatException e) { return null; }
+    }
+
     private static LocalDate toLocalDate(Date date) {
         return date == null ? null : date.toLocalDate();
     }
 
     private static LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
+    }
+
+    private static String renewalStatus(LocalDate dueAt) {
+        if (dueAt == null) return "NOT_APPLICABLE";
+        return dueAt.isAfter(LocalDate.now()) ? "SCHEDULED" : "DUE";
     }
 }

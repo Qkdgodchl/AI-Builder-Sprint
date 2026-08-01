@@ -90,4 +90,14 @@ public class ApplicationController {
         CurrentUser user = authGuard.requireUser(request);
         return ApiResponse.success(service.submitCommitment(user.id(), publicId));
     }
+
+    @PostMapping("/commitments/{publicId}/renew")
+    public ApiResponse<ApplicationResponse.CommitmentSummary> renewCommitment(
+            HttpServletRequest request,
+            @PathVariable String publicId,
+            @RequestBody(required = false) CommitmentRenewalRequest body
+    ) {
+        CurrentUser user = authGuard.requireUser(request);
+        return ApiResponse.success(service.renewCommitment(user.id(), publicId, body));
+    }
 }

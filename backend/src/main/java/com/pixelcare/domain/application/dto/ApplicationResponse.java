@@ -2,6 +2,7 @@ package com.pixelcare.domain.application.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 
 public record ApplicationResponse(
@@ -34,7 +35,12 @@ public record ApplicationResponse(
             LocalDate effectiveFrom,
             LocalDate effectiveTo,
             int version,
-            String renderedContent
+            String renderedContent,
+            String commitmentType,
+            BigDecimal pledgeAmount,
+            String pledgeFrequency,
+            LocalDate renewalDueAt,
+            String renewalStatus
     ) {}
 
     public record DocumentSummary(

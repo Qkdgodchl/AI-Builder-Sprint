@@ -6,6 +6,13 @@ import {
 } from '../../services/applicationApi';
 import { requestClmSign, fetchClmDocument, refreshClmSecureLink, fetchClmDocumentFiles } from '../../services/clmApi';
 import type { ClmDocumentDto, ClmDocumentFileDto } from '../../services/clmApi';
+import { API_ORIGIN } from '../../services/apiClient';
+import {
+  confirmConsultation,
+  startConsultation,
+  updateConsultationIntent,
+} from '../../services/consultationApi';
+import type { ConsultationResponse, PledgeIntent } from '../../services/consultationApi';
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -24,6 +31,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   onBack,
 }) => {
   const isVolunteer = item.category === 'VOLUNTEER';
+  const isHometown = item.programType === 'HOMETOWN' || item.category === 'HOMETOWN';
   const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-PC-01호)' : '후원 및 기부 약정서 (제2026-PC-02호)';
 
   const [specialConditions, setSpecialConditions] = useState('');
@@ -34,10 +42,22 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [aiPrompt, setAiPrompt] = useState(
+    isHometown
+      ? '부산 지역 아동을 위해 매월 3만원씩 고향사랑기부를 하고 싶고 답례품은 필요 없어요.'
+      : isVolunteer
+        ? `${item.title} 봉사에 참여해서 ${item.organizer}를 돕고 싶어요.`
+        : `${item.title}에 일시 3만원을 기부하고 싶어요.`,
+  );
+  const [consultation, setConsultation] = useState<ConsultationResponse | null>(null);
+  const [intent, setIntent] = useState<PledgeIntent | null>(null);
+  const [aiConfirmed, setAiConfirmed] = useState(false);
+  const [structuringIntent, setStructuringIntent] = useState(false);
+  const [commitmentPublicId, setCommitmentPublicId] = useState<string | null>(null);
 
   // 모두싸인 (Modusign) 전자서명 상태
-  const [applicantName, setApplicantName] = useState('부산 픽셀용사');
-  const [applicantEmail, setApplicantEmail] = useState('user@pixelcare.com');
+  const [applicantName] = useState('로그인 사용자');
+  const [applicantEmail] = useState('로그인 계정 이메일');
   const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
   const [docFiles, setDocFiles] = useState<ClmDocumentFileDto[]>([]);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
@@ -60,10 +80,55 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     }
   };
 
-  const canStartSigning = privacyConsent && thirdPartyConsent;
+  const canStartSigning = aiConfirmed && privacyConsent && thirdPartyConsent;
+
+  const handleStructureIntent = async () => {
+    if (!aiPrompt.trim()) return;
+    setStructuringIntent(true);
+    setErrorMessage('');
+    try {
+      const result = await startConsultation(aiPrompt.trim());
+      const enriched: PledgeIntent = {
+        ...result.intent,
+        pledgeType: result.intent.pledgeType || (isHometown ? 'HOMETOWN_DONATION' : isVolunteer ? 'VOLUNTEER' : 'DONATION'),
+        beneficiary: result.intent.beneficiary || item.organizer,
+        region: result.intent.region || item.location,
+        frequency: result.intent.frequency || (isVolunteer ? 'NOT_APPLICABLE' : isHometown ? 'MONTHLY' : 'ONE_TIME'),
+      };
+      setConsultation(result);
+      setIntent(enriched);
+      setAiConfirmed(false);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'AI 약정 정리에 실패했습니다.');
+    } finally {
+      setStructuringIntent(false);
+    }
+  };
+
+  const handleConfirmIntent = async () => {
+    if (!consultation || !intent) return;
+    setStructuringIntent(true);
+    setErrorMessage('');
+    try {
+      const updated = await updateConsultationIntent(consultation.id, intent);
+      const confirmedIntent = await confirmConsultation(updated.id);
+      setConsultation(confirmedIntent);
+      setIntent(confirmedIntent.intent);
+      setSpecialConditions(confirmedIntent.intent.specialConditions || specialConditions);
+      setAiConfirmed(true);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '약정 의사를 확정하지 못했습니다.');
+    } finally {
+      setStructuringIntent(false);
+    }
+  };
 
   // 모두싸인 서명 요청 시작
   const handleStartModusign = async () => {
+    if (!aiConfirmed || !consultation) {
+      alert('AI가 정리한 약정 의사를 먼저 확인·확정해 주세요.');
+      return;
+    }
     if (!canStartSigning) {
       alert('필수 동의 항목을 먼저 동의해 주세요.');
       return;
@@ -71,10 +136,22 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
     setRequestingSign(true);
     try {
+      let activeCommitmentId = commitmentPublicId;
+      if (!activeCommitmentId) {
+        const application = await createApplication(item.id, {
+          consultationId: consultation.id,
+          specialConditions,
+          privacyConsent,
+          thirdPartyConsent,
+          portraitConsent,
+        });
+        activeCommitmentId = application.commitment?.publicId || null;
+        if (!activeCommitmentId) throw new Error('생성된 약정서 식별자를 확인할 수 없습니다.');
+        await submitCommitment(activeCommitmentId);
+        setCommitmentPublicId(activeCommitmentId);
+      }
       const doc = await requestClmSign({
-        volunteerId: item.id,
-        applicantName: applicantName.trim() || '부산 픽셀용사',
-        applicantEmail: applicantEmail.trim() || 'user@pixelcare.com',
+        commitmentPublicId: activeCommitmentId,
       });
 
       setClmDoc(doc);
@@ -130,15 +207,6 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     setSubmitting(true);
     setErrorMessage('');
     try {
-      const application = await createApplication(item.id, {
-        specialConditions,
-        privacyConsent,
-        thirdPartyConsent,
-        portraitConsent,
-      });
-      if (application.commitment?.publicId) {
-        await submitCommitment(application.commitment.publicId);
-      }
       setCompleted(true);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '신청에 실패했습니다.');
@@ -165,11 +233,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       </header>
 
       <ol className="clm-steps" aria-label="신청 진행 단계">
-        <li className="complete">
+        <li className={aiConfirmed ? 'complete' : 'current'}>
           <span>01</span>
-          <strong>신청 정보</strong>
+          <strong>AI 의사 정리</strong>
         </li>
-        <li className={privacyConsent && thirdPartyConsent ? 'complete' : 'current'}>
+        <li className={!aiConfirmed ? 'upcoming' : privacyConsent && thirdPartyConsent ? 'complete' : 'current'}>
           <span>02</span>
           <strong>서류 작성</strong>
         </li>
@@ -204,6 +272,123 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 <dd>{item.location}</dd>
               </div>
             </dl>
+          </section>
+
+          <section className="clm-document-section clm-ai-intent-section">
+            <div className="clm-section-heading">
+              <div>
+                <span>STEP 01</span>
+                <h3>AI로 약정 의사 정리</h3>
+              </div>
+              <span className={`clm-status ${aiConfirmed ? 'complete' : 'pending'}`}>
+                {aiConfirmed ? '확정 완료' : '확인 필요'}
+              </span>
+            </div>
+            <p className="clm-ai-description">
+              하고 싶은 기부·봉사 내용을 편하게 적으면 약정 항목으로 정리합니다. 결과는 직접 수정한 뒤 확정할 수 있습니다.
+            </p>
+            {isHometown && (
+              <div className="clm-hometown-guide">
+                <strong>부산 고향사랑 정기기부 데모</strong>
+                <span>부산 지역 · 매월 3만원 · 지역 아동 지원 · 답례품 미선택</span>
+              </div>
+            )}
+            <label>
+              나의 약정 의사
+              <textarea
+                value={aiPrompt}
+                onChange={(event) => setAiPrompt(event.target.value)}
+                rows={3}
+                disabled={aiConfirmed}
+              />
+            </label>
+            {!intent && (
+              <button type="button" className="clm-ai-action" onClick={handleStructureIntent} disabled={structuringIntent}>
+                {structuringIntent ? '정리 중...' : 'AI로 약정 항목 정리하기'}
+              </button>
+            )}
+            {intent && (
+              <div className="clm-intent-editor">
+                <label>
+                  약정 유형
+                  <select
+                    value={intent.pledgeType || ''}
+                    onChange={(event) => setIntent({ ...intent, pledgeType: event.target.value })}
+                    disabled={aiConfirmed}
+                  >
+                    <option value="DONATION">일반 기부</option>
+                    <option value="HOMETOWN_DONATION">고향사랑기부</option>
+                    <option value="VOLUNTEER">봉사</option>
+                    <option value="LEGACY_DONATION">유산기부</option>
+                    <option value="CULTURAL_HERITAGE_DONATION">문화유산기부</option>
+                  </select>
+                </label>
+                <label>
+                  수혜 대상·기관
+                  <input
+                    value={intent.beneficiary || ''}
+                    onChange={(event) => setIntent({ ...intent, beneficiary: event.target.value })}
+                    disabled={aiConfirmed}
+                  />
+                </label>
+                {intent.pledgeType !== 'VOLUNTEER' && (
+                  <label>
+                    금액(원)
+                    <input
+                      type="number"
+                      min="0"
+                      value={intent.amount ?? ''}
+                      onChange={(event) => setIntent({ ...intent, amount: event.target.value ? Number(event.target.value) : null })}
+                      disabled={aiConfirmed}
+                    />
+                  </label>
+                )}
+                <label>
+                  주기
+                  <select
+                    value={intent.frequency || ''}
+                    onChange={(event) => setIntent({ ...intent, frequency: event.target.value })}
+                    disabled={aiConfirmed}
+                  >
+                    <option value="ONE_TIME">일시</option>
+                    <option value="MONTHLY">매월</option>
+                    <option value="ANNUAL">매년</option>
+                    <option value="NOT_APPLICABLE">해당 없음</option>
+                  </select>
+                </label>
+                <label>
+                  지역
+                  <input
+                    value={intent.region || ''}
+                    onChange={(event) => setIntent({ ...intent, region: event.target.value })}
+                    disabled={aiConfirmed}
+                  />
+                </label>
+                {intent.pledgeType === 'HOMETOWN_DONATION' && (
+                  <label>
+                    답례품
+                    <select
+                      value={intent.rewardPreference || 'UNSPECIFIED'}
+                      onChange={(event) => setIntent({ ...intent, rewardPreference: event.target.value })}
+                      disabled={aiConfirmed}
+                    >
+                      <option value="UNSPECIFIED">나중에 선택</option>
+                      <option value="NONE">받지 않음</option>
+                    </select>
+                  </label>
+                )}
+                <div className="clm-intent-summary">
+                  <span>정리 결과</span>
+                  <strong>{consultation?.summary}</strong>
+                  <small>구조화 방식: {consultation?.source === 'UPSTAGE_SOLAR' ? 'Upstage Solar' : '안전한 로컬 폴백'}</small>
+                </div>
+                {!aiConfirmed && (
+                  <button type="button" className="clm-ai-action" onClick={handleConfirmIntent} disabled={structuringIntent}>
+                    {structuringIntent ? '확정 중...' : '수정한 약정 의사 확정하기'}
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="clm-document-section">
@@ -250,7 +435,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   className="pixel-input"
                   style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
                   value={applicantName}
-                  onChange={(e) => setApplicantName(e.target.value)}
+                  readOnly
                 />
               </label>
               <label style={{ flex: 1 }}>
@@ -260,10 +445,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   className="pixel-input"
                   style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
                   value={applicantEmail}
-                  onChange={(e) => setApplicantEmail(e.target.value)}
+                  readOnly
                 />
               </label>
             </div>
+            <small className="clm-identity-note">서명자 정보는 로그인한 계정의 프로필을 기준으로 서버에서 검증합니다.</small>
 
             <label>
               특별 조건 및 전달사항
@@ -599,7 +785,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               📜 픽셀케어 전자서명 완료 약정 증서
             </h2>
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '24px' }}>
-              Modusign API v2 전자서명법 제3조에 의거 체결 및 보존된 완료 문서입니다.
+              모두싸인에서 체결된 완료 문서와 감사추적 자료를 픽셀케어 CLM에서 함께 보관합니다.
             </p>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
@@ -647,7 +833,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   {docFiles.map((file) => (
                     <a
                       key={file.id}
-                      href={`http://localhost:8080${file.downloadUrl}`}
+                      href={`${API_ORIGIN}${file.downloadUrl}`}
                       target="_blank"
                       rel="noreferrer"
                       style={{
@@ -677,10 +863,10 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               padding: '16px', textAlign: 'center', marginBottom: '24px'
             }}>
               <span style={{ fontSize: '12px', color: '#0077b6', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
-                ✅ 모두싸인 전자서명 검증 완료 (SIGNED)
+                ✅ 모두싸인 전자서명 완료 상태 확인 (SIGNED)
               </span>
               <p style={{ margin: 0, fontSize: '12px', color: '#333' }}>
-                본 서약 문서는 위변조 방지 해시 검증을 마치고 픽셀케어 CLM 서버에 안전하게 보존되었습니다.
+                서명 완료 문서와 감사추적 자료의 SHA-256 체크섬을 기록해 보관 파일의 동일성을 확인할 수 있습니다.
               </p>
             </div>
 
