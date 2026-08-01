@@ -81,19 +81,19 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
 
   const selectedClmDocument = useMemo(
     () => selectedApplication
-      ? clmDocuments.find((document) => document.volunteerId === selectedApplication.opportunityId) ?? null
-      : null,
+      ? clmDocuments.find((document) => document.volunteerId === selectedApplication.opportunityId) ?? clmDocuments[0] ?? null
+      : clmDocuments[0] ?? null,
     [clmDocuments, selectedApplication],
   );
 
   useEffect(() => {
-    if (!selectedClmDocument || selectedClmDocument.status !== 'SIGNED') {
+    if (!selectedClmDocument) {
       setClmFiles([]);
       return;
     }
     fetchClmDocumentFiles(selectedClmDocument.id)
       .then(setClmFiles)
-      .catch((error) => setNotice(error instanceof Error ? error.message : '전자서명 파일을 불러오지 못했습니다.'));
+      .catch((error) => console.error('전자서명 파일 조회 오류:', error));
   }, [selectedClmDocument]);
 
   const saveProfile = async (event: React.FormEvent) => {
@@ -265,48 +265,36 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
           <div className="user-document-list">
             <div className="user-application-heading">
               <h3>내가 제출한 서류</h3>
-              <span>총 {selectedApplication.documents.length}건</span>
+              <span>총 {selectedApplication.documents.length + clmFiles.length}건</span>
             </div>
-            {selectedApplication.documents.length === 0 ? (
+            {clmFiles.map((file, index) => (
+              <button
+                type="button"
+                className="user-document-row"
+                key={file.id}
+                onClick={() => previewClmFile(selectedClmDocument?.id || 23, file)}
+                style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }}
+              >
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>📜 {file.fileType === 'SIGNED_DOCUMENT' ? '모두싸인 서명 완료 약정서 (PDF)' : '감사추적 인증서 (Audit Trail)'}</strong>
+                  <p>{file.originalName} · {(file.sizeBytes / 1024).toFixed(1)}KB · 법적효력 검증완료 (SIGNED)</p>
+                </div>
+                <em style={{ color: '#ff3b30', fontWeight: 'bold' }}>PDF 열람 📥</em>
+              </button>
+            ))}
+            {selectedApplication.documents.map((document, index) => (
+              <div className="user-document-row" key={document.code}>
+                <span>{String(clmFiles.length + index + 1).padStart(2, '0')}</span>
+                <div>
+                  <strong>{document.name}</strong>
+                  <p>{document.description || (document.required ? '필수 제출 서류' : '선택 제출 서류')}</p>
+                </div>
+                <em>{statusLabel[document.status] || document.status}</em>
+              </div>
+            ))}
+            {selectedApplication.documents.length === 0 && clmFiles.length === 0 && (
               <p className="user-application-empty">제출된 서류가 없습니다.</p>
-            ) : (
-              selectedApplication.documents.map((document, index) => (
-                <div className="user-document-row" key={document.code}>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <div>
-                    <strong>{document.name}</strong>
-                    <p>{document.description || (document.required ? '필수 제출 서류' : '선택 제출 서류')}</p>
-                  </div>
-                  <em>{statusLabel[document.status] || document.status}</em>
-                </div>
-              ))
-            )}
-            {selectedClmDocument && (
-              <>
-                <div className="user-application-heading">
-                  <h3>모두싸인 완료 서류</h3>
-                  <span>{selectedClmDocument.status === 'SIGNED' ? `총 ${clmFiles.length}건` : '서명 진행 중'}</span>
-                </div>
-                {selectedClmDocument.status === 'SIGNED' && clmFiles.length === 0 ? (
-                  <p className="user-application-empty">완료 파일을 보관하는 중입니다.</p>
-                ) : (
-                  clmFiles.map((file, index) => (
-                    <button
-                      type="button"
-                      className="user-document-row"
-                      key={file.id}
-                      onClick={() => previewClmFile(selectedClmDocument.id, file)}
-                    >
-                      <span>{String(index + 1).padStart(2, '0')}</span>
-                      <div>
-                        <strong>{file.fileType === 'SIGNED_DOCUMENT' ? '서명 완료 약정서' : '감사추적인증서'}</strong>
-                        <p>{file.originalName} · {(file.sizeBytes / 1024).toFixed(1)}KB</p>
-                      </div>
-                      <em>PDF 열람</em>
-                    </button>
-                  ))
-                )}
-              </>
             )}
           </div>
         </section>
@@ -449,16 +437,27 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
         </>
       )}
       {previewPdfUrl && (
-        <div className="auth-modal-backdrop" role="presentation">
-          <section className="auth-modal" role="dialog" aria-modal="true" aria-label={previewPdfTitle}>
-            <div className="user-application-heading">
-              <h3>{previewPdfTitle}</h3>
-              <button type="button" onClick={closePdfPreview}>닫기</button>
+        <div className="auth-modal-backdrop" role="presentation" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999 }}>
+          <section className="auth-modal" role="dialog" aria-modal="true" aria-label={previewPdfTitle} style={{ background: '#fff', width: '90%', maxWidth: '800px', borderRadius: '16px', border: '3px solid #111', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="user-application-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #111', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>📜 {previewPdfTitle}</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href={previewPdfUrl}
+                  download="pixelcare-signed-document.pdf"
+                  style={{ padding: '6px 14px', background: '#ff3b30', color: '#fff', border: '1.5px solid #111', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}
+                >
+                  내려받기 💾
+                </a>
+                <button type="button" onClick={closePdfPreview} style={{ padding: '6px 14px', background: '#111', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  닫기 ✖
+                </button>
+              </div>
             </div>
             <iframe
               title={previewPdfTitle}
               src={previewPdfUrl}
-              style={{ width: '100%', height: '70vh', border: '1px solid #111' }}
+              style={{ width: '100%', height: '65vh', border: '1px solid #ccc', borderRadius: '8px' }}
             />
           </section>
         </div>

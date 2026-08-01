@@ -38,6 +38,20 @@ public class ClmDocumentService {
         Volunteer volunteer = volunteerRepository.findById(request.getVolunteerId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "VOLUNTEER_NOT_FOUND", "해당 봉사/기부 공고를 찾을 수 없습니다."));
 
+        java.util.Optional<ClmDocument> existing = clmDocumentRepository.findByVolunteerIdAndApplicantUserIdAndIsDeletedFalse(
+                volunteer.getId(), currentUser.id()
+        );
+        if (existing.isPresent()) {
+            ClmDocument doc = existing.get();
+            try {
+                ModusignApiClient.SecureLinkResult link = modusignApiClient.createSecureLink(
+                        doc.getModusignDocumentId(), doc.getModusignParticipantId()
+                );
+                doc.updateSecureLink(link.signingUrl(), link.expiresAt());
+                return ClmDocumentResponseDto.fromEntity(doc);
+            } catch (Exception ignored) {}
+        }
+
         String docTitle = "[" + volunteer.getCategory() + "] " + volunteer.getTitle() + " 참여/후원 신청 동의서";
 
         ModusignApiClient.ModusignRequestResult signResult = modusignApiClient.requestSigning(

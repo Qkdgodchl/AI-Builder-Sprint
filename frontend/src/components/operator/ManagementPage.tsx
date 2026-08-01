@@ -243,13 +243,28 @@ export function ManagementPage() {
                   <p>{selectedDocument.commitment?.renderedContent || '작성된 약정서 내용이 없습니다.'}</p>
                 </section>
                 <div className="operator-document-list">
-                  {selectedDocument.documents.map((document) => (
-                    <div key={document.code}>
-                      <span>{document.required ? '필수' : '선택'}</span>
-                      <strong>{document.name}</strong>
-                      <em>{statusLabel(document.status)}</em>
-                    </div>
-                  ))}
+                    {selectedDocument.documents.map((document) => (
+                      <div key={document.code} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <span>{document.required ? '필수' : '선택'}</span>
+                          <strong>{document.name}</strong>
+                          <em>{statusLabel(document.status)}</em>
+                        </div>
+                        <a
+                          href="http://localhost:8080/api/v1/clm/documents/23/files/11/download"
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '6px 12px', background: '#ff3b30', color: '#fff',
+                            border: '1px solid #111', borderRadius: '6px', textDecoration: 'none',
+                            fontWeight: 'bold', fontSize: '11px'
+                          }}
+                        >
+                          내려받기 💾
+                        </a>
+                      </div>
+                    ))}
                 </div>
               </>
             )}

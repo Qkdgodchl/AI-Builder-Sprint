@@ -43,7 +43,13 @@ public class ApplicationService {
             throw conflict("모집이 종료된 프로그램입니다.");
         }
         if (repository.exists(opportunityId, userId)) {
-            throw conflict("이미 신청한 프로그램입니다.");
+            List<ApplicationResponse> existingList = repository.findByUser(userId);
+            java.util.Optional<ApplicationResponse> match = existingList.stream()
+                    .filter(app -> app.opportunityId().equals(opportunityId))
+                    .findFirst();
+            if (match.isPresent()) {
+                return match.get();
+            }
         }
         if (opportunity.recruitmentCapacity() != null
                 && repository.activeApplicationCount(opportunityId) >= opportunity.recruitmentCapacity()) {

@@ -12,6 +12,7 @@ public interface ClmDocumentRepository extends JpaRepository<ClmDocument, Long> 
     List<ClmDocument> findByApplicantEmailAndIsDeletedFalseOrderByIdDesc(String applicantEmail);
     List<ClmDocument> findByApplicantUserIdAndIsDeletedFalseOrderByIdDesc(Long applicantUserId);
     List<ClmDocument> findByVolunteerIdAndIsDeletedFalseOrderByIdDesc(Long volunteerId);
+    Optional<ClmDocument> findByVolunteerIdAndApplicantUserIdAndIsDeletedFalse(Long volunteerId, Long applicantUserId);
     Optional<ClmDocument> findByIdAndIsDeletedFalse(Long id);
     Optional<ClmDocument> findByModusignDocumentIdAndIsDeletedFalse(String modusignDocumentId);
 }

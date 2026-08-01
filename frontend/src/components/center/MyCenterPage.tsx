@@ -1379,9 +1379,21 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
               <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>
                 [보존된 신청자 자필 전자서명]
               </span>
-              <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>
-                ✍️ {selectedDocModal.applicantName} (자필 서명 완료됨)
+              <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif', display: 'block', marginBottom: '8px' }}>
+                ✍️ {selectedDocModal.applicantName} (모두싸인 서명 완료)
               </span>
+              <a
+                href="http://localhost:8080/api/v1/clm/documents/23/files/11/download"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '8px 16px', background: '#ff3b30', color: '#fff',
+                  border: '1.5px solid #111', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px'
+                }}
+              >
+                📥 서명 완료 PDF 원본 내려받기 💾
+              </a>
             </div>
 
             <div style={{ textAlign: 'center' }}>

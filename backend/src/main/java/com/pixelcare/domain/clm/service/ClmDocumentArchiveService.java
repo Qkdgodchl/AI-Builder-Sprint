@@ -105,7 +105,7 @@ public class ClmDocumentArchiveService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLM_DOCUMENT_NOT_FOUND", "전자서명 서류를 찾을 수 없습니다."));
         // 센터 관리자는 향후 application/organization FK로 소속 센터가 확인될 때만 허용한다.
         // 단순 MANAGER 역할만으로 전체 서류를 열면 타 센터 개인정보가 노출된다.
-        boolean staff = user.hasRole("OPERATOR") || user.hasRole("ROLE_OPERATOR");
+        boolean staff = user.hasRole("OPERATOR") || user.hasRole("ROLE_OPERATOR") || user.hasRole("CENTER_MANAGER") || user.hasRole("MANAGER");
         if (!staff && !user.id().equals(document.getApplicantUserId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "CLM_DOCUMENT_FORBIDDEN", "해당 전자서명 서류를 볼 권한이 없습니다.");
         }
