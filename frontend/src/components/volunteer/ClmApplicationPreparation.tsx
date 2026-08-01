@@ -63,7 +63,6 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
   const [docFiles, setDocFiles] = useState<ClmDocumentFileDto[]>([]);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isDocViewModalOpen, setIsDocViewModalOpen] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const [requestingSign, setRequestingSign] = useState(false);
@@ -426,96 +425,113 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <div className="clm-section-heading">
               <div>
                 <span>STEP 02</span>
-                <h3>서류 작성 & 서식 열람</h3>
+                <h3>필수 동의 및 서명 정보 확인</h3>
               </div>
               <span className={`clm-status ${canStartSigning ? 'complete' : 'pending'}`}>
-                {canStartSigning ? '작성 완료' : '작성 중'}
+                {canStartSigning ? '서명 준비 완료' : '확인 필요'}
               </span>
             </div>
 
-            <div className="clm-document-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span>공식 서식 양식</span>
-                <strong>{documentName}</strong>
-                <p>
-                  참여 조건, 안전 수칙 준수, 픽셀 온기 보상 및 보안 동의 항목 포함
-                </p>
+            <p className="clm-step-guide">
+              아래 순서대로 필수 동의와 서명 정보를 확인한 뒤 모두싸인에서 전자서명을 완료해 주세요.
+            </p>
+
+            <div className={`clm-consent-block ${privacyConsent && thirdPartyConsent ? 'complete' : ''}`}>
+              <div className="clm-substep-heading">
+                <span>01</span>
+                <div>
+                  <strong>개인정보 및 신청 정보 제공 동의</strong>
+                  <small>전자서명 문서를 생성하기 전에 필수 동의 2개를 확인해 주세요.</small>
+                </div>
+                <em>{privacyConsent && thirdPartyConsent ? '필수 동의 완료' : '필수 동의 필요'}</em>
               </div>
+
+              <div className="clm-consent-list">
+                <label className="clm-final-consent required">
+                  <input
+                    type="checkbox"
+                    checked={privacyConsent}
+                    onChange={(event) => setPrivacyConsent(event.target.checked)}
+                  />
+                  <span><b>개인정보 수집·이용에 동의합니다.</b><small>필수</small></span>
+                </label>
+                <label className="clm-final-consent required">
+                  <input
+                    type="checkbox"
+                    checked={thirdPartyConsent}
+                    onChange={(event) => setThirdPartyConsent(event.target.checked)}
+                  />
+                  <span><b>주관기관에 신청 정보를 제공하는 데 동의합니다.</b><small>필수</small></span>
+                </label>
+                <label className="clm-final-consent optional">
+                  <input
+                    type="checkbox"
+                    checked={portraitConsent}
+                    onChange={(event) => setPortraitConsent(event.target.checked)}
+                  />
+                  <span><b>활동 사진의 초상권 활용 및 온기 뱃지 기록에 동의합니다.</b><small>선택</small></span>
+                </label>
+              </div>
+            </div>
+
+            <div className="clm-document-subsection">
+              <div className="clm-substep-heading">
+                <span>02</span>
+                <div>
+                  <strong>서명 정보 확인</strong>
+                  <small>로그인 계정 정보와 기관에 전달할 내용을 확인해 주세요.</small>
+                </div>
+              </div>
+
+              <div className="clm-identity-grid">
+                <label>
+                  신청자 성명
+                  <input type="text" className="pixel-input" value={applicantName} readOnly />
+                </label>
+                <label>
+                  신청자 이메일
+                  <input type="email" className="pixel-input" value={applicantEmail} readOnly />
+                </label>
+              </div>
+              <small className="clm-identity-note">서명자 정보는 로그인한 계정의 프로필을 기준으로 서버에서 검증합니다.</small>
+
+              <label className="clm-special-conditions">
+                특별 조건 및 전달사항
+                <textarea
+                  value={specialConditions}
+                  onChange={(event) => setSpecialConditions(event.target.value)}
+                  placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
+                  rows={3}
+                />
+              </label>
+            </div>
+
+            <div className={`clm-signing-cta-card ${canStartSigning ? 'ready' : ''}`}>
+              <div className="clm-substep-heading">
+                <span>03</span>
+                <div>
+                  <strong>약정서 확인 후 전자서명</strong>
+                  <small>{documentName}</small>
+                </div>
+              </div>
+              <p>
+                아래 버튼을 누르면 신청서와 약정서가 생성됩니다. 이어서 모두싸인 보안 창에서
+                약정서 전문을 확인하고 전자서명을 완료해 주세요.
+              </p>
               <button
                 type="button"
-                style={{
-                  padding: '8px 14px',
-                  background: '#faf0ca',
-                  border: '1.5px solid #111',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onClick={() => setIsPreviewModalOpen(true)}
+                className="clm-signing-primary"
+                disabled={!canStartSigning || requestingSign}
+                onClick={handleStartModusign}
               >
-                📄 약정서 전문 미리보기
+                {requestingSign ? '약정서와 서명창을 준비하고 있습니다...' : '모두싸인에서 약정서 확인하고 서명하기 →'}
               </button>
+              <small className="clm-signing-requirement">
+                {canStartSigning
+                  ? '필수 확인이 완료되었습니다. 이제 전자서명을 진행할 수 있습니다.'
+                  : 'STEP 01의 AI 약정 확정과 위 필수 동의를 완료하면 버튼이 활성화됩니다.'}
+              </small>
             </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <label style={{ flex: 1 }}>
-                신청자 성명
-                <input
-                  type="text"
-                  className="pixel-input"
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
-                  value={applicantName}
-                  readOnly
-                />
-              </label>
-              <label style={{ flex: 1 }}>
-                신청자 이메일
-                <input
-                  type="email"
-                  className="pixel-input"
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
-                  value={applicantEmail}
-                  readOnly
-                />
-              </label>
-            </div>
-            <small className="clm-identity-note">서명자 정보는 로그인한 계정의 프로필을 기준으로 서버에서 검증합니다.</small>
-
-            <label>
-              특별 조건 및 전달사항
-              <textarea
-                value={specialConditions}
-                onChange={(event) => setSpecialConditions(event.target.value)}
-                placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
-                rows={3}
-              />
-            </label>
-
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={privacyConsent}
-                onChange={(event) => setPrivacyConsent(event.target.checked)}
-              />
-              <span>개인정보 수집·이용에 동의합니다. (필수)</span>
-            </label>
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={thirdPartyConsent}
-                onChange={(event) => setThirdPartyConsent(event.target.checked)}
-              />
-              <span>주관기관에 신청 정보를 제공하는 데 동의합니다. (필수)</span>
-            </label>
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={portraitConsent}
-                onChange={(event) => setPortraitConsent(event.target.checked)}
-              />
-              <span>활동 사진의 초상권 활용 및 온기 뱃지 기록에 동의합니다. (선택)</span>
-            </label>
           </section>
 
           <section className="clm-signature-section">
@@ -525,7 +541,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 <h3>모두싸인 (Modusign) 전자서명</h3>
               </div>
               <span className={`clm-status ${isSigned ? 'complete' : canStartSigning ? 'pending' : 'locked'}`}>
-                {isSigned ? '서명 완료' : canStartSigning ? '서명 대기' : '서류 작성 후 가능'}
+                {isSigned ? '서명 완료' : clmDoc ? '서명 진행 중' : canStartSigning ? '서명 준비 완료' : 'STEP 02 완료 후 가능'}
               </span>
             </div>
 
@@ -539,23 +555,13 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               </p>
 
               {!isSigned ? (
-                <button
-                  type="button"
-                  style={{
-                    background: canStartSigning ? '#ff70a6' : '#aaa',
-                    cursor: canStartSigning ? 'pointer' : 'not-allowed',
-                    color: '#fff',
-                    padding: '12px 24px',
-                    fontSize: '14px',
-                    borderRadius: '8px',
-                    border: '2px solid #111',
-                    fontWeight: 'bold'
-                  }}
-                  disabled={!canStartSigning || requestingSign}
-                  onClick={handleStartModusign}
-                >
-                  {requestingSign ? '서명 창 로딩 중...' : '모두싸인 전자서명 시작'}
-                </button>
+                clmDoc ? (
+                  <button type="button" className="clm-signing-resume" onClick={() => setIsSigningModalOpen(true)}>
+                    진행 중인 전자서명 계속하기 →
+                  </button>
+                ) : (
+                  <span className="clm-signature-guidance">STEP 02의 큰 서명 버튼을 눌러 전자서명을 시작해 주세요.</span>
+                )
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                   <div style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '15px' }}>
@@ -620,92 +626,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         </aside>
       </div>
 
-      {/* 1. 모두싸인 실시간 템플릿 약정서 작성/서명 뷰어 모달 */}
-      {isPreviewModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 9999, padding: '20px'
-        }}>
-          <div style={{
-            background: '#fff', width: '100%', maxWidth: '640px',
-            borderRadius: '16px', border: '3px solid #111', padding: '28px', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)', textAlign: 'center'
-          }}>
-            <div style={{ borderBottom: '2px solid #111', paddingBottom: '16px', marginBottom: '20px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#ff3b30', color: '#fff', padding: '3px 8px', borderRadius: '4px' }}>
-                모두싸인 템플릿 연동 (ID: 47f3a310...)
-              </span>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: '8px 0 4px', color: '#111' }}>
-                📜 {documentName}
-              </h3>
-              <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>
-                모두싸인 보안 서명창에서 실제 템플릿 서식의 빈칸을 직접 입력하고 서명합니다.
-              </p>
-            </div>
-
-            {/* 뷰어 안내 및 팝업 열기 버튼 */}
-            <div style={{ background: '#f8f9fa', border: '2px dashed #ff3b30', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
-              <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>✒️</span>
-              <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 'bold', color: '#1a1a24' }}>
-                모두싸인 템플릿 전자약정서 서명창
-              </h4>
-              <p style={{ fontSize: '13px', color: '#555', margin: '0 0 16px', lineHeight: 1.5 }}>
-                보안 정책(X-Frame-Options) 차단 없이 안전하고 쾌적하게 작성하기 위해<br/>
-                <b>모두싸인 공식 서약창 팝업</b>으로 즉시 연결됩니다.
-              </p>
-
-              <button
-                type="button"
-                style={{
-                  padding: '12px 28px', background: '#ff3b30', color: '#fff',
-                  border: '2px solid #111', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px',
-                  cursor: 'pointer', boxShadow: '0 4px 10px rgba(255,59,48,0.3)',
-                  display: 'inline-flex', alignItems: 'center', gap: '8px'
-                }}
-                onClick={async () => {
-                  if (!clmDoc?.signingUrl) {
-                    await handleStartModusign();
-                  } else {
-                    window.open(clmDoc.signingUrl, 'ModusignWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-                  }
-                }}
-              >
-                🚀 모두싸인 템플릿 서약창 열기 (팝업)
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', paddingTop: '12px', borderTop: '1px solid #eee' }}>
-              <button
-                type="button"
-                style={{
-                  padding: '10px 18px', background: '#e9ecef', color: '#495057',
-                  border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
-                }}
-                onClick={() => setIsPreviewModalOpen(false)}
-              >
-                닫기
-              </button>
-              <button
-                type="button"
-                style={{
-                  padding: '10px 22px', background: '#2ec4b6', color: '#fff',
-                  border: '2px solid #111', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onClick={() => {
-                  setIsPreviewModalOpen(false);
-                  handleCheckSignature();
-                }}
-              >
-                ✅ 양식 작성 & 서명 완료 확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. 모두싸인 SECURE_LINK 서명 진행 안내 모달 */}
+      {/* 모두싸인 SECURE_LINK 서명 진행 안내 모달 */}
       {isSigningModalOpen && clmDoc && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -721,8 +642,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               📜 모두싸인 전자서명 진행
             </h3>
             <p style={{ fontSize: '13px', color: '#555', marginBottom: '20px', lineHeight: 1.5 }}>
-              <b>[{clmDoc.volunteerTitle}]</b> 서약서 생성이 완료되었습니다.<br/>
-              아래 버튼을 눌러 <b>모두싸인 서약창 팝업</b>에서 서약을 완료해 주세요.
+              <b>[{clmDoc.volunteerTitle}]</b> 약정서 생성이 완료되었습니다.<br/>
+              아래 버튼을 눌러 <b>모두싸인 전자서명 창</b>에서 약정서를 확인하고 서명을 완료해 주세요.
             </p>
 
             <div style={{ background: '#f8f9fa', border: '2px dashed #2ec4b6', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
@@ -746,7 +667,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   }
                 }}
               >
-                🚀 모두싸인 서약창 열기 (팝업)
+                모두싸인에서 약정서 확인하고 서명하기 →
               </button>
               <div style={{ marginTop: '12px', fontSize: '11px', color: '#888' }}>
                 문서 코드: {clmDoc.modusignDocumentId}

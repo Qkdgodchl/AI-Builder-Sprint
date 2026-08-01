@@ -1156,6 +1156,257 @@ body.theme-ai {
   font-weight: 800;
 }
 
+.clm-status.complete {
+  border-color: #237a57;
+  background: #edf8f2;
+  color: #237a57;
+}
+
+.clm-step-guide {
+  margin: -6px 0 18px;
+  color: var(--pc-muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.clm-consent-block,
+.clm-document-subsection,
+.clm-signing-cta-card {
+  border: 1px solid #d8d8d4;
+  border-radius: 10px;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.clm-document-subsection,
+.clm-signing-cta-card {
+  margin-top: 14px;
+}
+
+.clm-consent-block {
+  border-top: 4px solid var(--pc-dark);
+  background: #fafaf8;
+}
+
+.clm-consent-block.complete {
+  border-top-color: #237a57;
+  background: #f6fbf8;
+}
+
+.clm-substep-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.clm-substep-heading > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--pc-dark);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.clm-substep-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clm-substep-heading strong {
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.clm-substep-heading small,
+.clm-signing-requirement {
+  color: var(--pc-muted);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.clm-substep-heading em {
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: #f1e7e4;
+  color: #a53e2c;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.clm-consent-block.complete .clm-substep-heading em {
+  background: #dff2e8;
+  color: #237a57;
+}
+
+.clm-consent-list {
+  display: grid;
+  gap: 0;
+  margin-top: 16px;
+  border-top: 1px solid #deded9;
+}
+
+.clm-consent-list .clm-final-consent {
+  align-items: center;
+  padding: 13px 4px;
+  border-bottom: 1px solid #deded9;
+  color: var(--pc-dark);
+  cursor: pointer;
+}
+
+.clm-consent-list .clm-final-consent input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--pc-dark);
+}
+
+.clm-consent-list .clm-final-consent span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clm-consent-list .clm-final-consent b {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.clm-consent-list .clm-final-consent small {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #f1e7e4;
+  color: #a53e2c;
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.clm-consent-list .clm-final-consent.optional small {
+  background: #eeeeec;
+  color: #777777;
+}
+
+.clm-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.clm-identity-grid label,
+.clm-special-conditions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  color: #555555;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.clm-identity-grid .pixel-input {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.clm-document-subsection .clm-identity-note {
+  margin: 7px 0 0;
+}
+
+.clm-special-conditions {
+  margin-top: 16px;
+}
+
+.clm-special-conditions textarea {
+  width: 100%;
+  min-height: 86px;
+  resize: vertical;
+  border: 1px solid #cfcfca;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #ffffff;
+  color: var(--pc-dark);
+  font: inherit;
+  line-height: 1.6;
+}
+
+.clm-signing-cta-card {
+  border: 2px solid var(--pc-dark);
+  background: #fff9ed;
+}
+
+.clm-signing-cta-card.ready {
+  background: #f6fbf8;
+}
+
+.clm-signing-cta-card > p {
+  margin: 14px 0;
+  color: #555555;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.clm-signing-primary {
+  width: 100%;
+  min-height: 58px;
+  border: 2px solid var(--pc-dark);
+  border-radius: 8px;
+  padding: 14px 18px;
+  background: var(--pc-dark);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.clm-signing-primary:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 #2ec4b6;
+}
+
+.clm-signing-primary:disabled {
+  border-color: #d1d1cd;
+  background: #e5e5e2;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.clm-signing-requirement {
+  display: block;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.clm-signature-guidance {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #eeeeec;
+  color: #777777;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.clm-signature-placeholder .clm-signing-resume {
+  border: 2px solid var(--pc-dark);
+  background: var(--pc-dark);
+  color: #ffffff;
+  cursor: pointer;
+}
+
 .clm-document-card {
   display: flex;
   align-items: center;
@@ -1647,6 +1898,23 @@ body.theme-ai {
 
   .clm-document-card button {
     width: 100%;
+  }
+
+  .clm-identity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clm-substep-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .clm-substep-heading em {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .clm-consent-list .clm-final-consent span {
+    align-items: flex-start;
   }
 
   .auth-form-row,
