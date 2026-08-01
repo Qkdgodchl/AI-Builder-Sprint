@@ -221,24 +221,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </form>
         )}
 
-        <div className="social-login-divider">
-          <span>소셜 로그인</span>
-        </div>
-        <div className="social-login-buttons" aria-label="소셜 로그인 준비 중">
-          <button type="button" disabled aria-label="카카오 로그인 준비 중">
-            <span className="social-mark kakao">K</span>
-            카카오
-          </button>
-          <button type="button" disabled aria-label="네이버 로그인 준비 중">
-            <span className="social-mark naver">N</span>
-            네이버
-          </button>
-          <button type="button" disabled aria-label="구글 로그인 준비 중">
-            <span className="social-mark google">G</span>
-            구글
-          </button>
-        </div>
-
         {view === 'login' && (
           <>
             <button
@@ -272,9 +254,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </>
         )}
 
-        <p className="auth-modal-note">
-          이메일 로그인과 회원가입은 실제 계정 DB에 저장됩니다. 소셜 로그인은 준비 중입니다.
-        </p>
       </section>
     </div>
   );
