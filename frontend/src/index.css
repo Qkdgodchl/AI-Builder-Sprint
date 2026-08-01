@@ -1392,10 +1392,6 @@ body.theme-ai {
     width: 100%;
   }
 
-  .social-login-buttons {
-    grid-template-columns: 1fr;
-  }
-
   .cards-grid,
   .magazine-grid {
     grid-template-columns: 1fr;
@@ -1678,79 +1674,6 @@ body.theme-ai {
   font-weight: 800;
   letter-spacing: 0.8px;
   cursor: pointer;
-}
-
-.auth-modal-note {
-  margin-top: 16px;
-  color: #777777;
-  font-size: 10px;
-  line-height: 1.5;
-}
-
-
-.social-login-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 22px 0 13px;
-  color: #888888;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.social-login-divider::before,
-.social-login-divider::after {
-  content: '';
-  height: 1px;
-  flex: 1;
-  background: #dedede;
-}
-
-.social-login-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.social-login-buttons button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid #d5d5d5;
-  border-radius: 8px;
-  padding: 9px 8px;
-  background: #fafafa;
-  color: #777777;
-  font: inherit;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.social-mark {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 900;
-}
-
-.social-mark.kakao {
-  background: #fee500;
-  color: #191919;
-}
-
-.social-mark.naver {
-  background: #03c75a;
-  color: #ffffff;
-}
-
-.social-mark.google {
-  border: 1px solid #d5d5d5;
-  background: #ffffff;
-  color: #4285f4;
 }
 
 .manager-demo-login {
@@ -3932,6 +3855,5 @@ body.theme-ai {
   font-size: 32px;
   user-select: none;
 }
-
 
 
