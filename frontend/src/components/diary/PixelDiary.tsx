@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { PostItem, CommentItem } from '../../services/communityApi';
-import { fetchPosts, createPost, likePost, deletePost, fetchComments, createComment, deleteComment } from '../../services/communityApi';
+import { fetchPost, fetchPosts, createPost, likePost, deletePost, fetchComments, createComment, deleteComment } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
 import type { SessionUser } from '../../types';
 
@@ -24,6 +24,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [isWriteOpen, setIsWriteOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState<PostItem | null>(null);
+  const detailRequestRef = useRef<{ id: number; promise: Promise<PostItem> } | null>(null);
 
   // 댓글 관련 상태
   const [comments, setComments] = useState<CommentItem[]>([]);
@@ -31,7 +32,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
   const [commentAuthor, setCommentAuthor] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchPosts(filterCategory);
@@ -42,23 +43,50 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadPosts();
   }, [filterCategory]);
 
   useEffect(() => {
-    if (urlPostId && posts.length > 0) {
-      const targetId = Number(urlPostId);
-      const found = posts.find((p) => p.id === targetId);
-      if (found) {
-        setSelectedPost(found);
-      }
-    } else if (!urlPostId) {
+    void loadPosts();
+  }, [loadPosts]);
+
+  useEffect(() => {
+    if (!urlPostId) {
+      detailRequestRef.current = null;
       setSelectedPost(null);
+      return;
     }
-  }, [urlPostId, posts]);
+
+    const targetId = Number(urlPostId);
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      setSelectedPost(null);
+      return;
+    }
+
+    const request = detailRequestRef.current?.id === targetId
+      ? detailRequestRef.current
+      : { id: targetId, promise: fetchPost(targetId) };
+    detailRequestRef.current = request;
+
+    let active = true;
+    request.promise
+      .then((post) => {
+        if (active) setSelectedPost(post);
+      })
+      .catch((err) => {
+        console.error('Failed to load community post detail:', err);
+        if (detailRequestRef.current?.id === targetId) {
+          detailRequestRef.current = null;
+        }
+        if (active) {
+          showToast('게시글을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+          navigate('/community');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [navigate, showToast, urlPostId]);
 
   // 선택된 게시글의 댓글 목록 로드
   const loadComments = async (postId: number) => {
@@ -94,7 +122,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
       const newComment = await createComment(
         selectedPost.id,
         commentContent.trim(),
-        commentAuthor.trim() || undefined
+        currentUser ? undefined : commentAuthor.trim() || undefined
       );
 
       if (newComment) {
@@ -145,7 +173,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
         title: title.trim(),
         content: content.trim(),
         category,
-        author: author.trim() || '부산 픽셀용사',
+        author: author.trim() || currentUser?.nickname || '부산 픽셀용사',
       });
 
       if (created) {
@@ -168,6 +196,10 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
 
   const handleLike = async (id: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!currentUser) {
+      showToast('로그인 후 게시글에 응원을 보낼 수 있습니다.');
+      return;
+    }
     try {
       const updatedLike = await likePost(id);
       setPosts((prev) =>
@@ -178,11 +210,16 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
       if (selectedPost && selectedPost.id === id) {
         setSelectedPost((prev) => prev ? { ...prev, likeCount: updatedLike.likeCount } : null);
       }
-      onAddDiary(0.1);
-      playBeep(784, 0.1);
-      showToast('❤️ 게시글에 응원 하트를 보냈습니다! (온기 +0.1°C)');
+      if (updatedLike.isLiked) {
+        onAddDiary(0.1);
+        playBeep(784, 0.1);
+        showToast('❤️ 게시글에 응원 하트를 보냈습니다! (온기 +0.1°C)');
+      } else {
+        showToast('게시글 응원을 취소했습니다.');
+      }
     } catch (err) {
       console.error(err);
+      showToast('응원 처리에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -262,392 +299,370 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
     const textContent = selectedPost.content || selectedPost.contentSnippet || '';
     const createdDate = selectedPost.createdAt ? new Date(selectedPost.createdAt).toLocaleDateString('ko-KR') : '방금 전';
     const badgeInfo = getBadgeColor(getAuthorBadge(selectedPost.author));
+    const authorName = getAuthorName(selectedPost.author);
+    const authorInitial = authorName.trim().charAt(0) || '픽';
+    const categoryLabel = getCategoryLabel(selectedPost.category);
 
     return (
-      <article className="opportunity-detail">
-        <div className="detail-back-nav">
-          <button type="button" className="detail-back-button" onClick={() => navigate('/community')}>
-            목록으로 돌아가기
+      <article className="community-post-page">
+        <nav className="community-post-nav" aria-label="게시글 상세 탐색">
+          <button type="button" onClick={() => navigate('/community')}>
+            <span aria-hidden="true">←</span> 커뮤니티 목록
           </button>
           {canDelete && (
             <button
               type="button"
-              className="content-delete-button"
+              className="community-post-delete"
               onClick={() => handleDeletePost(selectedPost.id)}
             >
-              게시글 삭제
+              삭제
             </button>
           )}
-        </div>
+        </nav>
 
-        <header className="detail-hero">
-          <h2>{selectedPost.title}</h2>
-          <p>{getCategoryLabel(selectedPost.category)} · 따뜻한 픽셀 케어 커뮤니티 선행 소통 이야기입니다.</p>
-          <div className="detail-inline-keywords" aria-label="관련 키워드">
-            <span>#{getCategoryLabel(selectedPost.category).replace(/\s+/g, '')}</span>
-            <span>#픽셀온기</span>
-            <span>#{getAuthorName(selectedPost.author)}</span>
-          </div>
-        </header>
+        <main className="community-post-main">
+          <header className="community-post-header">
+            <span className={`community-post-category ${selectedPost.category.toLowerCase()}`}>
+              {categoryLabel}
+            </span>
+            <h2>{selectedPost.title}</h2>
 
-        <dl className="detail-facts">
-          <div>
-            <dt>작성자</dt>
-            <dd>✍️ {getAuthorName(selectedPost.author)}</dd>
-          </div>
-          <div>
-            <dt>픽셀 레벨 뱃지</dt>
-            <dd>{badgeInfo.name}</dd>
-          </div>
-          <div>
-            <dt>작성일</dt>
-            <dd>📅 {createdDate}</dd>
-          </div>
-          <div>
-            <dt>조회수 / 하트</dt>
-            <dd>👁️ {viewsCount} 회 · ❤️ {likesCount} 개</dd>
-          </div>
-        </dl>
-
-        <section className="detail-section">
-          <p className="detail-section-number">01</p>
-          <div>
-            <h3>이야기 본문</h3>
-            
-            {selectedPost.imageUrl ? (
-              <div style={{ margin: '16px 0', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--pc-dark)' }}>
-                <img src={selectedPost.imageUrl} alt={selectedPost.title} style={{ width: '100%', maxHeight: '420px', objectFit: 'cover' }} />
+            <div className="community-post-author">
+              <span className="community-post-avatar" aria-hidden="true">{authorInitial}</span>
+              <div>
+                <div className="community-post-author-name">
+                  <strong>{authorName}</strong>
+                  <span style={{ '--badge-color': badgeInfo.bg } as React.CSSProperties}>{badgeInfo.name}</span>
+                </div>
+                <p>{createdDate} · 조회 {viewsCount} · 댓글 {comments.length}</p>
               </div>
-            ) : null}
-
-            <p style={{ whiteSpace: 'pre-line', fontSize: '15px', lineHeight: 1.7, color: '#333' }}>
-              {textContent}
-            </p>
-          </div>
-        </section>
-
-        <section className="detail-section">
-          <p className="detail-section-number">02</p>
-          <div>
-            <h3>선행 응원 및 안내사항</h3>
-            <ul>
-              <li>따뜻한 봉사 후기와 소중한 선행 이야기를 나눠주셔서 감사합니다.</li>
-              <li>하단 응원 버튼을 누르면 작성자에게 픽셀 온기 +0.1°C가 전달됩니다.</li>
-              <li>게시글 링크를 복사하여 카카오톡이나 SNS로 이웃들과 공유해 보세요.</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="detail-section">
-          <p className="detail-section-number">03</p>
-          <div style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0 }}>💬 픽셀 용사들의 온기 댓글 ({comments.length})</h3>
             </div>
+          </header>
 
-            {/* 댓글 작성 폼 */}
-            <form onSubmit={handleCreateComment} style={{ marginBottom: '24px', padding: '16px', background: '#fcf8eb', borderRadius: '12px', border: '2px solid var(--pc-dark, #111)' }}>
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+          <section className="community-post-content" aria-label="게시글 본문">
+            {selectedPost.imageUrl && (
+              <figure>
+                <img src={selectedPost.imageUrl} alt={selectedPost.title} />
+              </figure>
+            )}
+            <p>{textContent}</p>
+          </section>
+
+          <div className="community-post-actions" aria-label="게시글 반응">
+            <button type="button" className="community-post-like" onClick={() => handleLike(selectedPost.id)}>
+              <span aria-hidden="true">♡</span> 응원 {likesCount}
+            </button>
+            <button type="button" onClick={handleCopyLink}>
+              <span aria-hidden="true">↗</span> 링크 복사
+            </button>
+          </div>
+
+          <aside className="community-post-note">
+            <strong>함께 지키는 커뮤니티</strong>
+            <span>따뜻한 응원과 구체적인 경험을 나누고, 개인정보가 포함되지 않도록 확인해주세요.</span>
+          </aside>
+
+          <section className="community-comments" aria-labelledby="community-comments-title">
+            <header>
+              <div>
+                <h3 id="community-comments-title">댓글 <span>{comments.length}</span></h3>
+                <p>이야기에 공감하거나 도움이 되는 경험을 이어서 나눠보세요.</p>
+              </div>
+              <span>등록순</span>
+            </header>
+
+            <form className="community-comment-form" onSubmit={handleCreateComment}>
+              <div className="community-comment-form-author">
+                <span className="community-comment-avatar" aria-hidden="true">
+                  {(currentUser?.nickname || commentAuthor || '익').trim().charAt(0)}
+                </span>
+                <div>
+                  <strong>{currentUser?.nickname || '익명 용사'}</strong>
+                  <span>서로를 존중하는 댓글을 남겨주세요.</span>
+                </div>
+              </div>
+              {!currentUser && (
+                <label>
+                  <span>작성자 닉네임</span>
                 <input
                   type="text"
-                  className="pixel-input"
-                  style={{ flex: 1, padding: '8px 12px', fontSize: '13px', background: '#fff' }}
-                  placeholder="작성자 닉네임 (기본: 익명 용사)"
+                  placeholder="닉네임을 입력해주세요. (미입력 시 익명 용사)"
                   value={commentAuthor}
                   onChange={(e) => setCommentAuthor(e.target.value)}
                 />
-              </div>
-              <textarea
-                className="pixel-input"
-                style={{ width: '100%', height: '70px', padding: '10px', fontSize: '14px', resize: 'none', marginBottom: '10px', background: '#fff' }}
-                placeholder="따뜻한 응원이나 소감을 댓글로 자유롭게 나눠주세요!"
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                required
-              />
-              <div style={{ textAlign: 'right' }}>
-                <button type="submit" className="opportunity-action" style={{ background: '#ff70a6', fontSize: '12px', padding: '8px 16px' }}>
-                  💬 댓글 남기기 (온기 +0.1°C)
-                </button>
-              </div>
+                </label>
+              )}
+              <label className="community-comment-message">
+                <span>댓글 내용</span>
+                <textarea
+                  placeholder="따뜻한 응원이나 도움이 되는 정보를 남겨주세요."
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
+                  required
+                />
+              </label>
+              <footer>
+                <span>{commentContent.length}자</span>
+                <button type="submit">댓글 등록</button>
+              </footer>
             </form>
 
-            {/* 댓글 목록 */}
             {loadingComments ? (
-              <p style={{ color: '#666', fontSize: '14px' }}>댓글을 불러오는 중입니다...</p>
+              <p className="community-comments-status">댓글을 불러오는 중입니다.</p>
             ) : comments.length === 0 ? (
-              <div style={{ padding: '24px', textAlign: 'center', background: '#fafafa', borderRadius: '8px', border: '1px dashed #ccc', color: '#777', fontSize: '14px' }}>
-                👾 첫 번째 온기 댓글의 주인공이 되어보세요!
+              <div className="community-comments-empty">
+                <strong>아직 댓글이 없습니다.</strong>
+                <span>첫 번째 응원과 경험을 남겨보세요.</span>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="community-comment-list">
                 {comments.map((comment) => {
-                  const badgeInfo = getBadgeColor(comment.authorBadge || 'LV1_SEED');
+                  const commentBadge = getBadgeColor(comment.authorBadge || 'LV1_SEED');
                   const commentDate = comment.createdAt ? new Date(comment.createdAt).toLocaleString('ko-KR') : '방금 전';
 
                   return (
-                    <div
-                      key={comment.id}
-                      style={{
-                        padding: '14px 16px',
-                        background: '#ffffff',
-                        borderRadius: '10px',
-                        border: '1.5px solid #e0e0e0',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: '700', fontSize: '14px', color: '#1a1a24' }}>
-                            ✍️ {comment.authorNickname}
-                          </span>
-                          <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '12px', color: '#fff', background: badgeInfo.bg, fontWeight: 'bold' }}>
-                            {badgeInfo.name}
-                          </span>
-                          <span style={{ fontSize: '12px', color: '#888' }}>
-                            · {commentDate}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCommentItem(comment.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: '#ff3b30', opacity: 0.8 }}
-                          title="댓글 삭제"
-                        >
-                          🗑️ 삭제
-                        </button>
+                    <article key={comment.id} className="community-comment-item">
+                      <span className="community-comment-avatar" aria-hidden="true">
+                        {(comment.authorNickname || '익').trim().charAt(0)}
+                      </span>
+                      <div className="community-comment-body">
+                        <header>
+                          <div>
+                            <strong>{comment.authorNickname}</strong>
+                            <span className="community-comment-badge" style={{ '--badge-color': commentBadge.bg } as React.CSSProperties}>
+                              {commentBadge.name}
+                            </span>
+                            <time>{commentDate}</time>
+                          </div>
+                          <button
+                            type="button"
+                            className="community-comment-delete"
+                            onClick={() => handleDeleteCommentItem(comment.id)}
+                            title="댓글 삭제"
+                          >
+                            삭제
+                          </button>
+                        </header>
+                        <p>{comment.content}</p>
                       </div>
-                      <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.6, color: '#333', whiteSpace: 'pre-wrap' }}>
-                        {comment.content}
-                      </p>
-                    </div>
+                    </article>
                   );
                 })}
               </div>
             )}
-          </div>
-        </section>
-
-        <footer className="detail-apply-bar">
-          <div>
-            <span>COMMUNITY ACTION</span>
-            <strong>{getAuthorName(selectedPost.author)} 님의 따뜻한 이야기를 응원하시겠어요?</strong>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" style={{ background: '#2ec4b6' }} onClick={handleCopyLink}>
-              🔗 공유 / 링크 복사
-            </button>
-            <button type="button" onClick={() => handleLike(selectedPost.id)}>
-              ❤️ 응원 하트 보내기 ({likesCount})
-            </button>
-          </div>
-        </footer>
+          </section>
+        </main>
       </article>
     );
   }
 
   return (
-    <section className="opportunity-catalog">
-      {/* Primary Category Nav (VolunteerCatalog와 동일한 네비게이션) */}
-      <nav className="opportunity-primary-nav" aria-label="커뮤니티 이야기 분류">
-        {['ALL', 'REVIEW', 'RECRUIT', 'FREE'].map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            className={filterCategory === cat ? 'active' : ''}
-            onClick={() => setFilterCategory(cat)}
-          >
-            {cat === 'ALL' ? '전체' : cat === 'REVIEW' ? '봉사후기' : cat === 'RECRUIT' ? '동행모집' : '자율수다'}
-          </button>
-        ))}
-
-        <button
-          type="button"
-          className="opportunity-action"
-          style={{ background: isWriteOpen ? '#444' : 'var(--magazine-accent, #ff3b30)', padding: '6px 14px', fontSize: '12px', borderRadius: '20px' }}
-          onClick={() => setIsWriteOpen(!isWriteOpen)}
-        >
-          {isWriteOpen ? '✖️ 작성 닫기' : '📝 이야기 작성'}
+    <section className="community-board-page">
+      <header className="community-board-header">
+        <div>
+          <p>PIXEL CARE COMMUNITY</p>
+          <h2>선행을 나누는 사람들의 이야기</h2>
+          <span>
+            봉사 경험과 유용한 팁을 기록하고, 같은 마음을 가진 이웃을 만나보세요.
+          </span>
+        </div>
+        <button type="button" onClick={() => setIsWriteOpen((open) => !open)}>
+          {isWriteOpen ? '작성 닫기' : '이야기 작성'} <span aria-hidden="true">＋</span>
         </button>
+      </header>
 
-        <span className="opportunity-count" aria-live="polite">
-          총 {safePosts.length}개 이야기
-        </span>
-      </nav>
+      <div className="community-board-toolbar">
+        <nav className="community-board-tabs" aria-label="커뮤니티 이야기 분류">
+          {[
+            { value: 'ALL', label: '전체' },
+            { value: 'REVIEW', label: '봉사 후기' },
+            { value: 'RECRUIT', label: '동행 모집' },
+            { value: 'FREE', label: '자유 이야기' },
+          ].map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className={filterCategory === filter.value ? 'active' : ''}
+              onClick={() => setFilterCategory(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </nav>
+        <span aria-live="polite">총 {safePosts.length}개</span>
+      </div>
 
-      {/* 글쓰기 폼 */}
       {isWriteOpen && (
-        <div style={{ marginBottom: '24px', padding: '20px', background: '#faf0ca', borderRadius: '12px', border: '2px solid var(--pc-dark, #111)' }}>
-          <div style={{ fontSize: '16px', fontWeight: '800', marginBottom: '14px', color: '#1a1a24', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>💬</span> 픽셀 커뮤니티 새 이야기 작성
-          </div>
-
-          <form onSubmit={handleCreate}>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                className="pixel-input"
-                style={{ flex: 3, minWidth: '220px', padding: '10px' }}
-                placeholder="📌 게시글 제목 (예: 해운대 플로깅 봉사 후기 올립니다!)"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-              <input
-                type="text"
-                className="pixel-input"
-                style={{ flex: 1, minWidth: '130px', padding: '10px' }}
-                placeholder="작성자 닉네임"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-              />
-              <select
-                className="pixel-input"
-                style={{ padding: '10px', fontWeight: 'bold' }}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="REVIEW">📝 봉사 후기</option>
-                <option value="RECRUIT">🤝 동행 모집</option>
-                <option value="FREE">💬 자율 수다</option>
-              </select>
+        <section className="community-composer" aria-labelledby="community-composer-title">
+          <div className="community-composer-heading">
+            <div>
+              <p>새 글</p>
+              <h3 id="community-composer-title">이야기 작성</h3>
             </div>
-
-            <textarea
-              className="pixel-input"
-              style={{ width: '100%', height: '110px', marginBottom: '14px', resize: 'none', padding: '12px', lineHeight: 1.5 }}
-              placeholder="따뜻한 봉사 후기, 함께할 동행 모집, 선행에 관한 이야기를 나눠보세요!"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-            />
-
-            <div style={{ textAlign: 'right' }}>
-              <button type="submit" className="opportunity-action" style={{ background: '#ff3b30', fontSize: '13px', padding: '10px 20px' }}>
-                🚀 게시글 게시 (온기 +0.5°C)
-              </button>
+            <button type="button" onClick={() => setIsWriteOpen(false)} aria-label="작성 화면 닫기">×</button>
+          </div>
+          <form onSubmit={handleCreate}>
+            <div className="community-composer-grid">
+              <label>
+                <span>분류</span>
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="REVIEW">봉사 후기</option>
+                  <option value="RECRUIT">동행 모집</option>
+                  <option value="FREE">자유 이야기</option>
+                </select>
+              </label>
+              <label>
+                <span>작성자</span>
+                <input
+                  type="text"
+                  placeholder={currentUser?.nickname || '작성자 닉네임'}
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                />
+              </label>
+              <label className="community-composer-wide">
+                <span>제목</span>
+                <input
+                  type="text"
+                  placeholder="경험과 핵심 내용이 잘 드러나는 제목을 적어주세요"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="community-composer-wide">
+                <span>내용</span>
+                <textarea
+                  placeholder="참여 과정, 준비물, 함께하고 싶은 일정 등 다른 이웃에게 도움이 될 내용을 나눠주세요."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+            <div className="community-composer-footer">
+              <p>서로를 배려하는 표현과 정확한 정보를 사용해주세요.</p>
+              <button type="submit">게시하기</button>
             </div>
           </form>
-        </div>
+        </section>
       )}
 
-      {loading ? (
-        <div className="opportunity-state">이야기를 불러오는 중입니다.</div>
-      ) : safePosts.length === 0 ? (
-        <div className="opportunity-state">등록된 이야기 피드가 없습니다. 첫 번째 이야기를 나눠보세요!</div>
-      ) : (
-        <div className="community-line-feed-container">
-          {safePosts.map((post, idx) => {
-            const likesCount = post.likeCount ?? (post as any).likes ?? 0;
-            const viewsCount = post.viewCount ?? (post as any).views ?? 0;
-            const snippetText = post.contentSnippet || post.content || '';
-            const createdDate = post.createdAt ? new Date(post.createdAt).toLocaleDateString('ko-KR') : '방금 전';
-            const badgeInfo = getBadgeColor(getAuthorBadge(post.author));
+      <main className="community-topic-board" aria-label="커뮤니티 이야기 목록">
+        <div className="community-topic-heading">
+          <div>
+            <h3>최신 이야기</h3>
+            <p>새로 올라온 경험과 동행 소식을 확인하세요.</p>
+          </div>
+          <span>최신순</span>
+        </div>
 
-            return (
-              <article
-                key={`${post.id}-${idx}`}
-                className="community-line-feed-item"
-                onClick={() => navigate(`/community/posts/${post.id}`)}
-              >
-                {/* 좌측: 카테고리/뱃지 태그 + 굵은 제목 + 본문 미리보기 + 메타정보 */}
-                <div className="feed-content-main">
-                  <div className="feed-tags-row">
-                    <span className="feed-cat-badge">
-                      {getCategoryLabel(post.category)}
-                    </span>
-                    <span className="feed-user-badge" style={{ background: badgeInfo.bg }}>
-                      {badgeInfo.name}
-                    </span>
-                  </div>
+        <div className="community-topic-columns" aria-hidden="true">
+          <span>이야기</span>
+          <span>반응</span>
+          <span>조회</span>
+          <span>작성일</span>
+        </div>
 
-                  <h3 className="feed-title">{post.title}</h3>
-                  <p className="feed-snippet">{snippetText}</p>
+        {loading ? (
+          <div className="community-empty-state">이야기를 불러오는 중입니다.</div>
+        ) : safePosts.length === 0 ? (
+          <div className="community-empty-state">
+            <strong>아직 등록된 이야기가 없습니다.</strong>
+            <span>첫 번째 경험을 나누고 새로운 연결을 만들어보세요.</span>
+            <button type="button" onClick={() => setIsWriteOpen(true)}>첫 이야기 작성하기</button>
+          </div>
+        ) : (
+          <div className="community-topic-list">
+            {safePosts.map((post) => {
+              const likesCount = post.likeCount ?? post.likes ?? 0;
+              const viewsCount = post.viewCount ?? post.views ?? 0;
+              const snippetText = post.contentSnippet || post.content || '';
+              const createdDate = post.createdAt
+                ? new Date(post.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+                : '방금 전';
+              const authorName = getAuthorName(post.author);
+              const badgeInfo = getBadgeColor(getAuthorBadge(post.author));
 
-                  <div className="feed-meta-row">
-                    <span className="stat-item" style={{ color: '#ff3b30', fontWeight: 'bold' }}>
-                      ❤️ {likesCount}
-                    </span>
-                    <span className="stat-item" style={{ color: '#2ec4b6', fontWeight: 'bold' }}>
-                      💬 {post.commentCount ?? 0}
-                    </span>
-                    <span className="stat-item">
-                      👁️ {viewsCount}
-                    </span>
-                    <span>·</span>
-                    <span>✍️ {getAuthorName(post.author)}</span>
-                    <span>·</span>
-                    <span>📅 {createdDate}</span>
-                  </div>
-                </div>
-
-                {/* Col 3: 작성자 */}
-                <span
-                  className="opportunity-area"
-                  role="cell"
-                  style={{ display: 'flex', alignItems: 'center', height: '64px', padding: 0, margin: 0, fontSize: '13px', fontWeight: '700', color: '#222' }}
-                >
-                  ✍️ {getAuthorName(post.author)}
-                </span>
-
-                {/* Col 4: 뱃지 및 반응 (조회/하트/댓글수) */}
-                <div
-                  className="opportunity-keywords"
-                  role="cell"
-                  style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '64px', gap: '4px', alignItems: 'flex-start', padding: 0, margin: 0 }}
-                >
-                  <span style={{ background: badgeInfo.bg, color: '#fff', fontSize: '9px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '3px', border: '1px solid rgba(0,0,0,0.15)' }}>
-                    {badgeInfo.name}
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#555', fontWeight: '600' }}>
-                    👁️ {viewsCount} · ❤️ {likesCount} · 💬 {post.commentCount ?? 0}
-                  </span>
-                </div>
-
-                {/* Col 5: 작성일 */}
-                <span
-                  className="opportunity-status"
-                  role="cell"
-                  style={{ display: 'flex', alignItems: 'center', height: '64px', padding: 0, margin: 0, fontSize: '12px', fontWeight: '700', color: '#2b9348' }}
-                >
-                  {createdDate}
-                </span>
-
-                {/* Col 6: [상세보기] 및 [삭제] 버튼 */}
-                <div
-                  className="opportunity-row-actions"
-                  style={{ height: '64px', padding: 0, margin: 0 }}
-                  role="cell"
-                >
-                  <button
-                    type="button"
-                    className="opportunity-action"
-                    style={{ width: '92px', height: '36px', fontSize: '12px', fontWeight: 'bold', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px' }}
-                    onClick={(event) => {
-                      event.stopPropagation();
+              return (
+                <article
+                  key={post.id}
+                  className="community-topic-row"
+                  tabIndex={0}
+                  onClick={() => navigate(`/community/posts/${post.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
                       navigate(`/community/posts/${post.id}`);
-                    }}
-                  >
-                    상세보기
-                  </button>
-                  {canDeletePost(post) && (
+                    }
+                  }}
+                >
+                  <div className="community-topic-main">
+                    <div className="community-topic-labels">
+                      <span className={`community-category-label ${post.category.toLowerCase()}`}>
+                        {getCategoryLabel(post.category).replace(/^[^\s]+\s/, '')}
+                      </span>
+                      <span className="community-author-level" style={{ '--badge-color': badgeInfo.bg } as React.CSSProperties}>
+                        {badgeInfo.name}
+                      </span>
+                    </div>
+                    <h4>{post.title}</h4>
+                    <p>{snippetText}</p>
+                    <div className="community-topic-meta">
+                      <strong>{authorName}</strong>
+                      <span>·</span>
+                      <span>{createdDate}</span>
+                      <span>·</span>
+                      <span>댓글 {post.commentCount ?? 0}</span>
+                    </div>
+                  </div>
+
+                  <div className="community-topic-reaction">
+                    <button type="button" onClick={(event) => void handleLike(post.id, event)}>
+                      ♡ {likesCount}
+                    </button>
+                    <span>응원</span>
+                  </div>
+                  <div className="community-topic-view">
+                    <strong>{viewsCount}</strong>
+                    <span>회</span>
+                  </div>
+                  <div className="community-topic-activity">
+                    <span>{createdDate}</span>
                     <button
                       type="button"
-                      className="content-list-delete-button"
+                      aria-label={`${post.title} 자세히 보기`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        void handleDeletePost(post.id);
+                        navigate(`/community/posts/${post.id}`);
                       }}
                     >
-                      삭제
+                      →
                     </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+                    {canDeletePost(post) && (
+                      <button
+                        type="button"
+                        className="community-topic-delete"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDeletePost(post.id);
+                        }}
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      <footer className="community-board-note">
+        <strong>함께 만드는 커뮤니티</strong>
+        <span>구체적인 경험과 정확한 동행 정보를 나누고, 개인정보와 존중의 언어를 지켜주세요.</span>
+      </footer>
     </section>
   );
 };

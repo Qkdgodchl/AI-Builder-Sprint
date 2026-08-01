@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Header } from './components/common/Header';
@@ -52,12 +52,12 @@ export function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const triggerToast = (msg: string) => {
+  const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
-  };
+  }, []);
 
   const handleOpenModal = (title: string, type: 'volunteer' | 'donate') => {
     setModalState({ isOpen: true, title, type });

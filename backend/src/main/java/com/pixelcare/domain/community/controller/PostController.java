@@ -1,6 +1,7 @@
 package com.pixelcare.domain.community.controller;
 
 import com.pixelcare.domain.community.dto.PostCreateRequest;
+import com.pixelcare.domain.community.dto.PostLikeResponse;
 import com.pixelcare.domain.community.dto.PostResponse;
 import com.pixelcare.domain.community.service.PostService;
 import com.pixelcare.global.common.ApiResponse;
@@ -48,6 +49,12 @@ public class PostController {
     public ApiResponse<PostResponse> getPostDetail(@PathVariable Long id) {
         PostResponse post = postService.getPostDetail(id);
         return ApiResponse.success(post);
+    }
+
+    @PostMapping("/{id}/like")
+    public ApiResponse<PostLikeResponse> toggleLike(HttpServletRequest request, @PathVariable Long id) {
+        CurrentUser user = authGuard.requireUser(request);
+        return ApiResponse.success(postService.toggleLike(id, user.id()));
     }
 
     @PostMapping

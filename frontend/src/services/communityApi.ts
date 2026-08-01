@@ -71,6 +71,29 @@ export const fetchPosts = async (category?: string, sort: string = 'latest'): Pr
   }
 };
 
+/**
+ * 게시글 상세 조회. 백엔드에서 조회수가 한 번 증가한다.
+ */
+export const fetchPost = async (id: number): Promise<PostItem> => {
+  const response = await fetch(`${API_BASE_URL}/${id}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`게시글 상세 조회 실패: ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (!result.success || !result.data) {
+    throw new Error('게시글 상세 조회 응답이 올바르지 않습니다.');
+  }
+
+  return normalizePost(result.data);
+};
+
 export const fetchMyPosts = async (): Promise<PostItem[]> => {
   const token = localStorage.getItem('pixel-care-access-token');
   const response = await fetch(`${API_BASE_URL}/me?size=100`, {
@@ -158,10 +181,12 @@ export const deletePost = async (id: number): Promise<boolean> => {
  * 게시글 좋아요 토글 API 호출
  */
 export const likePost = async (id: number): Promise<{ postId: number; isLiked: boolean; likeCount: number }> => {
+  const token = localStorage.getItem('pixel-care-access-token');
   const response = await fetch(`${API_BASE_URL}/${id}/like`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
 
@@ -207,9 +232,13 @@ export const createComment = async (
   authorBadge?: string
 ): Promise<CommentItem | null> => {
   try {
+    const token = localStorage.getItem('pixel-care-access-token');
     const response = await fetch(`${API_BASE_URL}/${postId}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ content, authorNickname, authorBadge }),
     });
     if (!response.ok) throw new Error(`댓글 작성 실패: ${response.status}`);
@@ -226,8 +255,12 @@ export const createComment = async (
  */
 export const deleteComment = async (commentId: number): Promise<boolean> => {
   try {
+    const token = localStorage.getItem('pixel-care-access-token');
     const response = await fetch(`http://localhost:8080/api/comments/${commentId}`, {
       method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
     if (!response.ok) throw new Error(`댓글 삭제 실패: ${response.status}`);
     const result = await response.json();
@@ -237,4 +270,3 @@ export const deleteComment = async (commentId: number): Promise<boolean> => {
     return false;
   }
 };
-

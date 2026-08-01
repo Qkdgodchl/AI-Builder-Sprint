@@ -1,5 +1,6 @@
 package com.pixelcare.domain.community.controller;
 
+import com.pixelcare.domain.community.dto.PostLikeResponse;
 import com.pixelcare.domain.community.service.PostService;
 import com.pixelcare.global.auth.AuthGuard;
 import com.pixelcare.global.auth.CurrentUser;
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -68,6 +70,21 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.content").isArray());
 
         verify(postService).getMyPosts(20L, 0, 20);
+    }
+
+    @Test
+    void authenticatedUserCanTogglePostLike() throws Exception {
+        when(authGuard.requireUser(any(HttpServletRequest.class))).thenReturn(author);
+        when(postService.toggleLike(3L, 20L))
+                .thenReturn(new PostLikeResponse(3L, true, 1));
+
+        mockMvc.perform(post("/api/posts/3/like"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.postId").value(3))
+                .andExpect(jsonPath("$.data.likeCount").value(1));
+
+        verify(postService).toggleLike(3L, 20L);
     }
 
     @Test

@@ -40,8 +40,11 @@ public class CommentController {
         CurrentUser currentUser = authGuard.resolveUser(httpRequest);
         String nickname = currentUser != null ? currentUser.nickname() : "익명 용사";
         String badge = "LV2_WARMTH"; // 기본 인증 뱃지
+        CommentCreateRequest sanitizedRequest = currentUser == null
+                ? request
+                : new CommentCreateRequest(request.getContent(), currentUser.nickname(), badge);
 
-        CommentResponse comment = commentService.createComment(postId, request, nickname, badge);
+        CommentResponse comment = commentService.createComment(postId, sanitizedRequest, nickname, badge);
         return ApiResponse.success(comment, "댓글이 등록되었습니다.");
     }
 
