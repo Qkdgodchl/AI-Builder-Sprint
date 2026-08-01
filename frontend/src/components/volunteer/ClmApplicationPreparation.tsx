@@ -320,9 +320,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               하고 싶은 기부·봉사 내용을 편하게 적으면 약정 항목으로 정리합니다. 결과는 직접 수정한 뒤 확정할 수 있습니다.
             </p>
             <div className="clm-ai-example" aria-label="약정 의사 작성 예시">
-              <span>이렇게 적어보세요</span>
-              <p>“{examplePrompt}”</p>
-              <small>위 문장은 예시이며 입력창에는 자동으로 저장되지 않습니다.</small>
+              <span>예시 문장</span>
+              <p>{examplePrompt}</p>
             </div>
             <label>
               나의 약정 의사

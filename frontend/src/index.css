@@ -894,33 +894,25 @@ body.theme-ai {
 
 .clm-ai-example {
   margin-bottom: 16px;
-  border-left: 4px solid #ff4d43;
-  border-radius: 0 8px 8px 0;
+  border: 1px solid #deded9;
+  border-radius: 8px;
   padding: 12px 14px;
-  background: #fff7f3;
+  background: #f5f5f3;
 }
 
 .clm-ai-example span {
   display: block;
   margin-bottom: 5px;
-  color: #c8452d;
+  color: #888888;
   font-size: 9px;
   font-weight: 900;
 }
 
 .clm-ai-example p {
-  color: var(--pc-dark);
+  color: #666666;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.65;
-}
-
-.clm-ai-example small {
-  display: block;
-  margin-top: 5px;
-  color: var(--pc-muted);
-  font-size: 8px;
-  line-height: 1.5;
 }
 
 .clm-ai-intent-section label,
