@@ -35,7 +35,15 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 }) => {
   const isVolunteer = item.category === 'VOLUNTEER';
   const isHometown = item.programType === 'HOMETOWN' || item.category === 'HOMETOWN';
+  const isLegacy = item.programType === 'LEGACY' || item.category === 'LEGACY';
   const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-PC-01호)' : '후원 및 기부 약정서 (제2026-PC-02호)';
+  const examplePrompt = isVolunteer
+    ? `${item.title}에 참여하고 싶어요. 가능한 날짜와 필요한 준비사항을 알려주세요.`
+    : isHometown
+      ? `${item.location} 지역을 위해 매월 3만원씩 고향사랑기부를 하고 싶고 답례품은 받지 않을게요.`
+      : isLegacy
+        ? `${item.organizer}에 유산기부를 상담받고 가능한 약정 범위와 절차를 안내받고 싶어요.`
+        : `${item.title}에 일시 3만원을 기부하고 기부금 사용처를 확인하고 싶어요.`;
 
   const [specialConditions, setSpecialConditions] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -46,13 +54,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [completed, setCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [aiFeedback, setAiFeedback] = useState('');
-  const [aiPrompt, setAiPrompt] = useState(
-    isHometown
-      ? '부산 지역 아동을 위해 매월 3만원씩 고향사랑기부를 하고 싶고 답례품은 필요 없어요.'
-      : isVolunteer
-        ? `${item.title} 봉사에 참여해서 ${item.organizer}를 돕고 싶어요.`
-        : `${item.title}에 일시 3만원을 기부하고 싶어요.`,
-  );
+  const [aiPrompt, setAiPrompt] = useState('');
   const [consultation, setConsultation] = useState<ConsultationResponse | null>(null);
   const [intent, setIntent] = useState<PledgeIntent | null>(null);
   const [aiConfirmed, setAiConfirmed] = useState(false);
@@ -317,12 +319,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <p className="clm-ai-description">
               하고 싶은 기부·봉사 내용을 편하게 적으면 약정 항목으로 정리합니다. 결과는 직접 수정한 뒤 확정할 수 있습니다.
             </p>
-            {isHometown && (
-              <div className="clm-hometown-guide">
-                <strong>부산 고향사랑 정기기부 데모</strong>
-                <span>부산 지역 · 매월 3만원 · 지역 아동 지원 · 답례품 미선택</span>
-              </div>
-            )}
+            <div className="clm-ai-example" aria-label="약정 의사 작성 예시">
+              <span>이렇게 적어보세요</span>
+              <p>“{examplePrompt}”</p>
+              <small>위 문장은 예시이며 입력창에는 자동으로 저장되지 않습니다.</small>
+            </div>
             <label>
               나의 약정 의사
               <textarea
@@ -347,7 +348,12 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               </label>
             )}
             {!intent && (
-              <button type="button" className="clm-ai-action" onClick={handleStructureIntent} disabled={structuringIntent}>
+              <button
+                type="button"
+                className={`clm-ai-action ${structuringIntent ? 'loading' : ''}`}
+                onClick={handleStructureIntent}
+                disabled={!aiPrompt.trim() || structuringIntent}
+              >
                 {structuringIntent && <span className="clm-ai-spinner" aria-hidden="true" />}
                 {structuringIntent ? 'Upstage Solar 분석 중...' : 'AI로 약정 항목 정리하기'}
               </button>
