@@ -1603,6 +1603,32 @@ body.theme-ai {
   cursor: not-allowed;
 }
 
+.clm-final-submit:not(:disabled),
+.clm-final-submit.completed {
+  border-color: #1f6f4a;
+  background: #237a57;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #174f36;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.clm-final-submit:not(:disabled):hover {
+  transform: translateY(-1px);
+  background: #1f8a5b;
+  box-shadow: 0 5px 0 #174f36;
+}
+
+.clm-final-submit:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #174f36;
+}
+
+.clm-final-submit.completed {
+  cursor: default;
+  opacity: 1;
+}
+
 .clm-submit-panel small {
   display: block;
   margin-top: 10px;

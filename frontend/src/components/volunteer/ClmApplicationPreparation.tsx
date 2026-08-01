@@ -640,7 +640,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           </label>
           <button
             type="button"
-            className="clm-final-submit"
+            className={`clm-final-submit ${completed ? 'completed' : ''}`}
             disabled={!privacyConsent || !thirdPartyConsent || !isSigned || !confirmed || submitting || completed}
             onClick={handleSubmit}
           >
