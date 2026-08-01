@@ -484,9 +484,14 @@ GET /api/v1/opportunities
 
 ```json
 {
-  "message": "부산에서 8월 10일 오전에 환경 봉사를 하고 싶어요."
+  "message": "부산에서 8월 10일 오전에 환경 봉사를 하고 싶어요.",
+  "externalAiConsent": true
 }
 ```
+
+`externalAiConsent`는 기본적으로 `false`다. `true`인 요청만 사용자 문장과 이전 구조화 약정 JSON을
+Upstage Solar에 전송하며, 서버는 동의 시각과 제공자를 저장한다. 미동의·API 오류·응답 스키마 오류 시
+동일한 응답 스키마의 로컬 규칙 폴백을 사용한다.
 
 응답:
 
@@ -989,8 +994,8 @@ Idempotency-Key: commitment-72-version-1
 
 ### 17.1 Upstage
 
-- [ ] Solar 정상 응답 파싱
-- [ ] JSON Schema 검증 실패
+- [x] Solar 정상 응답 파싱
+- [x] JSON Schema 검증 실패 시 로컬 폴백
 - [ ] Information Extract 필드 일치·불일치
 - [ ] Document Parse 성공·파싱 불가
 - [ ] `401`, `429`, `5xx`, timeout

@@ -32,7 +32,8 @@ spring:
 upstage:
   api:
     key: ${UPSTAGE_API_KEY:}
-    base-url: https://api.upstage.ai/v1/solar
+    base-url: ${UPSTAGE_BASE_URL:https://api.upstage.ai/v1}
+    model: ${UPSTAGE_MODEL:solar-pro3}
 
 app:
   storage:

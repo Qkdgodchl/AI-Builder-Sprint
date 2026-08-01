@@ -29,14 +29,14 @@ public class AiConsultationController {
     public ApiResponse<ConsultationResponse> start(HttpServletRequest request,
                                                    @Valid @RequestBody ConsultationRequest body) {
         CurrentUser user = authGuard.requireUser(request);
-        return ApiResponse.success(service.start(user.id(), body.message()));
+        return ApiResponse.success(service.start(user.id(), body.message(), body.externalAiConsent()));
     }
 
     @PostMapping("/{id}/messages")
     public ApiResponse<ConsultationResponse> message(HttpServletRequest request, @PathVariable Long id,
                                                      @Valid @RequestBody ConsultationRequest body) {
         CurrentUser user = authGuard.requireUser(request);
-        return ApiResponse.success(service.addMessage(id, user.id(), body.message()));
+        return ApiResponse.success(service.addMessage(id, user.id(), body.message(), body.externalAiConsent()));
     }
 
     @GetMapping("/{id}")

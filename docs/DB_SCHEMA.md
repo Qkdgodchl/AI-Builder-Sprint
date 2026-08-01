@@ -63,7 +63,9 @@
 | V5 | MVP API 연결 필드 | 로그인 토큰, 관리자 신청·센터·모집글·신청 필드 | [x] MySQL 8.4 적용 |
 | V6 | 관리자 증빙 연결 | 관리자 신청과 여러 업로드 파일의 연결 테이블 | [x] MySQL 8.4 적용 |
 | V7 | 커뮤니티 작성자 연결 | `posts.author_user_id`와 사용자 FK·삭제 권한 조회 인덱스 | [x] MySQL 8.4 적용 |
-| V8+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
+| V8~V15 | 커뮤니티·모두싸인·AI-CLM 연결 | 댓글·서명문서·지역 데이터·응원·AI 약정 연결 | [x] MySQL 8.4 적용 |
+| V16 | 외부 AI 동의 감사 | `ai_consultations` 동의 시각·제공자 | [x] MySQL 8.4 적용 |
+| V17+ | 후속 변경 | 기능 구현 중 추가·변경되는 컬럼과 제약 | [ ] |
 | 별도 버전 | 레거시 이전 | V1 데이터를 신규 도메인 테이블로 이전 | [ ] |
 
 `V2__create_clm_schema.sql`이 전체 기반 테이블을 한 번에 생성한다. 이후에는 V1~V3을 수정하지 않고 V4부터 변경분만 추가한다.
@@ -624,7 +626,11 @@ Append-only로 관리하며 수정·삭제 API를 만들지 않는다.
 
 ## 10.3 `ai_consultations`
 
-`id PK`, `user_id FK`, `status`, `intent_data JSON`, `confirmed_at`, 생성·수정 시각
+`id PK`, `user_id FK`, `consultation_status`, `intent_summary`, `extracted_preferences_json JSON`,
+`started_at`, `completed_at`, `external_ai_consent_at`, `external_ai_provider`, 생성·수정 시각
+
+외부 AI 동의를 선택한 최초 시각과 제공자(`UPSTAGE_SOLAR`)를 남긴다. 미동의 요청은 두 컬럼을
+`NULL`로 유지하며 외부 전송 없이 로컬 구조화 폴백을 사용한다.
 
 ## 10.4 `ai_messages`
 

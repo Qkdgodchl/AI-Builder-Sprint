@@ -53,6 +53,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [intent, setIntent] = useState<PledgeIntent | null>(null);
   const [aiConfirmed, setAiConfirmed] = useState(false);
   const [structuringIntent, setStructuringIntent] = useState(false);
+  const [externalAiConsent, setExternalAiConsent] = useState(false);
   const [commitmentPublicId, setCommitmentPublicId] = useState<string | null>(null);
 
   // 모두싸인 (Modusign) 전자서명 상태
@@ -87,7 +88,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     setStructuringIntent(true);
     setErrorMessage('');
     try {
-      const result = await startConsultation(aiPrompt.trim());
+      const result = await startConsultation(aiPrompt.trim(), externalAiConsent);
       const enriched: PledgeIntent = {
         ...result.intent,
         pledgeType: result.intent.pledgeType || (isHometown ? 'HOMETOWN_DONATION' : isVolunteer ? 'VOLUNTEER' : 'DONATION'),
@@ -302,6 +303,20 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 disabled={aiConfirmed}
               />
             </label>
+            {!intent && (
+              <label className="clm-ai-consent">
+                <input
+                  type="checkbox"
+                  checked={externalAiConsent}
+                  onChange={(event) => setExternalAiConsent(event.target.checked)}
+                  disabled={structuringIntent}
+                />
+                <span>
+                  <strong>Upstage Solar로 더 정확하게 정리하기</strong>
+                  약정 문장과 이전 구조화 결과를 Upstage API로 전송하는 데 동의합니다. 선택하지 않으면 외부 전송 없이 로컬에서 정리합니다.
+                </span>
+              </label>
+            )}
             {!intent && (
               <button type="button" className="clm-ai-action" onClick={handleStructureIntent} disabled={structuringIntent}>
                 {structuringIntent ? '정리 중...' : 'AI로 약정 항목 정리하기'}

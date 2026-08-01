@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,6 +25,9 @@ import java.util.regex.Pattern;
 public class AiConsultationService {
 
     private static final Pattern AMOUNT = Pattern.compile("(\\d[\\d,]*)\\s*(만원|원)");
+    private static final Set<String> PLEDGE_TYPES = Set.of(
+            "DONATION", "HOMETOWN_DONATION", "VOLUNTEER", "LEGACY_DONATION", "CULTURAL_HERITAGE_DONATION");
+    private static final Set<String> FREQUENCIES = Set.of("ONE_TIME", "MONTHLY", "ANNUAL", "NOT_APPLICABLE");
     private final AiConsultationRepository repository;
     private final UpstageApiClient upstageApiClient;
     private final ObjectMapper objectMapper;
@@ -36,17 +41,17 @@ public class AiConsultationService {
     }
 
     @Transactional
-    public ConsultationResponse start(Long userId, String message) {
+    public ConsultationResponse start(Long userId, String message, boolean externalAiConsent) {
         Long id = repository.create(userId);
         repository.addMessage(id, "USER", message, null);
-        return structureAndSave(id, userId, message, null);
+        return structureAndSave(id, userId, message, null, externalAiConsent);
     }
 
     @Transactional
-    public ConsultationResponse addMessage(Long id, Long userId, String message) {
+    public ConsultationResponse addMessage(Long id, Long userId, String message, boolean externalAiConsent) {
         Map<String, Object> row = requireOwned(id, userId);
         repository.addMessage(id, "USER", message, null);
-        return structureAndSave(id, userId, message, string(row.get("extracted_preferences_json")));
+        return structureAndSave(id, userId, message, string(row.get("extracted_preferences_json")), externalAiConsent);
     }
 
     public ConsultationResponse get(Long id, Long userId) {
@@ -74,9 +79,12 @@ public class AiConsultationService {
         return get(id, userId);
     }
 
-    private ConsultationResponse structureAndSave(Long id, Long userId, String message, String previousJson) {
-        UpstageApiClient.StructuredIntent result = upstageApiClient
-                .structurePledgeIntent(message, previousJson)
+    private ConsultationResponse structureAndSave(Long id, Long userId, String message, String previousJson,
+                                                   boolean externalAiConsent) {
+        if (externalAiConsent) repository.recordExternalAiConsent(id, userId);
+        UpstageApiClient.StructuredIntent result = (externalAiConsent
+                ? upstageApiClient.structurePledgeIntent(message, previousJson)
+                : Optional.<UpstageApiClient.StructuredIntent>empty())
                 .orElseGet(() -> new UpstageApiClient.StructuredIntent(fallback(message, previousJson), "RULE_FALLBACK"));
         PledgeIntent normalized = withMissingFields(result.intent());
         String summary = summarize(normalized);
@@ -133,14 +141,20 @@ public class AiConsultationService {
 
     private PledgeIntent withMissingFields(PledgeIntent intent) {
         if (intent == null) intent = new PledgeIntent(null, null, null, null, null, null, null, null, null, null, List.of());
+        String pledgeType = intent.pledgeType() != null && PLEDGE_TYPES.contains(intent.pledgeType())
+                ? intent.pledgeType() : null;
+        String frequency = intent.frequency() != null && FREQUENCIES.contains(intent.frequency())
+                ? intent.frequency() : null;
+        if ("VOLUNTEER".equals(pledgeType)) frequency = "NOT_APPLICABLE";
         List<String> missing = new ArrayList<>();
-        if (blank(intent.pledgeType())) missing.add("pledgeType");
+        if (blank(pledgeType)) missing.add("pledgeType");
         if (blank(intent.beneficiary())) missing.add("beneficiary");
-        boolean monetary = !"VOLUNTEER".equals(intent.pledgeType());
-        if (monetary && intent.amount() == null) missing.add("amount");
-        if (monetary && blank(intent.frequency())) missing.add("frequency");
-        if ("HOMETOWN_DONATION".equals(intent.pledgeType()) && blank(intent.region())) missing.add("region");
-        return new PledgeIntent(intent.pledgeType(), intent.beneficiary(), intent.amount(), intent.frequency(),
+        boolean monetary = !"VOLUNTEER".equals(pledgeType);
+        BigDecimal amount = intent.amount() != null && intent.amount().signum() > 0 ? intent.amount() : null;
+        if (monetary && amount == null) missing.add("amount");
+        if (monetary && blank(frequency)) missing.add("frequency");
+        if ("HOMETOWN_DONATION".equals(pledgeType) && blank(intent.region())) missing.add("region");
+        return new PledgeIntent(pledgeType, intent.beneficiary(), amount, frequency,
                 intent.startDate() == null ? LocalDate.now() : intent.startDate(), intent.region(),
                 intent.rewardPreference(), intent.taxDeductionConsent(), intent.privacyConsent(),
                 intent.specialConditions(), missing);

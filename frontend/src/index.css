@@ -929,6 +929,42 @@ body.theme-ai {
   font: inherit;
 }
 
+.clm-ai-intent-section .clm-ai-consent {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid #deded8;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fafaf8;
+  cursor: pointer;
+}
+
+.clm-ai-consent input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--pc-dark);
+}
+
+.clm-ai-consent span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--pc-muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.clm-ai-consent strong {
+  color: var(--pc-dark);
+  font-size: 10px;
+}
+
 .clm-ai-action {
   margin-top: 14px;
   border: 1px solid var(--pc-dark);

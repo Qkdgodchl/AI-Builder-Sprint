@@ -52,6 +52,17 @@ public class AiConsultationRepository {
                 """, consultationId, sender, content, metadataJson, next == null ? 1 : next);
     }
 
+    public void recordExternalAiConsent(Long id, Long userId) {
+        int changed = jdbcTemplate.update("""
+                UPDATE ai_consultations
+                SET external_ai_consent_at = COALESCE(external_ai_consent_at, CURRENT_TIMESTAMP),
+                    external_ai_provider = 'UPSTAGE_SOLAR',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND user_id = ?
+                """, id, userId);
+        if (changed == 0) throw notFound();
+    }
+
     public void updateIntent(Long id, Long userId, String summary, String intentJson) {
         int changed = jdbcTemplate.update("""
                 UPDATE ai_consultations

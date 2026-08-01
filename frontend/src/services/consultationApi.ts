@@ -25,10 +25,10 @@ export interface ConsultationResponse {
 
 const BASE = '/api/v1/ai/consultations';
 
-export const startConsultation = (message: string) =>
+export const startConsultation = (message: string, externalAiConsent: boolean) =>
   apiRequest<ConsultationResponse>(BASE, {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, externalAiConsent }),
   });
 
 export const updateConsultationIntent = (id: number, intent: PledgeIntent) =>
