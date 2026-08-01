@@ -51,7 +51,7 @@ function parseCard(raw: any): RecommendedCard | null {
     category: isDonation ? 'DONATION' : 'VOLUNTEER',
     location: raw.region || '부산 지역',
     organizer: '픽셀 케어',
-    tags: ['AI 추천', isDonation ? '기부' : '봉사', raw.badgeReward || 'LV2_WARMTH'],
+    tags: ['AI 추천', isDonation ? '기부' : '봉사'],
   };
 }
 
@@ -60,6 +60,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
   const [messages, setMessages] = useState<AiChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState<number>(0);
 
   // 대화 히스토리 불러오기
   useEffect(() => {
@@ -119,10 +120,29 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
     setMessages((prev) => [...prev, userMsg]);
     if (!userQuery) setInputText('');
     setIsTyping(true);
+    setThinkingStep(1);
     playBeep(440, 0.1);
 
+    // AI 사고(Reasoning) 3단계 visual delay 효과
+    const stepTimer1 = setTimeout(() => {
+      setThinkingStep(2);
+      playBeep(580, 0.08);
+    }, 600);
+
+    const stepTimer2 = setTimeout(() => {
+      setThinkingStep(3);
+      playBeep(720, 0.08);
+    }, 1300);
+
     try {
+      const startTime = Date.now();
       const aiResult = await sendAiMessage(textToSend);
+      const elapsedTime = Date.now() - startTime;
+
+      // 최소 1.8초 동안은 사고 과정 UI를 시각적으로 보여줌
+      if (elapsedTime < 1800) {
+        await new Promise((resolve) => setTimeout(resolve, 1800 - elapsedTime));
+      }
 
       // 백엔드에서 내려온 실제 DB 카드 파싱
       const cards: RecommendedCard[] = [];
@@ -154,7 +174,10 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
       setIsTyping(false);
+      setThinkingStep(0);
     }
   };
 
@@ -196,22 +219,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
           </button>
           <span className="online-badge">● ONLINE</span>
         </div>
-      </div>
-
-      {/* Quick Prompts */}
-      <div className="ai-quick-prompts">
-        <button type="button" onClick={() => handleSend('유기견 보육원 봉사 추천해줘')}>
-          🐕 유기견 봉사
-        </button>
-        <button type="button" onClick={() => handleSend('독거어르신 도시락 배달 봉사 추천해줘')}>
-          🍲 도시락 배달
-        </button>
-        <button type="button" onClick={() => handleSend('아동 학습 지도 봉사 추천해줘')}>
-          📚 학습 지도
-        </button>
-        <button type="button" onClick={() => handleSend('부산 기부 후원 추천해줘')}>
-          ❤️ 기부 후원
-        </button>
       </div>
 
       {/* Chat Messages Stream */}
@@ -263,17 +270,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
                         >
                           👀 상세 보기
                         </button>
-                        <button
-                          type="button"
-                          className="pixel-button"
-                          style={{ fontSize: '12px', padding: '6px 12px' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenModal(card.title, card.category === 'DONATION' ? 'donate' : 'volunteer');
-                          }}
-                        >
-                          ⚡ 빠른 신청
-                        </button>
                       </div>
                     </div>
                   ))}
@@ -288,8 +284,25 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
         {isTyping && (
           <div className="chat-bubble-row ai-row">
             <div className="chat-avatar">🤖</div>
-            <div className="chat-bubble ai-bubble typing">
-              <span>.</span><span>.</span><span>.</span> DB에서 매칭 항목 탐색 중입니다
+            <div className="chat-bubble ai-bubble typing-box" style={{ background: 'rgba(255, 255, 255, 0.95)', border: '2px solid #5d4037', borderRadius: '12px', padding: '14px 18px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ff3b30', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="spinning-pixel">⚙️</span>
+                <span>Upstage Solar LLM 사고 과정 (Reasoning...):</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#333' }}>
+                <div style={{ opacity: thinkingStep >= 1 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{thinkingStep > 1 ? '✅' : '🧠'}</span>
+                  <span style={{ fontWeight: thinkingStep === 1 ? 'bold' : 'normal' }}>1단계: 사용자 질의 의도 및 위치/카테고리 키워드 분석</span>
+                </div>
+                <div style={{ opacity: thinkingStep >= 2 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{thinkingStep > 2 ? '✅' : '🔍'}</span>
+                  <span style={{ fontWeight: thinkingStep === 2 ? 'bold' : 'normal' }}>2단계: 픽셀 케어 DB 내 맞춤 봉사·기부 카드 정밀 탐색</span>
+                </div>
+                <div style={{ opacity: thinkingStep >= 3 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{thinkingStep >= 3 ? '⚡' : '⏳'}</span>
+                  <span style={{ fontWeight: thinkingStep === 3 ? 'bold' : 'normal' }}>3단계: 레트로 스타일 최종 추천 답변 및 카드 조합 생성</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -306,7 +319,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal }) => {
         <input
           type="text"
           className="pixel-input"
-          placeholder="예: '부산대 근처 봉사' / '유기견 봉사' / '기부 후원 추천'"
+          placeholder="예: '부산대 근처 봉사' / '금정구 유기견 봉사' / '기부 후원 추천'"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
         />

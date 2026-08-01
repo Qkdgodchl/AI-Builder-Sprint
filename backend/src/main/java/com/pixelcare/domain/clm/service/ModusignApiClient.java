@@ -86,11 +86,38 @@ public class ModusignApiClient {
         }
     }
 
+    private String resolveParticipantRole() {
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    baseUrl + "/templates/" + templateId,
+                    HttpMethod.GET,
+                    new HttpEntity<>(authorizedHeaders()),
+                    String.class
+            );
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+                JsonNode participants = root.path("participants");
+                if (participants.isArray() && !participants.isEmpty()) {
+                    String fetchedRole = participants.get(0).path("role").asText();
+                    if (fetchedRole != null && !fetchedRole.isBlank()) {
+                        System.out.println("모두싸인 템플릿 자동 조회 성공! 감지된 역할명: " + fetchedRole);
+                        return fetchedRole;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("모두싸인 템플릿 역할 자동 탐색 실패 (기본 설정값 사용): " + e.getMessage());
+        }
+        return participantRole != null && !participantRole.isBlank() ? participantRole : "신청자";
+    }
+
     public ModusignRequestResult requestSigning(String documentTitle, String applicantName, String applicantEmail) {
         validateConfiguration();
 
+        String effectiveRole = resolveParticipantRole();
+
         Map<String, Object> participant = Map.of(
-                "role", participantRole,
+                "role", effectiveRole,
                 "name", applicantName,
                 "signingMethod", Map.of("type", "SECURE_LINK", "value", applicantEmail)
         );
@@ -123,8 +150,12 @@ public class ModusignApiClient {
             );
         } catch (ApiException e) {
             throw e;
+        } catch (RestClientResponseException e) {
+            System.err.println("모두싸인 API 실패 응답 (HTTP " + e.getStatusCode().value() + "): " + e.getResponseBodyAsString());
+            throw gatewayError("모두싸인 API 응답 오류 (HTTP " + e.getStatusCode().value() + "): " + e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw gatewayError("모두싸인 문서 생성 요청에 실패했습니다.");
+            System.err.println("모두싸인 API 네트워크 연결 실패: " + e.getMessage());
+            throw gatewayError("모두싸인 문서 생성 요청에 실패했습니다: " + e.getMessage());
         }
     }
 
@@ -145,8 +176,12 @@ public class ModusignApiClient {
             return new SecureLinkResult(embeddedUrl, LocalDateTime.now().plusMinutes(10));
         } catch (ApiException e) {
             throw e;
+        } catch (RestClientResponseException e) {
+            System.err.println("모두싸인 보안 서명 링크 발급 실패 (HTTP " + e.getStatusCode().value() + "): " + e.getResponseBodyAsString());
+            throw gatewayError("모두싸인 보안 서명 링크 발급 실패: " + e.getResponseBodyAsString());
         } catch (RestClientException e) {
-            throw gatewayError("모두싸인 보안 서명 링크 발급에 실패했습니다.");
+            System.err.println("모두싸인 보안 서명 링크 발급 네트워크 실패: " + e.getMessage());
+            throw gatewayError("모두싸인 보안 서명 링크 발급에 실패했습니다: " + e.getMessage());
         }
     }
 
@@ -233,9 +268,8 @@ public class ModusignApiClient {
     }
 
     private HttpHeaders authorizedHeaders() {
-        String raw = userEmail + ":" + apiKey;
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth(Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8)));
+        headers.setBasicAuth(userEmail, apiKey, StandardCharsets.UTF_8);
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         return headers;
