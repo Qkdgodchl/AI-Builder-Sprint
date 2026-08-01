@@ -42,6 +42,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [aiFeedback, setAiFeedback] = useState('');
   const [aiPrompt, setAiPrompt] = useState(
     isHometown
       ? '부산 지역 아동을 위해 매월 3만원씩 고향사랑기부를 하고 싶고 답례품은 필요 없어요.'
@@ -86,7 +87,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const handleStructureIntent = async () => {
     if (!aiPrompt.trim()) return;
     setStructuringIntent(true);
-    setErrorMessage('');
+    setAiFeedback('');
     try {
       const result = await startConsultation(aiPrompt.trim(), externalAiConsent);
       const enriched: PledgeIntent = {
@@ -100,7 +101,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       setIntent(enriched);
       setAiConfirmed(false);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'AI 약정 정리에 실패했습니다.');
+      setAiFeedback(error instanceof Error ? error.message : 'AI 약정 정리에 실패했습니다.');
     } finally {
       setStructuringIntent(false);
     }
@@ -109,7 +110,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const handleConfirmIntent = async () => {
     if (!consultation || !intent) return;
     setStructuringIntent(true);
-    setErrorMessage('');
+    setAiFeedback('');
     try {
       const updated = await updateConsultationIntent(consultation.id, intent);
       const confirmedIntent = await confirmConsultation(updated.id);
@@ -118,7 +119,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       setSpecialConditions(confirmedIntent.intent.specialConditions || specialConditions);
       setAiConfirmed(true);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : '약정 의사를 확정하지 못했습니다.');
+      setAiFeedback(error instanceof Error ? error.message : '약정 의사를 확정하지 못했습니다.');
     } finally {
       setStructuringIntent(false);
     }
@@ -275,7 +276,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             </dl>
           </section>
 
-          <section className="clm-document-section clm-ai-intent-section">
+          <section className="clm-document-section clm-ai-intent-section" aria-busy={structuringIntent}>
             <div className="clm-section-heading">
               <div>
                 <span>STEP 01</span>
@@ -319,8 +320,22 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             )}
             {!intent && (
               <button type="button" className="clm-ai-action" onClick={handleStructureIntent} disabled={structuringIntent}>
-                {structuringIntent ? '정리 중...' : 'AI로 약정 항목 정리하기'}
+                {structuringIntent && <span className="clm-ai-spinner" aria-hidden="true" />}
+                {structuringIntent ? 'Upstage Solar 분석 중...' : 'AI로 약정 항목 정리하기'}
               </button>
+            )}
+            {structuringIntent && (
+              <div className="clm-ai-progress" role="status" aria-live="polite">
+                <strong>AI가 약정 문장을 분석하고 있습니다.</strong>
+                <span>약정 유형·수혜 대상·금액·주기를 확인하고 있어요. 보통 10~20초 정도 걸립니다.</span>
+              </div>
+            )}
+            {aiFeedback && (
+              <div className="clm-ai-error" role="alert">
+                <strong>AI 약정 정리를 완료하지 못했습니다.</strong>
+                <span>{aiFeedback}</span>
+                {aiFeedback.includes('로그인') && <small>상단 로그인 버튼으로 다시 로그인한 뒤 재시도해주세요.</small>}
+              </div>
             )}
             {intent && (
               <div className="clm-intent-editor">
@@ -399,7 +414,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 </div>
                 {!aiConfirmed && (
                   <button type="button" className="clm-ai-action" onClick={handleConfirmIntent} disabled={structuringIntent}>
-                    {structuringIntent ? '확정 중...' : '수정한 약정 의사 확정하기'}
+                    {structuringIntent && <span className="clm-ai-spinner" aria-hidden="true" />}
+                    {structuringIntent ? '약정 의사 확정 중...' : '수정한 약정 의사 확정하기'}
                   </button>
                 )}
               </div>

@@ -966,6 +966,9 @@ body.theme-ai {
 }
 
 .clm-ai-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 14px;
   border: 1px solid var(--pc-dark);
   border-radius: 999px;
@@ -976,6 +979,59 @@ body.theme-ai {
   font-size: 10px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.clm-ai-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: clm-ai-spin 0.75s linear infinite;
+}
+
+.clm-ai-progress,
+.clm-ai-error {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.clm-ai-progress {
+  border: 1px solid #b7dfd8;
+  background: #f0faf8;
+  color: #39716a;
+}
+
+.clm-ai-progress strong {
+  color: #175e55;
+  font-size: 10px;
+}
+
+.clm-ai-error {
+  border: 1px solid #f3b7ae;
+  background: #fff5f3;
+  color: #8f3d31;
+}
+
+.clm-ai-error strong {
+  color: #a72e20;
+  font-size: 10px;
+}
+
+.clm-ai-error small {
+  font-size: 8px;
+}
+
+@keyframes clm-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .clm-ai-action:disabled {
