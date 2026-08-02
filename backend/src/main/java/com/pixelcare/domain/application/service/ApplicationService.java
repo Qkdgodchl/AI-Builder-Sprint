@@ -61,14 +61,7 @@ public class ApplicationService {
                 && repository.activeApplicationCount(opportunityId) >= opportunity.recruitmentCapacity()) {
             throw conflict("모집 정원이 마감되었습니다.");
         }
-        if (request.participationDate() != null
-                && request.participationDate().isBefore(LocalDate.now())) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "INVALID_PARTICIPATION_DATE",
-                    "참여일은 오늘보다 빠를 수 없습니다."
-            );
-        }
+        validateParticipationDate(request.participationDate(), opportunity);
         String publicId = repository.create(userId, opportunity, request);
         return repository.findByPublicId(publicId).orElseThrow();
     }
@@ -204,6 +197,31 @@ public class ApplicationService {
         warmthService.awardQuietly(userId,
                 com.pixelcare.domain.user.service.WarmthService.Reason.COMMITMENT_RENEWED);
         return repository.findCommitment(commitmentPublicId).orElseThrow();
+    }
+
+    /**
+     * 참여일은 지난 날짜이면 안 되고, 프로그램이 실제로 열려 있는 기간 안이어야 한다.
+     * 예전에는 "오늘보다 빠른가"만 봐서, 활동이 끝난 뒤의 날짜도 그대로 통과했다.
+     */
+    private void validateParticipationDate(LocalDate participationDate, OpportunityResponse opportunity) {
+        if (participationDate == null) return;
+        if (participationDate.isBefore(LocalDate.now())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PARTICIPATION_DATE",
+                    "참여일은 오늘보다 빠를 수 없습니다.");
+        }
+        LocalDate activityStart = opportunity.activityStartDateTime() == null
+                ? null : opportunity.activityStartDateTime().toLocalDate();
+        LocalDate activityEnd = opportunity.activityEndDateTime() == null
+                ? null : opportunity.activityEndDateTime().toLocalDate();
+
+        if (activityStart != null && participationDate.isBefore(activityStart)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PARTICIPATION_DATE",
+                    "이 프로그램은 %s부터 시작합니다.".formatted(activityStart));
+        }
+        if (activityEnd != null && participationDate.isAfter(activityEnd)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PARTICIPATION_DATE",
+                    "이 프로그램은 %s에 끝납니다.".formatted(activityEnd));
+        }
     }
 
     private void validateRequestedTerms(CommitmentRenewalRequest request) {

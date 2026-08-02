@@ -58,6 +58,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-ITDA-01호)' : '후원 및 기부 약정서 (제2026-ITDA-02호)';
 
   const [specialConditions, setSpecialConditions] = useState('');
+  // 봉사는 언제 참여하는지가 신청의 핵심 정보인데 여태 받는 자리가 없었다.
+  const [participationDate, setParticipationDate] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [thirdPartyConsent, setThirdPartyConsent] = useState(false);
   const [portraitConsent, setPortraitConsent] = useState(false);
@@ -236,6 +238,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         const application = await createApplication(item.id, {
           consultationId: consultation.id,
           specialConditions,
+          participationDate: participationDate || undefined,
           privacyConsent,
           thirdPartyConsent,
           portraitConsent,
@@ -686,6 +689,20 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               </div>
 
               <div className="clm-consent-panel">
+                {isVolunteer && (
+                  <label className="clm-tax-field">
+                    참여 희망일
+                    <input
+                      type="date"
+                      value={participationDate}
+                      min={new Date().toISOString().slice(0, 10)}
+                      onChange={(event) => setParticipationDate(event.target.value)}
+                    />
+                    <small>
+                      프로그램 활동 기간 안에서 골라 주세요. 센터가 일정을 맞추는 데 씁니다.
+                    </small>
+                  </label>
+                )}
                 {isHometown && (
                   <label className="clm-tax-field">
                     국세청 연말정산 100% 세액공제 영수증 발급
