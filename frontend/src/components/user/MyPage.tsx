@@ -8,6 +8,7 @@ import {
 } from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
+import { PROFILE_UPDATED_EVENT } from '../../hooks/useMyRegion';
 import { ActivityCalendar } from './ActivityCalendar';
 import { BadgeGrid } from '../roadmap/BadgeGrid';
 import { splitSentences } from '../../utils/text';
@@ -152,6 +153,8 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     try {
       const updated = await updateMyProfile({ nickname, phone, region });
       setProfile(updated);
+      // 활동 지역이 바뀌면 홈·소식 화면의 지역 소식도 곧바로 따라오게 한다.
+      window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       setNotice('프로필을 저장했습니다.');
       navigate('/my-page');
     } catch (error) {

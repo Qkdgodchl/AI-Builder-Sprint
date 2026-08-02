@@ -4,6 +4,7 @@ import type { SessionUser, VolunteerItem } from '../../types';
 import { fetchVolunteers } from '../../services/volunteerApi';
 import { fetchGoodNews, type GoodNewsItem } from '../../services/newsApi';
 import { fetchPlatformStats, type PlatformStats } from '../../services/statsApi';
+import { useMyRegion } from '../../hooks/useMyRegion';
 
 interface HomePageProps {
   currentUser: SessionUser | null;
@@ -29,22 +30,30 @@ const CATEGORY_TILES = [
 
 export function HomePage({ currentUser, onLogin, onOpenAi }: HomePageProps) {
   const navigate = useNavigate();
+  const myRegion = useMyRegion(currentUser);
   const [opportunities, setOpportunities] = useState<VolunteerItem[]>([]);
   const [news, setNews] = useState<GoodNewsItem[]>([]);
   const [stats, setStats] = useState<PlatformStats | null>(null);
 
   useEffect(() => {
-    Promise.all([fetchVolunteers(), fetchGoodNews('부산', 4), fetchPlatformStats()])
-      .then(([items, feed, summary]) => {
+    Promise.all([fetchVolunteers(), fetchPlatformStats()])
+      .then(([items, summary]) => {
         setOpportunities(items);
-        setNews(feed.items);
         setStats(summary);
       })
       .catch(() => {
         setOpportunities([]);
-        setNews([]);
       });
   }, []);
+
+  // 소식은 활동 지역을 따라가므로 지역이 바뀌면 다시 읽는다.
+  useEffect(() => {
+    let active = true;
+    fetchGoodNews(myRegion, 4)
+      .then((feed) => active && setNews(feed.items))
+      .catch(() => active && setNews([]));
+    return () => { active = false; };
+  }, [myRegion]);
 
   // 모금 목표가 있는 기부를 먼저 보여주면 진행률이 드러나 참여를 유도하기 좋다.
   const featured = useMemo(() => {
@@ -208,7 +217,7 @@ export function HomePage({ currentUser, onLogin, onOpenAi }: HomePageProps) {
 
       <section className="home-section home-news-preview">
         <div className="home-section-title">
-          <div><span>LOCAL GOOD NEWS</span><h2>부산에서 이어지는 좋은 소식</h2></div>
+          <div><span>LOCAL GOOD NEWS</span><h2>{myRegion}에서 이어지는 좋은 소식</h2></div>
           <button type="button" onClick={() => navigate('/news')}>지역별 소식 보기 →</button>
         </div>
         <div className="home-news-list">

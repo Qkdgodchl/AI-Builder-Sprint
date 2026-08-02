@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { SessionUser } from '../../types';
 import { fetchGoodNews, type GoodNewsResponse } from '../../services/newsApi';
+import { useMyRegion } from '../../hooks/useMyRegion';
 
 const regions = ['전국', '서울', '부산', '대구', '광주', '인천', '대전', '울산', '경기', '강원', '제주'];
+
+interface GoodNewsPageProps {
+  currentUser: SessionUser | null;
+}
 
 const formatDate = (value: string) => {
   if (!value) return '최근';
@@ -10,12 +16,25 @@ const formatDate = (value: string) => {
   return new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(date);
 };
 
-export function GoodNewsPage() {
-  const [region, setRegion] = useState('전국');
+export function GoodNewsPage({ currentUser }: GoodNewsPageProps) {
+  const myRegion = useMyRegion(currentUser);
+  const [region, setRegion] = useState(myRegion);
+  const [picked, setPicked] = useState(false);
   const [feed, setFeed] = useState<GoodNewsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+
+  // 활동 지역이 뒤늦게 확인돼도 따라간다. 다만 직접 고른 뒤에는 그 선택을 지킨다.
+  useEffect(() => {
+    if (!picked) setRegion(myRegion);
+  }, [myRegion, picked]);
+
+  // 활동 지역이 목록에 없는 지역이어도 고를 수 있어야 한다.
+  const regionChips = useMemo(
+    () => (regions.includes(myRegion) ? regions : ['전국', myRegion, ...regions.slice(1)]),
+    [myRegion],
+  );
 
   useEffect(() => {
     let active = true;
@@ -36,7 +55,11 @@ export function GoodNewsPage() {
         <div>
           <span>LOCAL GOOD NEWS</span>
           <h2>우리 동네의 선한 움직임</h2>
-          <p>지역에서 이어지는 봉사·기부·나눔 소식을 출처와 함께 모았습니다.</p>
+          <p>
+            {currentUser && myRegion !== '전국'
+              ? `마이페이지에 등록한 활동 지역(${myRegion}) 소식을 먼저 보여드립니다.`
+              : '지역에서 이어지는 봉사·기부·나눔 소식을 출처와 함께 모았습니다.'}
+          </p>
         </div>
         <div className="news-source-note">
           <strong>기사 원문 연결</strong>
@@ -45,14 +68,17 @@ export function GoodNewsPage() {
       </header>
 
       <nav className="news-region-filter" aria-label="뉴스 지역 선택">
-        {regions.map((item) => (
+        {regionChips.map((item) => (
           <button
             type="button"
             key={item}
             className={region === item ? 'active' : ''}
-            onClick={() => setRegion(item)}
+            onClick={() => { setPicked(true); setRegion(item); }}
           >
             {item}
+            {currentUser && item === myRegion && myRegion !== '전국' && (
+              <span className="news-region-mine">내 활동 지역</span>
+            )}
           </button>
         ))}
       </nav>

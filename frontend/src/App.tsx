@@ -212,7 +212,7 @@ export function App() {
             }
           />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
-          <Route path="/news" element={<GoodNewsPage />} />
+          <Route path="/news" element={<GoodNewsPage currentUser={currentUser} />} />
           <Route
             path="/roadmap"
             element={

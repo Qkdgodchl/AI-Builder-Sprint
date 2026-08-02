@@ -26,4 +26,26 @@ class GoodNewsServiceTest {
         assertThat(items.get(0).source()).isEqualTo("픽셀일보");
         assertThat(items.get(0).region()).isEqualTo("부산");
     }
+
+    @Test
+    void mapsFreeformProfileRegionToNewsRegion() {
+        GoodNewsService service = new GoodNewsService("build/test-news-cache");
+
+        assertThat(service.normalizeRegion("부산")).isEqualTo("부산");
+        assertThat(service.normalizeRegion("부산광역시 해운대구")).isEqualTo("부산");
+        assertThat(service.normalizeRegion("대구")).isEqualTo("대구");
+        assertThat(service.normalizeRegion("충청북도 청주시")).isEqualTo("충북");
+        assertThat(service.normalizeRegion("강원특별자치도 춘천시")).isEqualTo("강원");
+        // 긴 이름을 먼저 봐야 '세종로'가 세종으로 새지 않는다.
+        assertThat(service.normalizeRegion("서울특별시 종로구 세종로")).isEqualTo("서울");
+    }
+
+    @Test
+    void fallsBackToNationwideWhenRegionIsUnknownOrEmpty() {
+        GoodNewsService service = new GoodNewsService("build/test-news-cache");
+
+        assertThat(service.normalizeRegion(null)).isEqualTo("전국");
+        assertThat(service.normalizeRegion("  ")).isEqualTo("전국");
+        assertThat(service.normalizeRegion("도쿄")).isEqualTo("전국");
+    }
 }

@@ -43,6 +43,30 @@ public class GoodNewsService {
             Map.entry("제주", "제주")
     );
 
+    /** 프로필 지역은 자유 입력이라 정식 명칭이 그대로 들어온다. 짧은 표기로 되돌린다. */
+    private static final Map<String, String> REGION_ALIASES = Map.ofEntries(
+            Map.entry("서울특별시", "서울"), Map.entry("부산광역시", "부산"),
+            Map.entry("대구광역시", "대구"), Map.entry("광주광역시", "광주"),
+            Map.entry("인천광역시", "인천"), Map.entry("대전광역시", "대전"),
+            Map.entry("울산광역시", "울산"), Map.entry("세종특별자치시", "세종"),
+            Map.entry("경기도", "경기"),
+            Map.entry("강원특별자치도", "강원"), Map.entry("강원도", "강원"),
+            Map.entry("충청북도", "충북"), Map.entry("충청남도", "충남"),
+            Map.entry("전북특별자치도", "전북"), Map.entry("전라북도", "전북"),
+            Map.entry("전라남도", "전남"),
+            Map.entry("경상북도", "경북"), Map.entry("경상남도", "경남"),
+            Map.entry("제주특별자치도", "제주"), Map.entry("제주도", "제주")
+    );
+
+    /**
+     * "부산광역시 해운대구"처럼 시·군·구가 붙어 와도 지역을 찾아야 한다.
+     * 긴 이름을 먼저 보아야 "서울특별시 종로구 세종로"가 세종으로 빠지지 않는다.
+     */
+    private static final List<String> REGION_LOOKUP_ORDER =
+            java.util.stream.Stream.concat(REGION_ALIASES.keySet().stream(), REGIONS.keySet().stream())
+                    .sorted(java.util.Comparator.comparingInt(String::length).reversed())
+                    .toList();
+
     private final RestClient restClient;
     private final Map<String, CachedFeed> cache = new ConcurrentHashMap<>();
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
@@ -235,15 +259,16 @@ public class GoodNewsService {
         );
     }
 
-    private String normalizeRegion(String requested) {
+    String normalizeRegion(String requested) {
         if (requested == null || requested.isBlank()) return "전국";
-        String compact = requested.trim()
-                .replace("광역시", "")
-                .replace("특별시", "")
-                .replace("특별자치시", "")
-                .replace("특별자치도", "")
-                .replace("도", "");
-        return REGIONS.getOrDefault(compact, "전국");
+        String value = requested.trim();
+        for (String name : REGION_LOOKUP_ORDER) {
+            if (value.contains(name)) {
+                return REGION_ALIASES.getOrDefault(name, REGIONS.getOrDefault(name, "전국"));
+            }
+        }
+        // 아는 지역이 없으면 전국 소식으로 대신한다.
+        return "전국";
     }
 
     private String text(Element item, String tag) {

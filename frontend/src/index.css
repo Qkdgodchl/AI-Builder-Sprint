@@ -7144,6 +7144,23 @@ body.theme-ai {
   color: #fff;
 }
 
+/* 활동 지역 칩은 왜 이 지역이 먼저 뜨는지 알 수 있게 표시를 붙인다. */
+.news-region-mine {
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ff5a3c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.news-region-filter button.active .news-region-mine {
+  background: #fff;
+  color: #111;
+}
+
 .news-editorial-list > a {
   display: grid;
   grid-template-columns: 62px 1fr 85px;
