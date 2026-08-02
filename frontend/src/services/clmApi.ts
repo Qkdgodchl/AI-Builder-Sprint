@@ -14,6 +14,8 @@ export interface ClmDocumentDto {
   status: 'PENDING_SIGNATURE' | 'SIGNING' | 'PARTIALLY_SIGNED' | 'SIGNED' | 'REJECTED' | 'CANCELED' | 'SIGNING_CANCELED';
   createdAt: string;
   signedAt?: string;
+  completionMessage?: string;
+  completionMessageSource?: 'UPSTAGE_SOLAR' | 'LOCAL_FALLBACK';
 }
 
 export interface ClmSignRequestPayload {

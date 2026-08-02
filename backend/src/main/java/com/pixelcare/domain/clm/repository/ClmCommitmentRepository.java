@@ -115,6 +115,36 @@ public class ClmCommitmentRepository {
         }
     }
 
+    /** 서명 완료 감사 메시지를 만들 때 쓰는 약정 요약. 약정이 없으면 비어 있다. */
+    public java.util.Optional<GratitudeContext> findGratitudeContext(Long commitmentId) {
+        if (commitmentId == null) return java.util.Optional.empty();
+        List<GratitudeContext> rows = jdbcTemplate.query("""
+                SELECT u.name AS applicant_name, c.title, c.commitment_type,
+                       c.pledge_amount, c.pledge_frequency, o.name AS organization_name
+                FROM commitments c
+                JOIN users u ON u.id = c.user_id
+                JOIN organizations o ON o.id = c.organization_id
+                WHERE c.id = ?
+                """, (rs, rowNum) -> new GratitudeContext(
+                rs.getString("applicant_name"),
+                rs.getString("title"),
+                rs.getString("commitment_type"),
+                rs.getBigDecimal("pledge_amount"),
+                rs.getString("pledge_frequency"),
+                rs.getString("organization_name")
+        ), commitmentId);
+        return rows.stream().findFirst();
+    }
+
+    public record GratitudeContext(
+            String applicantName,
+            String title,
+            String commitmentType,
+            java.math.BigDecimal pledgeAmount,
+            String pledgeFrequency,
+            String organizationName
+    ) {}
+
     public record CommitmentSigningContext(
             Long id,
             String publicId,

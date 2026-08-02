@@ -45,14 +45,23 @@ export const submitManagerApplication = (payload: ManagerApplicationPayload) =>
 export const fetchManagedOrganizations = () =>
   apiRequest<Organization[]>('/api/v1/manager/organizations');
 
+export interface CenterDashboard {
+  organizationId: number;
+  publicOpportunities: number;
+  closedOpportunities: number;
+  pendingApplications: number;
+  monthlyParticipants: number;
+  totalCommitments: number;
+  signedCommitments: number;
+  awaitingSignature: number;
+  signedPledgeAmount: number;
+  renewalDueSoon: number;
+}
+
 export const fetchOrganizationDashboard = (organizationId: number) =>
-  apiRequest<{
-    organizationId: number;
-    publicOpportunities: number;
-    closedOpportunities: number;
-    pendingApplications: number;
-    monthlyParticipants: number;
-  }>(`/api/v1/manager/organizations/${organizationId}/dashboard`);
+  apiRequest<CenterDashboard>(
+    `/api/v1/manager/organizations/${organizationId}/dashboard`,
+  );
 
 export interface ManagedOpportunity {
   id: number;

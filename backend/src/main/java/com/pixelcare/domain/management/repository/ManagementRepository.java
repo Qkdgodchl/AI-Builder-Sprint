@@ -6,6 +6,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -340,12 +341,47 @@ public class ManagementRepository {
                 WHERE o.organization_id = ? AND a.status IN ('APPROVED', 'COMPLETED', 'VERIFIED')
                   AND a.updated_at >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 """, organizationId);
-        return new CenterDashboardResponse(organizationId, published, closed, pending, participants);
+        long totalCommitments = count("""
+                SELECT COUNT(*) FROM commitments
+                WHERE organization_id = ? AND commitment_status <> 'CANCELLED'
+                """, organizationId);
+        long signedCommitments = count("""
+                SELECT COUNT(*) FROM commitments c
+                JOIN clm_documents d ON d.commitment_id = c.id AND d.is_deleted = FALSE
+                WHERE c.organization_id = ? AND d.status = 'SIGNED'
+                """, organizationId);
+        long awaitingSignature = count("""
+                SELECT COUNT(*) FROM commitments c
+                JOIN clm_documents d ON d.commitment_id = c.id AND d.is_deleted = FALSE
+                WHERE c.organization_id = ?
+                  AND d.status IN ('PENDING_SIGNATURE', 'SIGNING', 'PARTIALLY_SIGNED')
+                """, organizationId);
+        BigDecimal signedPledgeAmount = sum("""
+                SELECT COALESCE(SUM(c.pledge_amount), 0) FROM commitments c
+                JOIN clm_documents d ON d.commitment_id = c.id AND d.is_deleted = FALSE
+                WHERE c.organization_id = ? AND d.status = 'SIGNED'
+                """, organizationId);
+        long renewalDueSoon = count("""
+                SELECT COUNT(*) FROM commitments
+                WHERE organization_id = ? AND commitment_status = 'ACTIVE'
+                  AND renewal_due_at IS NOT NULL
+                  AND renewal_due_at <= DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY)
+                """, organizationId);
+        return new CenterDashboardResponse(
+                organizationId, published, closed, pending, participants,
+                totalCommitments, signedCommitments, awaitingSignature,
+                signedPledgeAmount, renewalDueSoon
+        );
     }
 
     private long count(String sql, Long organizationId) {
         Long count = jdbcTemplate.queryForObject(sql, Long.class, organizationId);
         return count == null ? 0 : count;
+    }
+
+    private BigDecimal sum(String sql, Long organizationId) {
+        BigDecimal total = jdbcTemplate.queryForObject(sql, BigDecimal.class, organizationId);
+        return total == null ? BigDecimal.ZERO : total;
     }
 
     private List<ManagerApplicationResponse> queryManagerApplications(String suffix, Object... args) {

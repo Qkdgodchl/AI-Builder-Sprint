@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
-import { fetchMyApplications, type ApplicationResponse } from '../../services/applicationApi';
+import {
+  fetchMyApplications,
+  renewCommitment,
+  type ApplicationResponse,
+} from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
 import {
   fetchMyClmDocuments,
+  fetchClmDocument,
   fetchClmDocumentFiles,
   loadClmDocumentFile,
   type ClmDocumentDto,
@@ -49,6 +54,7 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [clmFiles, setClmFiles] = useState<ClmDocumentFileDto[]>([]);
   const [previewPdfUrl, setPreviewPdfUrl] = useState('');
   const [previewPdfTitle, setPreviewPdfTitle] = useState('');
+  const [renewingCommitmentId, setRenewingCommitmentId] = useState('');
   const [nickname, setNickname] = useState(currentUser.nickname);
   const [phone, setPhone] = useState('');
   const [region, setRegion] = useState('');
@@ -86,15 +92,56 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     [clmDocuments, selectedApplication],
   );
 
+  // 목록 조회는 모두싸인 상태를 동기화하지 않는다. 상세를 한 번 더 불러
+  // 서명 완료 여부와 감사 메시지를 최신 상태로 맞춘 뒤 보관 파일을 가져온다.
+  const selectedClmDocumentId = selectedClmDocument?.id ?? null;
+
   useEffect(() => {
-    if (!selectedClmDocument || selectedClmDocument.status !== 'SIGNED') {
+    if (!selectedClmDocumentId) {
       setClmFiles([]);
       return;
     }
-    fetchClmDocumentFiles(selectedClmDocument.id)
-      .then(setClmFiles)
-      .catch((error) => setNotice(error instanceof Error ? error.message : '전자서명 파일을 불러오지 못했습니다.'));
-  }, [selectedClmDocument]);
+    let cancelled = false;
+    fetchClmDocument(selectedClmDocumentId)
+      .then(async (fresh) => {
+        if (cancelled) return;
+        setClmDocuments((previous) =>
+          previous.map((document) => (document.id === fresh.id ? fresh : document)),
+        );
+        if (fresh.status !== 'SIGNED') {
+          setClmFiles([]);
+          return;
+        }
+        const files = await fetchClmDocumentFiles(fresh.id);
+        if (!cancelled) setClmFiles(files);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setNotice(error instanceof Error ? error.message : '전자서명 파일을 불러오지 못했습니다.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClmDocumentId]);
+
+  const renewPledge = async (commitmentPublicId: string) => {
+    setRenewingCommitmentId(commitmentPublicId);
+    try {
+      const renewed = await renewCommitment(commitmentPublicId);
+      setApplications((previous) =>
+        previous.map((application) =>
+          application.commitment?.publicId === commitmentPublicId
+            ? { ...application, commitment: renewed }
+            : application,
+        ),
+      );
+      setNotice(`정기 약정을 갱신했습니다. 다음 갱신일은 ${renewed.renewalDueAt || '-'}입니다.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '약정 갱신에 실패했습니다.');
+    } finally {
+      setRenewingCommitmentId('');
+    }
+  };
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -253,6 +300,17 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
             <div><span>신청일</span><strong>{selectedApplication.submittedAt?.slice(0, 10) || '-'}</strong></div>
             <div><span>참여 희망일</span><strong>{selectedApplication.participationDate || '-'}</strong></div>
           </div>
+          {selectedClmDocument?.completionMessage && (
+            <section className="user-gratitude-card">
+              <span>SIGNED WITH HEART</span>
+              <p>{selectedClmDocument.completionMessage}</p>
+              <small>
+                {selectedClmDocument.completionMessageSource === 'UPSTAGE_SOLAR'
+                  ? 'Upstage Solar가 약정 내용을 읽고 남긴 인사입니다.'
+                  : '약정 내용을 바탕으로 남긴 인사입니다.'}
+              </small>
+            </section>
+          )}
           <section className="user-commitment-preview">
             <span>전자 약정서</span>
             <h4>{selectedApplication.commitment?.title || '약정서 미작성'}</h4>
@@ -262,6 +320,42 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 '작성된 약정서 내용이 없습니다.'}
             </p>
           </section>
+          {selectedApplication.commitment?.renewalDueAt && (
+            <section
+              className={`user-renewal-card${
+                selectedApplication.commitment.renewalStatus === 'DUE' ? ' due' : ''
+              }`}
+            >
+              <div>
+                <span>
+                  정기 약정 갱신
+                  {selectedApplication.commitment.renewalStatus === 'DUE' && (
+                    <em className="user-renewal-badge">갱신 필요</em>
+                  )}
+                </span>
+                <strong>다음 갱신일 {selectedApplication.commitment.renewalDueAt}</strong>
+                <p>
+                  {selectedApplication.commitment.renewalStatus === 'DUE'
+                    ? '갱신일이 지났습니다. 지금 갱신하면 다음 주기까지 약정이 이어집니다.'
+                    : '갱신일이 되면 버튼 한 번으로 다음 주기까지 약정을 이어갈 수 있습니다.'}
+                </p>
+              </div>
+              {selectedApplication.commitment.status === 'ACTIVE' &&
+                ['MONTHLY', 'ANNUAL'].includes(
+                  selectedApplication.commitment.pledgeFrequency || '',
+                ) && (
+                  <button
+                    type="button"
+                    disabled={renewingCommitmentId === selectedApplication.commitment.publicId}
+                    onClick={() => renewPledge(selectedApplication.commitment!.publicId)}
+                  >
+                    {renewingCommitmentId === selectedApplication.commitment.publicId
+                      ? '갱신하는 중…'
+                      : '지금 갱신하기'}
+                  </button>
+                )}
+            </section>
+          )}
           <div className="user-document-list">
             <div className="user-application-heading">
               <h3>내가 제출한 서류</h3>
@@ -405,7 +499,12 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                         onClick={() => navigate(`/my-page/applications/${application.publicId}`)}
                       >
                         <div>
-                          <strong>{application.opportunityTitle}</strong>
+                          <strong>
+                            {application.opportunityTitle}
+                            {application.commitment?.renewalStatus === 'DUE' && (
+                              <em className="user-renewal-badge">갱신 필요</em>
+                            )}
+                          </strong>
                           <span>{application.organizationName}</span>
                         </div>
                         <span>{application.submittedAt?.slice(0, 10) || '-'}</span>
