@@ -8622,6 +8622,64 @@ body.theme-ai {
   color: #9a9a94;
 }
 
+/* 뱃지가 온기로 열리므로 바로 아래에서 온기 올리는 법을 알려준다. */
+.roadmap-warmth-tip {
+  border-bottom: 1px solid var(--pc-dark);
+  padding: 26px var(--pc-list-gutter) 28px;
+}
+
+.roadmap-warmth-tip > strong {
+  display: inline-block;
+  background: var(--magazine-accent);
+  padding: 4px 10px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.roadmap-warmth-tip > p {
+  margin: 12px 0 0;
+  color: var(--pc-dark);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.4px;
+}
+
+.roadmap-warmth-tip ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 8px 22px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roadmap-warmth-tip li {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  border-top: 1px solid #e6e6e1;
+  padding-top: 8px;
+  color: #555555;
+  font-size: 12px;
+}
+
+.roadmap-warmth-tip li b {
+  min-width: 52px;
+  color: var(--magazine-accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.roadmap-warmth-tip > small {
+  display: block;
+  margin-top: 14px;
+  color: #8a8a84;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .roadmap-login-note {
   display: flex;
   flex-wrap: wrap;

@@ -76,6 +76,21 @@ export const RoadmapMap: React.FC<RoadmapMapProps> = ({ showToast, currentUser, 
         />
       )}
 
+      {/* 2단계부터는 온기로 열리므로 온기를 어떻게 올리는지 여기서 알려준다. */}
+      <section className="roadmap-warmth-tip">
+        <strong>Tip!</strong>
+        <p>온기는 이렇게 오릅니다.</p>
+        <ul>
+          <li><b>+1.0°C</b> 전자서명으로 약정 체결</li>
+          <li><b>+0.5°C</b> 봉사·기부 신청 제출</li>
+          <li><b>+0.5°C</b> 정기 약정 갱신</li>
+          <li><b>+0.3°C</b> 커뮤니티 글 작성</li>
+          <li><b>+0.2°C</b> 활동 다이어리 기록</li>
+          <li><b>+0.1°C</b> 댓글 작성 · 응원 보내기</li>
+        </ul>
+        <small>하루에 최대 +2.0°C까지 오르고, 50°C가 마지막 단계입니다.</small>
+      </section>
+
       {!currentUser && (
         <section className="roadmap-login-note">
           <p>로그인하고 나만의 뱃지를 모아보세요.</p>
