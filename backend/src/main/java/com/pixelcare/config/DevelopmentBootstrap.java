@@ -721,6 +721,13 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 """);
         }
 
+        private void safeAddColumn(String table, String column, String type) {
+                try {
+                        jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+                } catch (Exception ignored) {
+                }
+        }
+
         private void ensureSchemaTablesExist() {
                 boolean isPostgres = false;
                 try (var conn = jdbcTemplate.getDataSource().getConnection()) {
@@ -736,25 +743,37 @@ public class DevelopmentBootstrap implements CommandLineRunner {
 
                 jdbcTemplate.execute("""
                                 CREATE TABLE IF NOT EXISTS user_roles (
+                                    id BIGINT NULL,
                                     user_id BIGINT NOT NULL,
                                     role VARCHAR(50) NOT NULL,
-                                    PRIMARY KEY (user_id, role)
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """);
+                safeAddColumn("user_roles", "id", "BIGINT");
+                safeAddColumn("user_roles", "created_at", dateTimeType + " DEFAULT CURRENT_TIMESTAMP");
+
                 jdbcTemplate.execute("""
                                 CREATE TABLE IF NOT EXISTS user_interests (
+                                    id BIGINT NULL,
                                     user_id BIGINT NOT NULL,
-                                    interest VARCHAR(100) NOT NULL
+                                    interest VARCHAR(100) NULL,
+                                    interest_code VARCHAR(100) NULL,
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """);
+                safeAddColumn("user_interests", "interest_code", "VARCHAR(100)");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS refresh_tokens (
                                     id %s,
                                     user_id BIGINT NOT NULL,
                                     token_hash VARCHAR(255) NOT NULL,
-                                    expires_at %s NOT NULL
+                                    expires_at %s NOT NULL,
+                                    revoked_at %s NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS access_tokens (
                                     id %s,
@@ -765,58 +784,113 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     revoked_at %s NULL
                                 )
                                 """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS stored_files (
                                     id %s,
                                     owner_user_id BIGINT NULL,
-                                    category VARCHAR(50) NULL,
+                                    storage_key VARCHAR(500) NULL,
+                                    original_name VARCHAR(255) NULL,
                                     original_filename VARCHAR(255) NULL,
                                     stored_filename VARCHAR(255) NULL,
                                     file_path VARCHAR(500) NULL,
                                     file_size BIGINT NULL,
+                                    size_bytes BIGINT NULL,
+                                    content_type VARCHAR(100) NULL,
                                     mime_type VARCHAR(100) NULL,
-                                    checksum_sha256 VARCHAR(64) NULL,
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    checksum VARCHAR(128) NULL,
+                                    checksum_sha256 VARCHAR(128) NULL,
+                                    file_purpose VARCHAR(50) NULL,
+                                    category VARCHAR(50) NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    deleted_at %s NULL
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+                safeAddColumn("stored_files", "storage_key", "VARCHAR(500)");
+                safeAddColumn("stored_files", "original_name", "VARCHAR(255)");
+                safeAddColumn("stored_files", "original_filename", "VARCHAR(255)");
+                safeAddColumn("stored_files", "stored_filename", "VARCHAR(255)");
+                safeAddColumn("stored_files", "file_path", "VARCHAR(500)");
+                safeAddColumn("stored_files", "size_bytes", "BIGINT");
+                safeAddColumn("stored_files", "file_size", "BIGINT");
+                safeAddColumn("stored_files", "content_type", "VARCHAR(100)");
+                safeAddColumn("stored_files", "mime_type", "VARCHAR(100)");
+                safeAddColumn("stored_files", "checksum", "VARCHAR(128)");
+                safeAddColumn("stored_files", "file_purpose", "VARCHAR(50)");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS organizations (
                                     id %s,
-                                    name VARCHAR(200) NOT NULL,
+                                    source_application_id BIGINT NULL,
+                                    name VARCHAR(255) NOT NULL,
+                                    organization_type VARCHAR(50) NULL,
                                     registration_number VARCHAR(50) NULL,
                                     representative_name VARCHAR(100) NULL,
+                                    phone VARCHAR(50) NULL,
                                     phone_number VARCHAR(50) NULL,
-                                    address VARCHAR(300) NULL,
+                                    email VARCHAR(255) NULL,
+                                    address VARCHAR(500) NULL,
+                                    description TEXT NULL,
+                                    logo_file_id BIGINT NULL,
+                                    verification_status VARCHAR(30) DEFAULT 'VERIFIED',
                                     organization_status VARCHAR(50) DEFAULT 'APPROVED',
-                                    organization_type VARCHAR(50) DEFAULT 'NONPROFIT',
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL,
+                                    is_deleted BOOLEAN DEFAULT FALSE,
+                                    deleted_at %s NULL,
+                                    deleted_by VARCHAR(255) NULL
                                 )
-                                """, autoInc, dateTimeType));
-                jdbcTemplate.execute("""
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("organizations", "source_application_id", "BIGINT");
+                safeAddColumn("organizations", "phone", "VARCHAR(50)");
+                safeAddColumn("organizations", "phone_number", "VARCHAR(50)");
+                safeAddColumn("organizations", "email", "VARCHAR(255)");
+                safeAddColumn("organizations", "description", "TEXT");
+                safeAddColumn("organizations", "logo_file_id", "BIGINT");
+                safeAddColumn("organizations", "verification_status", "VARCHAR(30) DEFAULT 'VERIFIED'");
+                safeAddColumn("organizations", "updated_at", dateTimeType);
+                safeAddColumn("organizations", "is_deleted", "BOOLEAN DEFAULT FALSE");
+
+                jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS organization_managers (
+                                    id %s,
                                     organization_id BIGINT NOT NULL,
                                     user_id BIGINT NOT NULL,
-                                    manager_role VARCHAR(50) DEFAULT 'PRIMARY'
+                                    manager_role VARCHAR(50) DEFAULT 'PRIMARY',
+                                    joined_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    left_at %s NULL
                                 )
-                                """);
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS manager_applications (
                                     id %s,
                                     applicant_user_id BIGINT NULL,
                                     user_id BIGINT NULL,
+                                    organization_id BIGINT NULL,
                                     organization_name VARCHAR(200) NULL,
                                     business_registration_number VARCHAR(50) NULL,
                                     contact_number VARCHAR(50) NULL,
+                                    phone VARCHAR(50) NULL,
+                                    email VARCHAR(255) NULL,
+                                    proof_file_id BIGINT NULL,
+                                    reason TEXT NULL,
                                     status VARCHAR(50) DEFAULT 'PENDING',
                                     application_status VARCHAR(50) DEFAULT 'PENDING',
                                     submitted_at %s DEFAULT CURRENT_TIMESTAMP,
                                     reviewed_at %s NULL,
                                     reviewed_by BIGINT NULL,
                                     rejection_reason TEXT NULL,
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
-                jdbcTemplate.execute("""
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("manager_applications", "applicant_user_id", "BIGINT");
+                safeAddColumn("manager_applications", "organization_id", "BIGINT");
+                safeAddColumn("manager_applications", "proof_file_id", "BIGINT");
+                safeAddColumn("manager_applications", "reason", "TEXT");
+
+                jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS manager_application_files (
                                     manager_application_id BIGINT NULL,
                                     application_id BIGINT NULL,
@@ -824,42 +898,67 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     stored_file_id BIGINT NULL,
                                     file_purpose VARCHAR(50) NULL
                                 )
-                                """);
+                                """));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS organization_applications (
                                     id %s,
                                     applicant_user_id BIGINT NULL,
-                                    name VARCHAR(200) NULL,
+                                    name VARCHAR(255) NULL,
+                                    organization_type VARCHAR(50) NULL,
                                     registration_number VARCHAR(50) NULL,
                                     representative_name VARCHAR(100) NULL,
+                                    phone VARCHAR(50) NULL,
                                     phone_number VARCHAR(50) NULL,
-                                    address VARCHAR(300) NULL,
+                                    email VARCHAR(255) NULL,
+                                    address VARCHAR(500) NULL,
+                                    description TEXT NULL,
+                                    proof_file_id BIGINT NULL,
                                     status VARCHAR(50) DEFAULT 'PENDING',
                                     submitted_at %s DEFAULT CURRENT_TIMESTAMP,
                                     reviewed_at %s NULL,
                                     reviewed_by BIGINT NULL,
                                     rejection_reason TEXT NULL,
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("organization_applications", "applicant_user_id", "BIGINT");
+                safeAddColumn("organization_applications", "phone", "VARCHAR(50)");
+                safeAddColumn("organization_applications", "email", "VARCHAR(255)");
+                safeAddColumn("organization_applications", "description", "TEXT");
+                safeAddColumn("organization_applications", "proof_file_id", "BIGINT");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS contract_templates (
                                     id %s,
+                                    organization_id BIGINT NULL,
+                                    opportunity_type VARCHAR(50) NULL,
+                                    name VARCHAR(255) NULL,
                                     title VARCHAR(255) NULL,
                                     template_code VARCHAR(100) NULL,
                                     description TEXT NULL,
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    status VARCHAR(30) DEFAULT 'ACTIVE',
+                                    created_by BIGINT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS contract_template_versions (
                                     id %s,
                                     template_id BIGINT NULL,
                                     version_no INT DEFAULT 1,
+                                    schema_json TEXT NULL,
+                                    body_template TEXT NULL,
                                     content TEXT NULL,
+                                    change_note VARCHAR(500) NULL,
+                                    created_by BIGINT NULL,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS opportunities (
                                     id %s,
@@ -867,7 +966,9 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     organization_id BIGINT NULL,
                                     template_id BIGINT NULL,
                                     opportunity_type VARCHAR(50) NULL,
+                                    type VARCHAR(50) NULL,
                                     category VARCHAR(50) NULL,
+                                    organizer VARCHAR(100) NULL,
                                     title VARCHAR(255) NULL,
                                     summary VARCHAR(1000) NULL,
                                     description TEXT NULL,
@@ -893,6 +994,21 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     deleted_by VARCHAR(255) NULL
                                 )
                                 """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("opportunities", "public_id", "VARCHAR(100)");
+                safeAddColumn("opportunities", "template_id", "BIGINT");
+                safeAddColumn("opportunities", "opportunity_type", "VARCHAR(50)");
+                safeAddColumn("opportunities", "summary", "VARCHAR(1000)");
+                safeAddColumn("opportunities", "participation_mode", "VARCHAR(50) DEFAULT 'OFFLINE'");
+                safeAddColumn("opportunities", "recruitment_start_at", dateTimeType);
+                safeAddColumn("opportunities", "recruitment_end_at", dateTimeType);
+                safeAddColumn("opportunities", "activity_start_at", dateTimeType);
+                safeAddColumn("opportunities", "activity_end_at", dateTimeType);
+                safeAddColumn("opportunities", "thumbnail_file_id", "BIGINT");
+                safeAddColumn("opportunities", "external_url", "VARCHAR(1000)");
+                safeAddColumn("opportunities", "created_by", "BIGINT");
+                safeAddColumn("opportunities", "published_at", dateTimeType);
+                safeAddColumn("opportunities", "is_deleted", "BOOLEAN DEFAULT FALSE");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS opportunity_required_documents (
                                     id %s,
@@ -904,6 +1020,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     display_order INT DEFAULT 0
                                 )
                                 """, autoInc));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS applications (
                                     id %s,
@@ -916,6 +1033,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     status VARCHAR(30) DEFAULT 'APPROVED',
                                     application_status VARCHAR(30) DEFAULT 'APPROVED',
                                     participation_date DATE NULL,
+                                    notes TEXT NULL,
                                     submitted_at %s NULL,
                                     reviewed_by BIGINT NULL,
                                     reviewed_at %s NULL,
@@ -924,6 +1042,17 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     updated_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("applications", "public_id", "VARCHAR(100)");
+                safeAddColumn("applications", "applicant_user_id", "BIGINT");
+                safeAddColumn("applications", "applicant_id", "BIGINT");
+                safeAddColumn("applications", "consultation_id", "BIGINT");
+                safeAddColumn("applications", "answers_json", "TEXT");
+                safeAddColumn("applications", "participation_date", "DATE");
+                safeAddColumn("applications", "submitted_at", dateTimeType);
+                safeAddColumn("applications", "reviewed_by", "BIGINT");
+                safeAddColumn("applications", "reviewed_at", dateTimeType);
+                safeAddColumn("applications", "rejection_reason", "TEXT");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS commitments (
                                     id %s,
@@ -934,6 +1063,9 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     organization_id BIGINT NULL,
                                     current_version_no INT DEFAULT 1,
                                     commitment_status VARCHAR(30) DEFAULT 'ACTIVE',
+                                    status VARCHAR(50) DEFAULT 'ACTIVE',
+                                    commitment_type VARCHAR(50) NULL,
+                                    recurring_amount BIGINT NULL,
                                     title VARCHAR(255) NULL,
                                     effective_from DATE NULL,
                                     effective_to DATE NULL,
@@ -944,41 +1076,71 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     updated_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                safeAddColumn("commitments", "public_id", "VARCHAR(100)");
+                safeAddColumn("commitments", "opportunity_id", "BIGINT");
+                safeAddColumn("commitments", "user_id", "BIGINT");
+                safeAddColumn("commitments", "organization_id", "BIGINT");
+                safeAddColumn("commitments", "current_version_no", "INT DEFAULT 1");
+                safeAddColumn("commitments", "commitment_status", "VARCHAR(30) DEFAULT 'ACTIVE'");
+                safeAddColumn("commitments", "effective_from", "DATE");
+                safeAddColumn("commitments", "effective_to", "DATE");
+                safeAddColumn("commitments", "signed_at", dateTimeType);
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS commitment_versions (
                                     id %s,
                                     commitment_id BIGINT NULL,
                                     version_no INT DEFAULT 1,
+                                    version INT DEFAULT 1,
                                     template_version_id BIGINT NULL,
                                     terms_json TEXT NULL,
                                     rendered_content TEXT NULL,
+                                    content TEXT NULL,
                                     change_summary VARCHAR(1000) NULL,
                                     created_by BIGINT NULL,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
+                safeAddColumn("commitment_versions", "version_no", "INT DEFAULT 1");
+                safeAddColumn("commitment_versions", "terms_json", "TEXT");
+                safeAddColumn("commitment_versions", "rendered_content", "TEXT");
+                safeAddColumn("commitment_versions", "created_by", "BIGINT");
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS consents (
                                     id %s,
+                                    user_id BIGINT NULL,
                                     commitment_id BIGINT NULL,
                                     commitment_version_id BIGINT NULL,
-                                    user_id BIGINT NULL,
                                     consent_type VARCHAR(50) NULL,
+                                    policy_version VARCHAR(50) NULL,
                                     is_consented BOOLEAN DEFAULT TRUE,
-                                    consented_at %s DEFAULT CURRENT_TIMESTAMP
+                                    is_agreed BOOLEAN DEFAULT TRUE,
+                                    consented_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    agreed_at %s NULL,
+                                    withdrawn_at %s NULL,
+                                    ip_address VARCHAR(45) NULL,
+                                    user_agent VARCHAR(1000) NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS contract_documents (
                                     id %s,
                                     commitment_id BIGINT NULL,
                                     commitment_version_id BIGINT NULL,
-                                    file_path VARCHAR(500) NULL,
+                                    file_id BIGINT NULL,
                                     stored_file_id BIGINT NULL,
+                                    file_path VARCHAR(500) NULL,
                                     document_type VARCHAR(50) NULL,
+                                    document_status VARCHAR(30) DEFAULT 'GENERATED',
+                                    checksum VARCHAR(128) NULL,
+                                    generated_at %s DEFAULT CURRENT_TIMESTAMP,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS signature_requests (
                                     id %s,
@@ -986,128 +1148,215 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     commitment_version_id BIGINT NULL,
                                     requester_id BIGINT NULL,
                                     signer_user_id BIGINT NULL,
+                                    provider VARCHAR(50) NULL,
+                                    provider_request_id VARCHAR(255) NULL,
+                                    signer_email VARCHAR(255) NULL,
                                     external_tx_id VARCHAR(255) NULL,
                                     status VARCHAR(50) DEFAULT 'PENDING',
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    signature_status VARCHAR(30) DEFAULT 'PENDING',
+                                    requested_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    expires_at %s NULL,
+                                    signed_at %s NULL,
+                                    failed_reason TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute("""
                                 CREATE TABLE IF NOT EXISTS signature_request_documents (
                                     signature_request_id BIGINT NULL,
-                                    document_id BIGINT NULL
+                                    contract_document_id BIGINT NULL,
+                                    document_id BIGINT NULL,
+                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """);
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS processed_webhook_events (
                                     id %s,
+                                    provider VARCHAR(50) NULL,
+                                    external_event_id VARCHAR(255) NULL,
                                     event_id VARCHAR(255) NULL,
                                     event_type VARCHAR(100) NULL,
-                                    processed_at %s DEFAULT CURRENT_TIMESTAMP
+                                    payload_json TEXT NULL,
+                                    processing_status VARCHAR(30) DEFAULT 'RECEIVED',
+                                    processed_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    error_message TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS commitment_change_requests (
                                     id %s,
                                     commitment_id BIGINT NULL,
+                                    requested_by BIGINT NULL,
                                     requester_user_id BIGINT NULL,
                                     request_type VARCHAR(50) NULL,
+                                    requested_changes_json TEXT NULL,
                                     reason TEXT NULL,
                                     status VARCHAR(50) DEFAULT 'PENDING',
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    reviewed_by BIGINT NULL,
+                                    reviewed_at %s NULL,
+                                    decision_reason TEXT NULL,
+                                    resulting_version_id BIGINT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS activity_records (
                                     id %s,
                                     application_id BIGINT NULL,
                                     commitment_id BIGINT NULL,
+                                    recorded_by BIGINT NULL,
                                     user_id BIGINT NULL,
                                     organization_id BIGINT NULL,
                                     opportunity_id BIGINT NULL,
+                                    activity_type VARCHAR(50) NULL,
                                     activity_date DATE NULL,
+                                    quantity DECIMAL(15, 2) NULL,
+                                    unit VARCHAR(30) NULL,
+                                    amount BIGINT NULL,
                                     hours INT DEFAULT 0,
                                     status VARCHAR(50) DEFAULT 'COMPLETED',
+                                    description TEXT NULL,
                                     notes TEXT NULL,
-                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                    evidence_file_id BIGINT NULL,
+                                    verification_status VARCHAR(30) DEFAULT 'PENDING',
+                                    verified_by BIGINT NULL,
+                                    verified_at %s NULL,
+                                    rejection_reason TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS community_posts (
                                     id %s,
+                                    author_user_id BIGINT NULL,
                                     author_id BIGINT NULL,
+                                    organization_id BIGINT NULL,
+                                    category VARCHAR(50) NULL,
                                     title VARCHAR(255) NULL,
                                     content TEXT NULL,
-                                    category VARCHAR(50) NULL,
+                                    visibility VARCHAR(30) DEFAULT 'PUBLIC',
+                                    like_count INT DEFAULT 0,
+                                    comment_count INT DEFAULT 0,
+                                    view_count INT DEFAULT 0,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP,
-                                    updated_at %s DEFAULT CURRENT_TIMESTAMP
+                                    updated_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    is_deleted BOOLEAN DEFAULT FALSE,
+                                    deleted_at %s NULL,
+                                    deleted_by VARCHAR(255) NULL
                                 )
-                                """, autoInc, dateTimeType, dateTimeType));
-                jdbcTemplate.execute("""
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
+                jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS community_post_images (
+                                    id %s,
                                     post_id BIGINT NULL,
                                     file_id BIGINT NULL,
-                                    display_order INT DEFAULT 0
+                                    display_order INT DEFAULT 0,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """);
+                                """, autoInc, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS community_comments (
                                     id %s,
                                     post_id BIGINT NULL,
+                                    author_user_id BIGINT NULL,
                                     author_id BIGINT NULL,
+                                    parent_comment_id BIGINT NULL,
                                     content TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL,
+                                    is_deleted BOOLEAN DEFAULT FALSE,
+                                    deleted_at %s NULL,
+                                    deleted_by VARCHAR(255) NULL
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS post_reactions (
+                                    id %s,
+                                    post_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    reaction_type VARCHAR(50) DEFAULT 'LIKE',
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
-                jdbcTemplate.execute("""
-                                CREATE TABLE IF NOT EXISTS post_reactions (
-                                    post_id BIGINT NULL,
-                                    user_id BIGINT NULL,
-                                    reaction_type VARCHAR(50) NULL
-                                )
-                                """);
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS reports (
                                     id %s,
                                     reporter_user_id BIGINT NULL,
                                     target_type VARCHAR(50) NULL,
                                     target_id BIGINT NULL,
+                                    reason_code VARCHAR(50) NULL,
                                     reason TEXT NULL,
-                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    description TEXT NULL,
+                                    status VARCHAR(30) DEFAULT 'PENDING',
+                                    handled_by BIGINT NULL,
+                                    handled_at %s NULL,
+                                    resolution_note TEXT NULL,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS admin_audit_logs (
                                     id %s,
+                                    actor_user_id BIGINT NULL,
                                     admin_user_id BIGINT NULL,
                                     action_type VARCHAR(100) NULL,
                                     target_type VARCHAR(100) NULL,
-                                    target_id BIGINT NULL,
+                                    target_id VARCHAR(100) NULL,
+                                    request_id VARCHAR(100) NULL,
+                                    before_json TEXT NULL,
+                                    after_json TEXT NULL,
+                                    ip_address VARCHAR(45) NULL,
                                     details TEXT NULL,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS notifications (
                                     id %s,
                                     user_id BIGINT NULL,
+                                    notification_type VARCHAR(50) NULL,
                                     title VARCHAR(255) NULL,
+                                    content TEXT NULL,
                                     message TEXT NULL,
+                                    reference_type VARCHAR(50) NULL,
+                                    reference_id BIGINT NULL,
                                     is_read BOOLEAN DEFAULT FALSE,
+                                    read_at %s NULL,
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
-                                """, autoInc, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS ai_consultations (
                                     id %s,
                                     user_id BIGINT NULL,
                                     title VARCHAR(255) NULL,
                                     consultation_status VARCHAR(50) DEFAULT 'IN_PROGRESS',
+                                    intent_summary TEXT NULL,
+                                    extracted_preferences_json TEXT NULL,
                                     started_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    completed_at %s NULL,
                                     ended_at %s NULL,
-                                    extracted_preferences_json TEXT NULL
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s NULL
                                 )
-                                """, autoInc, dateTimeType, dateTimeType));
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS ai_messages (
                                     id %s,
@@ -1119,6 +1368,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS activity_notes (
                                     id %s,
@@ -1130,6 +1380,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     created_at %s DEFAULT CURRENT_TIMESTAMP
                                 )
                                 """, autoInc, dateTimeType));
+
                 jdbcTemplate.execute("""
                                 CREATE TABLE IF NOT EXISTS activity_note_files (
                                     activity_note_id BIGINT NULL,
@@ -1137,6 +1388,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                     display_order INT DEFAULT 0
                                 )
                                 """);
+
                 jdbcTemplate.execute(String.format("""
                                 CREATE TABLE IF NOT EXISTS heritage_projects (
                                     id %s,
