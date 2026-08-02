@@ -57,7 +57,7 @@ public class StatsRepository {
      * 활동 시각이 없는 상시 모집 공고는 집계에서 빠진다.
      *
      * 시간 차이는 SQL이 아니라 자바에서 더한다. TIMESTAMPDIFF는 MySQL에만 있어
-     * 배포용 PostgreSQL에서는 통계 조회가 통째로 깨진다.
+     * PostgreSQL에서는 홈 화면 통계 조회가 통째로 실패한다.
      */
     private long volunteerHours() {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList("""

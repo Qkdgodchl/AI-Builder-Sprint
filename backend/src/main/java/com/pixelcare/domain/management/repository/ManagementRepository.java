@@ -340,8 +340,10 @@ public class ManagementRepository {
                 SELECT COUNT(*) FROM applications a
                 JOIN opportunities o ON o.id = a.opportunity_id
                 WHERE o.organization_id = ? AND a.status IN ('APPROVED', 'COMPLETED', 'VERIFIED')
-                  AND a.updated_at >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
-                """, organizationId);
+                  AND a.updated_at >= ?
+                """, organizationId,
+                // 이번 달 1일. DATE_FORMAT은 MySQL에만 있어 값으로 넘긴다.
+                java.sql.Timestamp.valueOf(java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay()));
         long totalCommitments = count("""
                 SELECT COUNT(*) FROM commitments
                 WHERE organization_id = ? AND commitment_status <> 'CANCELLED'
@@ -376,8 +378,8 @@ public class ManagementRepository {
         );
     }
 
-    private long count(String sql, Long organizationId) {
-        Long count = jdbcTemplate.queryForObject(sql, Long.class, organizationId);
+    private long count(String sql, Object... args) {
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, args);
         return count == null ? 0 : count;
     }
 

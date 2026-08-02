@@ -40,7 +40,7 @@ public class AuthRepository {
                 JOIN users u ON u.id = t.user_id
                 WHERE t.token_hash = ?
                   AND t.revoked_at IS NULL
-                  AND t.expires_at > UTC_TIMESTAMP(6)
+                  AND t.expires_at > CURRENT_TIMESTAMP
                   AND u.account_status = 'ACTIVE'
                   AND u.is_deleted = FALSE
                 """, (rs, rowNum) -> new CurrentUser(
@@ -59,7 +59,7 @@ public class AuthRepository {
                 JOIN users u ON u.id = t.user_id
                 WHERE t.token_hash = ?
                   AND t.revoked_at IS NULL
-                  AND t.expires_at > UTC_TIMESTAMP(6)
+                  AND t.expires_at > CURRENT_TIMESTAMP
                   AND u.account_status = 'ACTIVE'
                   AND u.is_deleted = FALSE
                 """, (rs, rowNum) -> rs.getLong("id"), tokenHash);
@@ -99,7 +99,7 @@ public class AuthRepository {
     public void revokeAccessToken(String tokenHash) {
         jdbcTemplate.update("""
                 UPDATE access_tokens
-                SET revoked_at = UTC_TIMESTAMP(6)
+                SET revoked_at = CURRENT_TIMESTAMP
                 WHERE token_hash = ? AND revoked_at IS NULL
                 """, tokenHash);
     }
@@ -107,18 +107,18 @@ public class AuthRepository {
     public void revokeRefreshToken(String tokenHash) {
         jdbcTemplate.update("""
                 UPDATE refresh_tokens
-                SET revoked_at = UTC_TIMESTAMP(6)
+                SET revoked_at = CURRENT_TIMESTAMP
                 WHERE token_hash = ? AND revoked_at IS NULL
                 """, tokenHash);
     }
 
     public void revokeAllUserTokens(Long userId) {
         jdbcTemplate.update("""
-                UPDATE access_tokens SET revoked_at = UTC_TIMESTAMP(6)
+                UPDATE access_tokens SET revoked_at = CURRENT_TIMESTAMP
                 WHERE user_id = ? AND revoked_at IS NULL
                 """, userId);
         jdbcTemplate.update("""
-                UPDATE refresh_tokens SET revoked_at = UTC_TIMESTAMP(6)
+                UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
                 WHERE user_id = ? AND revoked_at IS NULL
                 """, userId);
     }
