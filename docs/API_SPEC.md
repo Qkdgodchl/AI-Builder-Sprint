@@ -1094,6 +1094,15 @@ Idempotency-Key: commitment-72-version-1
 12. 커뮤니티·신고·운영 삭제
 13. 전체 E2E·동시성·보안 테스트
 
+## 19. CONNECT API (온기 잇다 — 선행 역제안)
+
+| 구현 | 성공 | 실패 | 메서드 | 경로 | 설명 |
+|---|---|---|---|---|---|
+| [x] | [x] | [x] | GET | `/api/v1/connect/requests` | 선행 역제안 목록 조회 (카테고리 필터링) |
+| [x] | [x] | [x] | POST | `/api/v1/connect/requests` | 새 선행 역제안 작성 (AI 대화 연동 초안 지원) |
+| [x] | [x] | [x] | POST | `/api/v1/connect/requests/{publicId}/support` | 이웃 응원하기 (`Support`) |
+| [x] | [x] | [x] | POST | `/api/v1/connect/requests/{publicId}/handle` | 센터 관리자의 제안 수락 (`Claim`) 및 개설 |
+
 ---
 
 ## 20. 완료 정의
