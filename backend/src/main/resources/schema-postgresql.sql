@@ -351,6 +351,9 @@ CREATE TABLE IF NOT EXISTS commitments (
     status VARCHAR(50) DEFAULT 'ACTIVE',
     commitment_type VARCHAR(50) NULL,
     recurring_amount BIGINT NULL,
+    pledge_amount DECIMAL(15, 2) NULL,
+    pledge_frequency VARCHAR(30) NULL,
+    renewal_due_at TIMESTAMP NULL,
     title VARCHAR(255) NULL,
     effective_from DATE NULL,
     effective_to DATE NULL,
@@ -703,7 +706,9 @@ ALTER TABLE commitments ADD COLUMN IF NOT EXISTS current_version_no INT DEFAULT 
 ALTER TABLE commitments ADD COLUMN IF NOT EXISTS commitment_status VARCHAR(30) DEFAULT 'ACTIVE';
 ALTER TABLE commitments ADD COLUMN IF NOT EXISTS effective_from DATE;
 ALTER TABLE commitments ADD COLUMN IF NOT EXISTS effective_to DATE;
-ALTER TABLE commitments ADD COLUMN IF NOT EXISTS signed_at TIMESTAMP;
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS pledge_amount DECIMAL(15, 2);
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS pledge_frequency VARCHAR(30);
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS renewal_due_at TIMESTAMP;
 
 ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS version_no INT DEFAULT 1;
 ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS terms_json TEXT;
