@@ -2,6 +2,7 @@ package com.pixelcare.domain.user.entity;
 
 import com.pixelcare.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -14,11 +15,22 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(name = "password_hash")
+    private String passwordHash;
+
     @Column(nullable = false)
     private String nickname;
 
+    private String name;
+
     @Column(nullable = false)
     private String role = "USER"; // USER, CENTER_MANAGER, OPERATOR
+
+    @Column(name = "account_status")
+    private String accountStatus = "ACTIVE";
+
+    @Column(name = "privacy_consent_at")
+    private LocalDateTime privacyConsentAt;
 
     @Column(nullable = false)
     private Double temperature = 36.5;
@@ -34,8 +46,12 @@ public class User extends BaseTimeEntity {
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
+    public String getPasswordHash() { return passwordHash; }
     public String getNickname() { return nickname; }
+    public String getName() { return name; }
     public String getRole() { return role; }
+    public String getAccountStatus() { return accountStatus; }
+    public LocalDateTime getPrivacyConsentAt() { return privacyConsentAt; }
     public Double getTemperature() { return temperature; }
 
     public void updateRole(String newRole) {
