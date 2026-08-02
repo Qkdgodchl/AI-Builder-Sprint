@@ -15,7 +15,7 @@
 
 | 구분 | 주소 |
 |---|---|
-| 서비스 (프론트엔드) | _배포 후 기재_ |
+| 서비스 (프론트엔드) | https://itdafront.vercel.app |
 | API 서버 (백엔드) | https://ai-builder-sprint.onrender.com |
 | 데모 계정 | `manager@pixelcare.demo` / `Manager123!` (센터 관리자) |
 
