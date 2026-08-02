@@ -55,10 +55,10 @@ class ClmDocumentVerificationServiceTest {
     @Test
     void 서명본과_약정_값이_같으면_일치로_본다() {
         givenArchivedContract(new BigDecimal("30000"), "MONTHLY");
-        // 약정서에는 "30,000 원", "매월 정기"처럼 사람이 읽는 형태로 적힌다.
+        // 약정서에는 "30,000 원", "매월 정기 후원"처럼 사람이 읽는 형태로 적힌다.
         when(documentClient.extractPledge(any())).thenReturn(Optional.of(
                 new UpstageDocumentClient.ExtractedPledge(
-                        "전동훈", "잇다 데모 센터", "30,000", "매월 정기", "2026-08-03")));
+                        "전동훈", "잇다 데모 센터", "30,000", "매월 정기 후원", "2026-08-03")));
 
         ClmVerificationResponse result = service.verify(1L, user);
 
@@ -73,7 +73,7 @@ class ClmDocumentVerificationServiceTest {
         givenArchivedContract(new BigDecimal("30000"), "MONTHLY");
         when(documentClient.extractPledge(any())).thenReturn(Optional.of(
                 new UpstageDocumentClient.ExtractedPledge(
-                        "전동훈", "잇다 데모 센터", "50,000", "매월 정기", "2026-08-03")));
+                        "전동훈", "잇다 데모 센터", "50,000", "매월 정기 후원", "2026-08-03")));
 
         ClmVerificationResponse result = service.verify(1L, user);
 
@@ -86,6 +86,23 @@ class ClmDocumentVerificationServiceTest {
                     assertThat(check.label()).isEqualTo("약정 금액");
                     assertThat(check.expected()).isEqualTo("30000원");
                 });
+    }
+
+    @Test
+    void 약정서에_적힌_주기_표기를_같은_주기로_읽는다() {
+        // 실제 체결본에는 ANNUAL이 "연간 정기 후원"으로 적힌다.
+        givenArchivedContract(new BigDecimal("120000"), "ANNUAL");
+        when(documentClient.extractPledge(any())).thenReturn(Optional.of(
+                new UpstageDocumentClient.ExtractedPledge(
+                        "전동훈", "잇다 데모 센터", "120000", "연간 정기 후원", "2026-08-03")));
+
+        ClmVerificationResponse result = service.verify(1L, user);
+
+        assertThat(result.status()).isEqualTo("MATCHED");
+        assertThat(result.checks())
+                .filteredOn(check -> check.label().equals("약정 주기"))
+                .singleElement()
+                .satisfies(check -> assertThat(check.matched()).isTrue());
     }
 
     @Test

@@ -134,20 +134,35 @@ public class ClmDocumentVerificationService {
                 found == null ? null : found + "원", same);
     }
 
-    /** 약정서에는 MONTHLY가 아니라 "매월 정기"로 적힌다. 뜻이 같으면 일치로 본다. */
+    /**
+     * 약정서에는 MONTHLY가 아니라 "매월 정기 후원"처럼 적힌다.
+     * 표기는 PledgeContractPdfGenerator가 쓰는 말과 같게 두고,
+     * 읽어낸 값이 그 말을 담고 있으면 같은 주기로 본다.
+     */
     private FieldCheck frequency(String label, String expectedCode, String found) {
-        String expectedLabel = switch (expectedCode) {
-            case "ONE_TIME" -> "일시";
-            case "MONTHLY" -> "매월";
-            case "QUARTERLY" -> "분기";
-            case "ANNUAL" -> "매년";
-            default -> expectedCode;
-        };
+        String expectedLabel = frequencyLabel(expectedCode);
+        String keyword = expectedLabel.split("[ (]")[0];
         String normalizedFound = normalize(found);
         boolean same = !normalizedFound.isEmpty()
-                && (normalizedFound.contains(normalize(expectedLabel))
+                && (normalizedFound.contains(normalize(keyword))
+                    || normalizedFound.contains(normalize(expectedLabel))
                     || normalize(expectedCode).equals(normalizedFound));
         return new FieldCheck(label, expectedLabel, found, same);
+    }
+
+    private String frequencyLabel(String code) {
+        return switch (code) {
+            case "ONE_TIME" -> "일시 기부";
+            case "WEEKLY" -> "매주 정기 후원";
+            case "BIWEEKLY" -> "격주 정기 후원";
+            case "MONTHLY" -> "매월 정기 후원";
+            case "QUARTERLY" -> "분기별 정기 후원 (3개월)";
+            case "BIANNUAL" -> "반기별 정기 후원 (6개월)";
+            case "ANNUAL" -> "연간 정기 후원";
+            case "FLEXIBLE" -> "수시 / 자율 후원";
+            case "NOT_APPLICABLE" -> "해당 없음 (자원봉사)";
+            default -> code;
+        };
     }
 
     private String normalize(String value) {
