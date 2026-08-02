@@ -54,6 +54,19 @@ public class User extends BaseTimeEntity {
     public LocalDateTime getPrivacyConsentAt() { return privacyConsentAt; }
     public Double getTemperature() { return temperature; }
 
+    @PrePersist
+    public void prePersistUser() {
+        if (this.temperature == null) {
+            this.temperature = 36.5;
+        }
+        if (this.accountStatus == null) {
+            this.accountStatus = "ACTIVE";
+        }
+        if (this.role == null) {
+            this.role = "USER";
+        }
+    }
+
     public void updateRole(String newRole) {
         this.role = newRole;
     }
