@@ -1,6 +1,7 @@
 package com.pixelcare.domain.file.repository;
 
 import com.pixelcare.domain.file.dto.StoredFileResponse;
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -34,7 +35,7 @@ public class StoredFileRepository {
                         owner_user_id, storage_key, original_name, content_type,
                         size_bytes, checksum, file_purpose
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setLong(1, ownerUserId);
             statement.setString(2, storageKey);
             statement.setString(3, originalName);
@@ -44,7 +45,7 @@ public class StoredFileRepository {
             statement.setString(7, purpose);
             return statement;
         }, keyHolder);
-        Long id = keyHolder.getKey().longValue();
+        Long id = KeyExtractUtils.extractId(keyHolder);
         return jdbcTemplate.queryForObject("""
                 SELECT id, original_name, content_type, size_bytes, file_purpose, created_at
                 FROM stored_files WHERE id = ?

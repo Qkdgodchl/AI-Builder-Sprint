@@ -1,5 +1,6 @@
 package com.pixelcare.config;
 
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
@@ -389,14 +390,14 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             public_id, opportunity_id, applicant_user_id, status,
                                             submitted_at, updated_at
                                         ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, opportunityId);
                         statement.setLong(3, userId);
                         statement.setString(4, status);
                         return statement;
                 }, keyHolder);
-                return keyHolder.getKey().longValue();
+                return KeyExtractUtils.extractId(keyHolder);
         }
 
         private Long insertDonationCommitment(
@@ -411,7 +412,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             pledge_amount, pledge_frequency, effective_from, signed_at
                                         ) VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, 'DONATION', ?, 'ONE_TIME',
                                                   CURRENT_DATE, CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, applicationId);
                         statement.setLong(3, opportunityId);
@@ -421,7 +422,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         statement.setLong(7, amount);
                         return statement;
                 }, keyHolder);
-                Long commitmentId = keyHolder.getKey().longValue();
+                Long commitmentId = KeyExtractUtils.extractId(keyHolder);
 
                 jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = 1", commitmentId);
                 jdbcTemplate.update("""
@@ -533,10 +534,10 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             '데모 관리자', '051-000-0000', 'manager@pixelcare.demo',
                                             '부산광역시 금정구', '로컬 개발용 데모 센터입니다.', 'VERIFIED'
                                         )
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         return statement;
                 }, keyHolder);
-                Long organizationId = keyHolder.getKey().longValue();
+                Long organizationId = KeyExtractUtils.extractId(keyHolder);
                 jdbcTemplate.update("""
                                 INSERT INTO organization_managers (organization_id, user_id, manager_role)
                                 VALUES (?, ?, 'OWNER')
@@ -591,13 +592,13 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                         INSERT INTO applications (
                                             public_id, opportunity_id, applicant_user_id, status, submitted_at
                                         ) VALUES (?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, opportunityId);
                         statement.setLong(3, donorId);
                         return statement;
                 }, applicationKey);
-                Long applicationId = applicationKey.getKey().longValue();
+                Long applicationId = KeyExtractUtils.extractId(applicationKey);
 
                 LocalDate effectiveFrom = "MONTHLY".equals(frequency)
                                 ? renewalDueAt.minusMonths(1)
@@ -614,7 +615,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                                             effective_from, signed_at
                                                         ) VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, 'DONATION', ?, ?, ?, ?, CURRENT_TIMESTAMP)
                                                         """,
-                                        Statement.RETURN_GENERATED_KEYS);
+                                        new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, applicationId);
                         statement.setLong(3, opportunityId);
@@ -627,7 +628,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         statement.setDate(10, Date.valueOf(effectiveFrom));
                         return statement;
                 }, commitmentKey);
-                Long commitmentId = commitmentKey.getKey().longValue();
+                Long commitmentId = KeyExtractUtils.extractId(commitmentKey);
 
                 String rendered = """
                                 [정기 후원 약정서]

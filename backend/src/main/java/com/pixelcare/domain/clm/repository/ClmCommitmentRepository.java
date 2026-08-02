@@ -1,5 +1,6 @@
 package com.pixelcare.domain.clm.repository;
 
+import com.pixelcare.global.common.KeyExtractUtils;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -61,7 +62,7 @@ public class ClmCommitmentRepository {
                         public_id, commitment_id, provider, provider_request_id,
                         signer_user_id, signer_email, signature_status
                     ) VALUES (?, ?, 'MODUSIGN', ?, ?, ?, 'REQUESTED')
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, UUID.randomUUID().toString());
             statement.setLong(2, context.id());
             statement.setString(3, providerRequestId);
@@ -73,7 +74,7 @@ public class ClmCommitmentRepository {
                 UPDATE commitments SET commitment_status = 'SIGNING', updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
                 """, context.id());
-        return keyHolder.getKey().longValue();
+        return KeyExtractUtils.extractId(keyHolder);
     }
 
     public void applySignatureState(Long commitmentId, Long signatureRequestId, String state) {
@@ -88,17 +89,25 @@ public class ClmCommitmentRepository {
                 jdbcTemplate.update("""
                         UPDATE commitments
                         SET commitment_status = 'ACTIVE', signed_at = COALESCE(signed_at, CURRENT_TIMESTAMP),
-                            renewal_due_at = CASE
-                                WHEN pledge_frequency = 'MONTHLY' AND renewal_due_at IS NULL
-                                THEN DATE_ADD(COALESCE(effective_from, CURRENT_DATE), INTERVAL 1 MONTH)
-                                ELSE renewal_due_at END,
                             updated_at = CURRENT_TIMESTAMP
                         WHERE id = ? AND commitment_status <> 'CANCELLED'
                         """, commitmentId);
+                List<java.util.Map<String, Object>> rows = jdbcTemplate.queryForList(
+                        "SELECT pledge_frequency, renewal_due_at, effective_from FROM commitments WHERE id = ?", commitmentId);
+                if (!rows.isEmpty()) {
+                    String freq = (String) rows.get(0).get("pledge_frequency");
+                    Object due = rows.get(0).get("renewal_due_at");
+                    Object eff = rows.get(0).get("effective_from");
+                    if ("MONTHLY".equals(freq) && due == null) {
+                        java.time.LocalDate effDate = eff instanceof java.sql.Date d ? d.toLocalDate() : java.time.LocalDate.now();
+                        jdbcTemplate.update("UPDATE commitments SET renewal_due_at = ? WHERE id = ?",
+                                java.sql.Date.valueOf(effDate.plusMonths(1)), commitmentId);
+                    }
+                }
                 jdbcTemplate.update("""
-                        UPDATE applications a JOIN commitments c ON c.application_id = a.id
-                        SET a.status = 'APPROVED', a.updated_at = CURRENT_TIMESTAMP
-                        WHERE c.id = ?
+                        UPDATE applications
+                        SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
+                        WHERE id = (SELECT application_id FROM commitments WHERE id = ?)
                         """, commitmentId);
             }
             case "REJECTED", "CANCELED" -> {

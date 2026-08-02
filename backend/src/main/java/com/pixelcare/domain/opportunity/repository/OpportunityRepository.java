@@ -2,6 +2,7 @@ package com.pixelcare.domain.opportunity.repository;
 
 import com.pixelcare.domain.opportunity.dto.OpportunityRequest;
 import com.pixelcare.domain.opportunity.dto.OpportunityResponse;
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -134,7 +135,7 @@ public class OpportunityRepository {
                         recruitment_end_at, activity_start_at, activity_end_at, capacity,
                         eligibility, target_amount, cancellation_policy, status, created_by
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', ?)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             int index = 1;
             statement.setLong(index++, organizationId);
             statement.setString(index++, request.type().trim().toUpperCase());
@@ -158,7 +159,7 @@ public class OpportunityRepository {
             statement.setLong(index, userId);
             return statement;
         }, keyHolder);
-        Long id = keyHolder.getKey().longValue();
+        Long id = KeyExtractUtils.extractId(keyHolder);
         replaceRequiredDocuments(id, request.requiredDocuments());
         return id;
     }

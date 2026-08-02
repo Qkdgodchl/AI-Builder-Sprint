@@ -3,6 +3,7 @@ package com.pixelcare.domain.user.repository;
 import com.pixelcare.domain.user.dto.SignupRequest;
 import com.pixelcare.domain.user.dto.UserProfileResponse;
 import com.pixelcare.global.auth.AuthRepository;
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +53,7 @@ public class UserAccountRepository {
                         email, password_hash, nickname, name, phone, birth_date, region,
                         role, account_status, privacy_consent_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'USER', 'ACTIVE', ?)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, request.email().trim().toLowerCase());
             statement.setString(2, passwordHash);
             statement.setString(3, nickname);
@@ -64,7 +64,7 @@ public class UserAccountRepository {
             statement.setObject(8, LocalDateTime.now());
             return statement;
         }, keyHolder);
-        Long userId = keyHolder.getKey().longValue();
+        Long userId = KeyExtractUtils.extractId(keyHolder);
         jdbcTemplate.update(
                 "INSERT INTO user_roles (user_id, role) VALUES (?, 'USER')",
                 userId

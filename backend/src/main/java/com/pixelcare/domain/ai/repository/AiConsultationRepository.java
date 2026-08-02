@@ -1,5 +1,6 @@
 package com.pixelcare.domain.ai.repository;
 
+import com.pixelcare.global.common.KeyExtractUtils;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -8,7 +9,6 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,11 +27,11 @@ public class AiConsultationRepository {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO ai_consultations (user_id, title, consultation_status, started_at)
                     VALUES (?, 'AI 약정 의사 정리', 'IN_PROGRESS', CURRENT_TIMESTAMP)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setLong(1, userId);
             return statement;
         }, keyHolder);
-        return keyHolder.getKey().longValue();
+        return KeyExtractUtils.extractId(keyHolder);
     }
 
     public Optional<Map<String, Object>> findOwned(Long id, Long userId) {
