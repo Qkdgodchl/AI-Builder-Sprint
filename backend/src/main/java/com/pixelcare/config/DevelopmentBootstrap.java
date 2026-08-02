@@ -10,9 +10,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @ConditionalOnProperty(name = "app.bootstrap.enabled", havingValue = "true")
@@ -21,16 +25,19 @@ public class DevelopmentBootstrap implements CommandLineRunner {
     private final JdbcTemplate jdbcTemplate;
     private final String operatorPassword;
     private final String managerPassword;
+    private final String donorPassword;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public DevelopmentBootstrap(
             JdbcTemplate jdbcTemplate,
             @Value("${app.bootstrap.operator-password}") String operatorPassword,
-            @Value("${app.bootstrap.manager-password}") String managerPassword
+            @Value("${app.bootstrap.manager-password}") String managerPassword,
+            @Value("${app.bootstrap.donor-password}") String donorPassword
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.operatorPassword = operatorPassword;
         this.managerPassword = managerPassword;
+        this.donorPassword = donorPassword;
     }
 
     @Override
@@ -50,8 +57,16 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 managerPassword,
                 "CENTER_MANAGER"
         );
+        Long donorId = ensureUser(
+                "donor@pixelcare.demo",
+                "정기후원 데모 후원자",
+                "데모 후원자",
+                donorPassword,
+                "USER"
+        );
         Long organizationId = ensureDemoOrganization(managerId);
         seedOpportunities(managerId, organizationId);
+        seedRecurringCommitments(donorId, organizationId);
     }
 
     private Long ensureUser(
@@ -133,6 +148,121 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 VALUES (?, ?, 'OWNER')
                 """, organizationId, managerId);
         return organizationId;
+    }
+
+    /**
+     * 정기 약정 갱신 흐름을 시연할 수 있도록 월간·연간 약정을 하나씩 만든다.
+     * 하나는 갱신일이 지난 상태(갱신 필요), 다른 하나는 갱신 예정 상태로 둔다.
+     */
+    private void seedRecurringCommitments(Long donorId, Long organizationId) {
+        List<Long> opportunityIds = jdbcTemplate.query("""
+                SELECT id FROM opportunities
+                WHERE organization_id = ?
+                  AND opportunity_type IN ('DONATION', 'HOMETOWN_DONATION')
+                  AND is_deleted = FALSE
+                ORDER BY id
+                LIMIT 2
+                """, (rs, rowNum) -> rs.getLong("id"), organizationId);
+        if (opportunityIds.size() < 2) return;
+
+        ensureRecurringCommitment(
+                donorId, organizationId, opportunityIds.get(0),
+                "매월 이어가는 아동 결식 예방 정기후원 약정",
+                "MONTHLY", new BigDecimal("30000"), LocalDate.now().minusDays(3)
+        );
+        ensureRecurringCommitment(
+                donorId, organizationId, opportunityIds.get(1),
+                "매년 이어가는 지역 문화유산 보존 후원 약정",
+                "ANNUAL", new BigDecimal("120000"), LocalDate.now().plusDays(12)
+        );
+    }
+
+    private void ensureRecurringCommitment(
+            Long donorId,
+            Long organizationId,
+            Long opportunityId,
+            String title,
+            String frequency,
+            BigDecimal amount,
+            LocalDate renewalDueAt
+    ) {
+        Integer existing = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM commitments
+                WHERE user_id = ? AND opportunity_id = ?
+                """, Integer.class, donorId, opportunityId);
+        if (existing != null && existing > 0) return;
+
+        KeyHolder applicationKey = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO applications (
+                        public_id, opportunity_id, applicant_user_id, status, submitted_at
+                    ) VALUES (?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
+                    """, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, UUID.randomUUID().toString());
+            statement.setLong(2, opportunityId);
+            statement.setLong(3, donorId);
+            return statement;
+        }, applicationKey);
+        Long applicationId = applicationKey.getKey().longValue();
+
+        LocalDate effectiveFrom = "MONTHLY".equals(frequency)
+                ? renewalDueAt.minusMonths(1)
+                : renewalDueAt.minusYears(1);
+
+        KeyHolder commitmentKey = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO commitments (
+                        public_id, application_id, opportunity_id, user_id, organization_id,
+                        current_version_no, commitment_status, title, commitment_type,
+                        pledge_amount, pledge_frequency, renewal_due_at,
+                        effective_from, signed_at
+                    ) VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, 'DONATION', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, UUID.randomUUID().toString());
+            statement.setLong(2, applicationId);
+            statement.setLong(3, opportunityId);
+            statement.setLong(4, donorId);
+            statement.setLong(5, organizationId);
+            statement.setString(6, title);
+            statement.setBigDecimal(7, amount);
+            statement.setString(8, frequency);
+            statement.setDate(9, Date.valueOf(renewalDueAt));
+            statement.setDate(10, Date.valueOf(effectiveFrom));
+            return statement;
+        }, commitmentKey);
+        Long commitmentId = commitmentKey.getKey().longValue();
+
+        String rendered = """
+                [정기 후원 약정서]
+                프로그램: %s
+                약정 금액: %s원
+                약정 주기: %s
+                약정 시작일: %s
+                다음 갱신일: %s
+                개인정보 수집 동의: 동의
+                제3자 제공 동의: 동의
+                """.formatted(
+                title,
+                amount.toBigInteger(),
+                "MONTHLY".equals(frequency) ? "매월 정기" : "매년 정기",
+                effectiveFrom,
+                renewalDueAt
+        );
+        jdbcTemplate.update("""
+                INSERT INTO commitment_versions (
+                    commitment_id, version_no, terms_json, rendered_content,
+                    change_summary, created_by
+                ) VALUES (?, 1, ?, ?, ?, ?)
+                """,
+                commitmentId,
+                "{\"specialConditions\":\"\",\"privacyConsent\":true,"
+                        + "\"thirdPartyConsent\":true,\"portraitConsent\":false}",
+                rendered,
+                "정기 약정 체결",
+                donorId
+        );
     }
 
     private void seedOpportunities(Long managerId, Long organizationId) {

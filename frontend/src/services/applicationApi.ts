@@ -68,6 +68,15 @@ export const updateCommitment = (
 export const submitCommitment = (publicId: string) =>
   apiRequest(`/api/v1/commitments/${publicId}/submit-review`, { method: 'POST' });
 
+export type CommitmentSummary = NonNullable<ApplicationResponse['commitment']>;
+
+/** 월간·연간 정기 약정의 다음 갱신 주기를 연장한다. */
+export const renewCommitment = (publicId: string, effectiveTo?: string) =>
+  apiRequest<CommitmentSummary>(`/api/v1/commitments/${publicId}/renew`, {
+    method: 'POST',
+    body: JSON.stringify({ effectiveTo: effectiveTo ?? null }),
+  });
+
 export const fetchOpportunityApplications = (opportunityId: number) =>
   apiRequest<ApplicationResponse[]>(
     `/api/v1/manager/opportunities/${opportunityId}/applications`,

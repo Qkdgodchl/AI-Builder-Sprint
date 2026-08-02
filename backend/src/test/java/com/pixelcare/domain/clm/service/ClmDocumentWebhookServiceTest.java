@@ -27,6 +27,7 @@ class ClmDocumentWebhookServiceTest {
     @Mock ClmDocumentArchiveService archiveService;
     @Mock ClmDocumentAccessService accessService;
     @Mock ClmDocumentAccessRepository accessRepository;
+    @Mock ClmCompletionMessageService completionMessageService;
 
     private ClmDocumentService service;
 
@@ -34,7 +35,7 @@ class ClmDocumentWebhookServiceTest {
     void setUp() {
         service = new ClmDocumentService(documentRepository, commitmentRepository,
                 webhookEventRepository, modusignApiClient, archiveService,
-                accessService, accessRepository);
+                accessService, accessRepository, completionMessageService);
     }
 
     @Test

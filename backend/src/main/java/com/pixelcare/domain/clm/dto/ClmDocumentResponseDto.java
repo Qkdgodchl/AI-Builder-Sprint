@@ -19,6 +19,8 @@ public class ClmDocumentResponseDto {
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime signedAt;
+    private String completionMessage;
+    private String completionMessageSource;
 
     public ClmDocumentResponseDto() {}
 
@@ -26,7 +28,8 @@ public class ClmDocumentResponseDto {
                                   String applicantName, String applicantEmail, String applicantPhone,
                                   String modusignDocumentId, String signingMethod, String signingUrl,
                                   LocalDateTime signingUrlExpiresAt, String status,
-                                  LocalDateTime createdAt, LocalDateTime signedAt) {
+                                  LocalDateTime createdAt, LocalDateTime signedAt,
+                                  String completionMessage, String completionMessageSource) {
         this.id = id;
         this.volunteerId = volunteerId;
         this.volunteerTitle = volunteerTitle;
@@ -40,6 +43,8 @@ public class ClmDocumentResponseDto {
         this.status = status;
         this.createdAt = createdAt;
         this.signedAt = signedAt;
+        this.completionMessage = completionMessage;
+        this.completionMessageSource = completionMessageSource;
     }
 
     public static ClmDocumentResponseDto fromEntity(ClmDocument doc) {
@@ -56,7 +61,9 @@ public class ClmDocumentResponseDto {
                 doc.getSigningUrlExpiresAt(),
                 doc.getStatus(),
                 doc.getCreatedAt(),
-                doc.getSignedAt()
+                doc.getSignedAt(),
+                doc.getCompletionMessage(),
+                doc.getCompletionMessageSource()
         );
     }
 
@@ -73,4 +80,6 @@ public class ClmDocumentResponseDto {
     public String getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getSignedAt() { return signedAt; }
+    public String getCompletionMessage() { return completionMessage; }
+    public String getCompletionMessageSource() { return completionMessageSource; }
 }

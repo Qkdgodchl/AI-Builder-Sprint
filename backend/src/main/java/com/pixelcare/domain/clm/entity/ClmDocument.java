@@ -70,6 +70,15 @@ public class ClmDocument extends BaseTimeEntity {
     @Column(name = "last_event_rank", nullable = false)
     private int lastEventRank;
 
+    @Column(name = "completion_message", columnDefinition = "TEXT")
+    private String completionMessage;
+
+    @Column(name = "completion_message_source")
+    private String completionMessageSource;
+
+    @Column(name = "completion_message_created_at")
+    private LocalDateTime completionMessageCreatedAt;
+
     public ClmDocument() {}
 
     public ClmDocument(Long commitmentId, Long signatureRequestId,
@@ -123,6 +132,24 @@ public class ClmDocument extends BaseTimeEntity {
     public LocalDateTime getRejectedAt() { return rejectedAt; }
     public String getLastEventType() { return lastEventType; }
     public int getLastEventRank() { return lastEventRank; }
+    public String getCompletionMessage() { return completionMessage; }
+    public String getCompletionMessageSource() { return completionMessageSource; }
+    public LocalDateTime getCompletionMessageCreatedAt() { return completionMessageCreatedAt; }
+
+    public boolean hasCompletionMessage() {
+        return completionMessage != null && !completionMessage.isBlank();
+    }
+
+    /** 서명이 끝난 약정에만 감사 메시지를 남기고, 이미 남겼다면 다시 덮어쓰지 않는다. */
+    public boolean applyCompletionMessage(String message, String source) {
+        if (message == null || message.isBlank()) return false;
+        if (hasCompletionMessage()) return false;
+        if (!"SIGNED".equals(status)) return false;
+        this.completionMessage = message;
+        this.completionMessageSource = source;
+        this.completionMessageCreatedAt = LocalDateTime.now();
+        return true;
+    }
 
     public boolean applyModusignEvent(String eventType) {
         int incomingRank = eventRank(eventType);

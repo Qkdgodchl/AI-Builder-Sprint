@@ -26,6 +26,7 @@ public class ClmDocumentService {
     private final ClmDocumentArchiveService archiveService;
     private final ClmDocumentAccessService accessService;
     private final ClmDocumentAccessRepository accessRepository;
+    private final ClmCompletionMessageService completionMessageService;
 
     public ClmDocumentService(ClmDocumentRepository clmDocumentRepository,
                               ClmCommitmentRepository commitmentRepository,
@@ -33,7 +34,8 @@ public class ClmDocumentService {
                               ModusignApiClient modusignApiClient,
                               ClmDocumentArchiveService archiveService,
                               ClmDocumentAccessService accessService,
-                              ClmDocumentAccessRepository accessRepository) {
+                              ClmDocumentAccessRepository accessRepository,
+                              ClmCompletionMessageService completionMessageService) {
         this.clmDocumentRepository = clmDocumentRepository;
         this.commitmentRepository = commitmentRepository;
         this.webhookEventRepository = webhookEventRepository;
@@ -41,6 +43,7 @@ public class ClmDocumentService {
         this.archiveService = archiveService;
         this.accessService = accessService;
         this.accessRepository = accessRepository;
+        this.completionMessageService = completionMessageService;
     }
 
     @Transactional
@@ -135,6 +138,7 @@ public class ClmDocumentService {
                                 document.getCommitmentId(), document.getSignatureRequestId(), signatureState(eventType));
                         if ("document_all_signed".equals(eventType)) {
                             archiveService.archiveCompletedFiles(document);
+                            completionMessageService.attachTo(document);
                         }
                     });
             webhookEventRepository.complete("MODUSIGN", eventId);
@@ -145,26 +149,28 @@ public class ClmDocumentService {
     }
 
     private void synchronizeModusignStatus(ClmDocument document) {
-        if ("SIGNED".equals(document.getStatus())
+        boolean settled = "SIGNED".equals(document.getStatus())
                 || "REJECTED".equals(document.getStatus())
-                || "CANCELED".equals(document.getStatus())) {
-            return;
-        }
+                || "CANCELED".equals(document.getStatus());
 
-        try {
-            // archiveCompletedFiles 내부의 단 한 번의 문서 상세 조회로
-            // 완료 상태 확인과 PDF/감사추적인증서 다운로드를 함께 처리한다.
-            archiveService.archiveCompletedFiles(document);
-            if (document.applyModusignEvent("document_all_signed")) {
-                commitmentRepository.applySignatureState(
-                        document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+        if (!settled) {
+            try {
+                // archiveCompletedFiles 내부의 단 한 번의 문서 상세 조회로
+                // 완료 상태 확인과 PDF/감사추적인증서 다운로드를 함께 처리한다.
+                archiveService.archiveCompletedFiles(document);
+                if (document.applyModusignEvent("document_all_signed")) {
+                    commitmentRepository.applySignatureState(
+                            document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                }
+            } catch (ApiException e) {
+                if (!"MODUSIGN_DOCUMENT_NOT_COMPLETED".equals(e.getCode())) {
+                    throw e;
+                }
             }
-        } catch (ApiException e) {
-            if ("MODUSIGN_DOCUMENT_NOT_COMPLETED".equals(e.getCode())) {
-                return;
-            }
-            throw e;
         }
+        // 웹훅으로 먼저 완료 처리된 약정도 감사 메시지를 받을 수 있도록
+        // 상태와 무관하게 시도한다. 서명 전이거나 이미 남긴 경우는 내부에서 걸러진다.
+        completionMessageService.attachTo(document);
     }
 
     private ClmDocument findOwnedDocument(Long documentId, CurrentUser currentUser) {

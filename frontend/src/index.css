@@ -1794,6 +1794,18 @@ body.theme-ai {
     border-top: 1px solid #d5d5d5;
   }
 
+  .center-commitment-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .center-commitment-metrics > div:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .center-commitment-metrics > div:nth-child(n + 3) {
+    border-top: 1px solid #d5d5d5;
+  }
+
   .my-centers-table-head {
     display: none;
   }
@@ -3331,15 +3343,34 @@ body.theme-ai {
   font-size: 11px;
 }
 
+/* 센터 관리 화면의 주요 액션. 배경과 대비가 살아 있어야 눈에 들어온다. */
 .my-center-header button {
-  border: 1px solid #bbbbbb;
+  flex-shrink: 0;
+  border: 1px solid var(--pc-dark);
   border-radius: 999px;
-  padding: 10px 15px;
-  background: #eeeeec;
-  color: #999999;
+  padding: 14px 24px;
+  background: var(--pc-dark);
+  color: #ffffff;
   font: inherit;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.my-center-header button:hover {
+  background: var(--magazine-accent);
+  border-color: var(--magazine-accent);
+}
+
+.my-center-header button:active {
+  transform: translateY(1px);
+}
+
+.my-center-header button:focus-visible {
+  outline: 2px solid var(--magazine-accent);
+  outline-offset: 3px;
 }
 
 .my-center-profile,
@@ -3391,6 +3422,104 @@ body.theme-ai {
 
 .my-center-metrics strong {
   font-size: 28px;
+  font-weight: 900;
+}
+
+.center-commitment-board {
+  border-bottom: 1px solid var(--pc-dark);
+  background: #fbfbf9;
+}
+
+.center-commitment-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid #d5d5d5;
+  padding: 16px 18px;
+}
+
+.center-commitment-heading span {
+  color: #777777;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.center-commitment-heading h3 {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.center-commitment-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.center-commitment-metrics > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+}
+
+.center-commitment-metrics > div + div {
+  border-left: 1px solid #d5d5d5;
+}
+
+.center-commitment-metrics > div.accent {
+  background: #f1f6f3;
+}
+
+.center-commitment-metrics > div.warn {
+  background: #fdf3ef;
+}
+
+.center-commitment-metrics span {
+  color: #777777;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.center-commitment-metrics strong {
+  overflow: hidden;
+  font-size: 22px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+}
+
+.center-commitment-metrics strong small {
+  margin-left: 3px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.center-commitment-metrics > div.accent strong {
+  color: #237a57;
+}
+
+.center-commitment-metrics > div.warn strong {
+  color: #b5502f;
+}
+
+.center-commitment-metrics p {
+  color: #777777;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.center-commitment-rate {
+  border-top: 1px solid #d5d5d5;
+  padding: 12px 18px;
+  color: #666666;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.center-commitment-rate strong {
+  color: var(--pc-dark);
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -3671,10 +3800,31 @@ body.theme-ai {
 }
 
 .center-editor-form label > span {
-  color: var(--pc-muted);
-  font-size: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pc-dark);
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.4px;
+}
+
+.center-editor-form .field-required {
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: #f3dcd1;
+  color: #b5502f;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+/* 입력 아래 보조 설명. 라벨만으로 부족한 형식·용도를 알려준다. */
+.center-editor-form label > small {
+  color: var(--pc-muted);
+  font-size: 9px;
+  line-height: 1.6;
 }
 
 .center-editor-form input,
@@ -3689,6 +3839,21 @@ body.theme-ai {
   font: inherit;
   font-size: 11px;
   font-weight: 700;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.center-editor-form input::placeholder,
+.center-editor-form textarea::placeholder {
+  color: #a7a7a2;
+  font-weight: 600;
+}
+
+.center-editor-form input:focus,
+.center-editor-form select:focus,
+.center-editor-form textarea:focus {
+  border-color: var(--pc-dark);
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
+  outline: none;
 }
 
 .center-editor-form textarea {
@@ -3696,34 +3861,100 @@ body.theme-ai {
   line-height: 1.7;
 }
 
+.center-editor-fieldset {
+  border: 1px solid #ddddd8;
+  padding: 18px;
+  background: #fbfbf9;
+}
+
+.center-editor-fieldset legend {
+  padding: 0 8px;
+  color: var(--pc-dark);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.center-editor-fieldset-hint {
+  display: block;
+  margin-top: 12px;
+  color: var(--pc-muted);
+  font-size: 9px;
+}
+
+.center-editor-warning {
+  border-left: 3px solid var(--magazine-accent);
+  padding: 11px 14px;
+  background: #fdf0ee;
+  color: #b5502f;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .center-editor-form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  align-items: start;
+}
+
+.center-editor-form-row-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .center-editor-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 8px;
+  border-top: 1px solid #ddddd8;
+  padding-top: 18px;
+}
+
+.center-editor-actions-hint {
+  margin-right: auto;
+  color: var(--pc-muted);
+  font-size: 10px;
+}
+
+.center-editor-actions-hint strong {
+  color: var(--pc-dark);
+  font-weight: 800;
 }
 
 .center-editor-actions button {
   border: 1px solid var(--pc-dark);
   border-radius: 999px;
-  padding: 10px 18px;
+  padding: 12px 22px;
   background: transparent;
   color: var(--pc-dark);
   font: inherit;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .center-editor-actions button[type='submit'] {
   background: var(--pc-dark);
   color: #ffffff;
+}
+
+.center-editor-actions button[type='submit']:hover:not(:disabled) {
+  border-color: var(--magazine-accent);
+  background: var(--magazine-accent);
+}
+
+.center-editor-actions button[type='button']:hover {
+  background: #ececE8;
+}
+
+.center-editor-actions button:disabled {
+  border-color: #bdbdbd;
+  background: #bdbdbd;
+  color: #ffffff;
+  cursor: not-allowed;
 }
 
 .applicant-document-header {

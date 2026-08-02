@@ -98,6 +98,54 @@ public class UpstageApiClient {
         }
     }
 
+    /**
+     * 전자서명이 끝난 약정을 사람이 건넨 한마디처럼 되돌려주는 감사 메시지를 만든다.
+     * 키가 없거나 호출이 실패하면 비어 있는 값을 돌려주고, 호출부가 로컬 문구로 폴백한다.
+     */
+    public Optional<String> generateGratitudeMessage(String pledgeSummary) {
+        if (apiKey == null || apiKey.contains("your_upstage") || apiKey.isBlank()) return Optional.empty();
+        if (pledgeSummary == null || pledgeSummary.isBlank()) return Optional.empty();
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            String systemPrompt = """
+                    너는 기부·봉사 약정에 전자서명을 마친 사람에게 건네는 짧은 감사 인사를 쓴다.
+                    조건:
+                    - 2문장 이내, 120자 이내의 한국어 존댓말.
+                    - 약정 내용이 어떤 도움으로 이어지는지 구체적인 장면 하나를 담아라.
+                    - 주어진 약정 정보에 없는 수치나 기관, 성과를 지어내지 마라.
+                    - 이모지, 마크다운, 따옴표, 머리말 없이 인사말 본문만 출력하라.
+                    """;
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("temperature", 0.7);
+            requestBody.put("messages", List.of(
+                    Map.of("role", "system", "content", systemPrompt),
+                    Map.of("role", "user", "content", "약정 정보:\n" + pledgeSummary)
+            ));
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    baseUrl + "/chat/completions",
+                    new HttpEntity<>(requestBody, headers),
+                    String.class
+            );
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) return Optional.empty();
+
+            JsonNode choices = objectMapper.readTree(response.getBody()).path("choices");
+            if (!choices.isArray() || choices.isEmpty()) return Optional.empty();
+            String content = choices.get(0).path("message").path("content").asText("").trim();
+            if (content.isBlank()) return Optional.empty();
+            return Optional.of(content.length() > 300 ? content.substring(0, 300) : content);
+        } catch (Exception e) {
+            System.err.println("Upstage 감사 메시지 생성 오류 (로컬 폴백 전환): " + e.getClass().getSimpleName());
+            return Optional.empty();
+        }
+    }
+
     private String stripCodeFence(String content) {
         String trimmed = content.trim();
         if (!trimmed.startsWith("```")) return trimmed;
