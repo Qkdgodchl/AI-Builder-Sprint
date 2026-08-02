@@ -12,7 +12,7 @@ spring:
       - optional:file:.env[.properties]
       - optional:file:../.env[.properties]
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://pg-278ea08-dropcast.i.aivencloud.com:21886/defaultdb?sslmode=require}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://pg-278ea08-dropcast.i.aivencloud.com:21886/defaultdb?sslmode=require&sslfactory=org.postgresql.ssl.NonValidatingFactory}
     username: ${SPRING_DATASOURCE_USERNAME:avnadmin}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
