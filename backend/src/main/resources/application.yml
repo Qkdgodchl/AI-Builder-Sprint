@@ -9,9 +9,9 @@ spring:
       - optional:file:.env[.properties]
       - optional:file:../.env[.properties]
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/pixelcare}
-    username: ${SPRING_DATASOURCE_USERNAME:pixelcare}
-    password: ${SPRING_DATASOURCE_PASSWORD:pixelcare_local}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://pg-278ea08-dropcast.i.aivencloud.com:21886/defaultdb?sslmode=require}
+    username: ${SPRING_DATASOURCE_USERNAME:avnadmin}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
   flyway:
     enabled: false
