@@ -3,6 +3,7 @@ package com.pixelcare.domain.clm.service;
 import com.pixelcare.domain.clm.entity.ClmDocument;
 import com.pixelcare.domain.clm.repository.ClmCommitmentRepository;
 import com.pixelcare.domain.clm.repository.ClmDocumentRepository;
+import com.pixelcare.domain.clm.repository.ClmDocumentAccessRepository;
 import com.pixelcare.domain.clm.repository.WebhookEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,13 +25,16 @@ class ClmDocumentWebhookServiceTest {
     @Mock WebhookEventRepository webhookEventRepository;
     @Mock ModusignApiClient modusignApiClient;
     @Mock ClmDocumentArchiveService archiveService;
+    @Mock ClmDocumentAccessService accessService;
+    @Mock ClmDocumentAccessRepository accessRepository;
 
     private ClmDocumentService service;
 
     @BeforeEach
     void setUp() {
         service = new ClmDocumentService(documentRepository, commitmentRepository,
-                webhookEventRepository, modusignApiClient, archiveService);
+                webhookEventRepository, modusignApiClient, archiveService,
+                accessService, accessRepository);
     }
 
     @Test

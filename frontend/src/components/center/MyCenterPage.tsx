@@ -16,6 +16,13 @@ import {
   fetchOpportunityApplications,
   type ApplicationResponse,
 } from '../../services/applicationApi';
+import {
+  fetchClmDocumentFiles,
+  fetchManagerApplicationClmDocuments,
+  loadClmDocumentFile,
+  type ClmDocumentDto,
+  type ClmDocumentFileDto,
+} from '../../services/clmApi';
 
 interface MyCenterPageProps {
   currentUser: SessionUser;
@@ -334,6 +341,106 @@ function CenterApplicationLevel({
   );
 }
 
+function CenterSignedDocumentPanel({ applicationPublicId }: { applicationPublicId: string }) {
+  const [documents, setDocuments] = useState<ClmDocumentDto[]>([]);
+  const [files, setFiles] = useState<Array<ClmDocumentFileDto & { documentId: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [openingFileId, setOpeningFileId] = useState<number | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    fetchManagerApplicationClmDocuments(applicationPublicId)
+      .then(async (items) => {
+        const fileGroups = await Promise.all(items.map(async (document) => {
+          if (document.status !== 'SIGNED') return [];
+          const archived = await fetchClmDocumentFiles(document.id);
+          return archived.map((file) => ({ ...file, documentId: document.id }));
+        }));
+        if (!active) return;
+        setDocuments(items);
+        setFiles(fileGroups.flat());
+      })
+      .catch((reason) => active && setError(
+        reason instanceof Error ? reason.message : '전자서명 문서를 불러오지 못했습니다.',
+      ))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [applicationPublicId]);
+
+  const openFile = async (file: ClmDocumentFileDto & { documentId: number }) => {
+    const popup = window.open('', '_blank');
+    setOpeningFileId(file.id);
+    try {
+      const url = await loadClmDocumentFile(file.documentId, file.id);
+      if (popup) popup.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (reason) {
+      popup?.close();
+      setError(reason instanceof Error ? reason.message : '파일을 열지 못했습니다.');
+    } finally {
+      setOpeningFileId(null);
+    }
+  };
+
+  const statusLabel = (status: ClmDocumentDto['status']) => ({
+    PENDING_SIGNATURE: '서명 대기', SIGNING: '서명 진행 중', PARTIALLY_SIGNED: '일부 서명',
+    SIGNED: '서명 완료', REJECTED: '서명 거절', CANCELED: '요청 취소',
+    SIGNING_CANCELED: '서명 취소',
+  })[status];
+
+  return (
+    <section className="center-signed-documents">
+      <header>
+        <div><span>MODUSIGN ARCHIVE</span><h3>전자서명 원본 보관</h3></div>
+        <strong>{files.length}개 원본</strong>
+      </header>
+      {loading ? (
+        <p className="center-document-state">서명 상태와 보관 파일을 확인하는 중입니다…</p>
+      ) : error ? (
+        <p className="center-document-state error">{error}</p>
+      ) : documents.length === 0 ? (
+        <p className="center-document-state">아직 모두싸인 전자서명 요청이 생성되지 않았습니다.</p>
+      ) : (
+        <>
+          <div className="center-signature-statuses">
+            {documents.map((document) => (
+              <div key={document.id}>
+                <span>문서 #{document.id}</span>
+                <strong className={document.status === 'SIGNED' ? 'signed' : ''}>
+                  {statusLabel(document.status)}
+                </strong>
+                <small>{document.signedAt ? `서명일 ${document.signedAt.slice(0, 10)}` : document.volunteerTitle}</small>
+              </div>
+            ))}
+          </div>
+          {files.length === 0 ? (
+            <p className="center-document-state">서명이 완료되면 서명 PDF와 감사추적증명서가 이곳에 보관됩니다.</p>
+          ) : (
+            <div className="center-real-file-list">
+              {files.map((file) => (
+                <div key={`${file.documentId}-${file.id}`}>
+                  <span>{file.fileType === 'SIGNED_DOCUMENT' ? 'PDF' : 'AUDIT'}</span>
+                  <div>
+                    <strong>{file.fileType === 'SIGNED_DOCUMENT' ? '서명 완료 문서' : '감사추적증명서'}</strong>
+                    <small>{(file.sizeBytes / 1024).toFixed(1)} KB · SHA-256 {file.sha256.slice(0, 12)}…</small>
+                  </div>
+                  <button type="button" onClick={() => openFile(file)} disabled={openingFileId === file.id}>
+                    {openingFileId === file.id ? '여는 중…' : '실제 PDF 열기'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const navigate = useNavigate();
   const route = useParams()['*'] ?? '';
@@ -349,13 +456,6 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const [applicationPostId, setApplicationPostId] = useState<number | null>(null);
   const [applicationPublicId, setApplicationPublicId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
-  const [selectedDocModal, setSelectedDocModal] = useState<{
-    docName: string;
-    applicantName: string;
-    applicantEmail: string;
-    postTitle: string;
-    appliedAt: string;
-  } | null>(null);
   const [creatingPost, setCreatingPost] = useState(false);
   const [newPost, setNewPost] = useState({
     type: 'VOLUNTEER',
@@ -1044,23 +1144,12 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
             <div className="applicant-document-row" key={document}>
               <span>{String(index + 1).padStart(2, '0')}</span>
               <strong>{document}</strong>
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedDocModal({
-                    docName: document,
-                    applicantName: viewingApplicant.name,
-                    applicantEmail: viewingApplicant.email,
-                    postTitle: viewingApplicant.postTitle,
-                    appliedAt: viewingApplicant.appliedAt,
-                  })
-                }
-              >
-                서류 열람
-              </button>
+              <span className="document-metadata-label">신청 항목</span>
             </div>
           ))}
         </section>
+
+        <CenterSignedDocumentPanel applicationPublicId={viewingApplicant.publicId} />
 
         {viewingApplicant.status === '검토 대기' && (
           <button
@@ -1267,24 +1356,12 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
                       <div key={`${document}-${index}`}>
                         <span>{String(index + 1).padStart(2, '0')}</span>
                         <strong>{document}</strong>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedDocModal({
-                              docName: document,
-                              applicantName: selectedApplication.name,
-                              applicantEmail: selectedApplication.email,
-                              postTitle: selectedApplication.postTitle,
-                              appliedAt: selectedApplication.appliedAt,
-                            })
-                          }
-                        >
-                          서류 열람
-                        </button>
+                        <span className="document-metadata-label">신청 항목</span>
                       </div>
                     ))
                   )}
                 </div>
+                <CenterSignedDocumentPanel applicationPublicId={selectedApplication.publicId} />
                 <div className="center-application-actions">
                   <span>
                     신청일 {selectedApplication.appliedAt} · 연락처 {selectedApplication.phone}
@@ -1307,98 +1384,6 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
       )}
       {notice && <div className="center-notice">{notice}</div>}
 
-      {/* 관리자 / 센터 관리자 전용 제출 서류 열람 모달 팝업 */}
-      {selectedDocModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 9999, padding: '20px'
-        }}>
-          <div style={{
-            background: '#fff', width: '100%', maxWidth: '640px', maxHeight: '90vh',
-            borderRadius: '16px', border: '3px solid #ff70a6', padding: '28px', overflowY: 'auto',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)', textAlign: 'left', position: 'relative'
-          }}>
-            {/* 검증 직인 인장 */}
-            <div style={{
-              position: 'absolute', top: '24px', right: '24px',
-              width: '82px', height: '82px', borderRadius: '50%',
-              border: '3px double #ff3b30', color: '#ff3b30', display: 'flex',
-              flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-              transform: 'rotate(-12deg)', fontWeight: 'bold', fontSize: '11px', textAlign: 'center',
-              background: 'rgba(255,255,255,0.95)'
-            }}>
-              <span>픽셀케어</span>
-              <span>모두싸인</span>
-              <span>[서류검증]</span>
-            </div>
-
-            <h2 style={{ textAlign: 'center', fontSize: '20px', color: '#111', marginBottom: '8px' }}>
-              📜 {selectedDocModal.docName}
-            </h2>
-            <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '20px' }}>
-              모두싸인(Modusign API v2) 법적 효력이 있는 신청자 제출 전자서명 서류입니다.
-            </p>
-
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
-              <tbody>
-                <tr>
-                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd', width: '110px' }}>문서 인증번호</th>
-                  <td style={{ padding: '8px 12px', border: '1px solid #ddd', fontFamily: 'monospace' }}>MODU-2026-CLM-0814</td>
-                </tr>
-                <tr>
-                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>모집 프로그램</th>
-                  <td style={{ padding: '8px 12px', border: '1px solid #ddd', fontWeight: 'bold' }}>{selectedDocModal.postTitle}</td>
-                </tr>
-                <tr>
-                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>신청자 성명</th>
-                  <td style={{ padding: '8px 12px', border: '1px solid #ddd' }}>{selectedDocModal.applicantName} ({selectedDocModal.applicantEmail})</td>
-                </tr>
-                <tr>
-                  <th style={{ background: '#f5f5f5', padding: '8px 12px', border: '1px solid #ddd' }}>신청/제출 일시</th>
-                  <td style={{ padding: '8px 12px', border: '1px solid #ddd', color: '#2ec4b6', fontWeight: 'bold' }}>
-                    {selectedDocModal.appliedAt || '2026. 07. 30'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div style={{ background: '#faf0ca', borderRadius: '10px', padding: '16px', marginBottom: '20px', border: '1.5px solid #111', fontSize: '13.5px', lineHeight: 1.6 }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#111' }}>📌 서약 및 약정 내용 본문</h4>
-              <p style={{ margin: 0, color: '#333' }}>
-                1. 본 신청자는 <b>[{selectedDocModal.postTitle}]</b> 활동에 지침을 성실히 준수하며 안전 수칙을 지킬 것을 약정합니다.<br/>
-                2. 개인정보 수집·이용 및 주관기관 정보 제공 동의와 모두싸인 전자서명 완료 상태를 확인할 수 있습니다.
-              </p>
-            </div>
-
-            {/* 자필 서명 보존 박스 */}
-            <div style={{
-              background: '#ffffff', border: '2px dashed #ff70a6', borderRadius: '12px',
-              padding: '16px', textAlign: 'center', marginBottom: '24px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>
-                [보존된 신청자 자필 전자서명]
-              </span>
-              <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif' }}>
-                ✍️ {selectedDocModal.applicantName} (자필 서명 완료됨)
-              </span>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <button
-                type="button"
-                style={{
-                  padding: '10px 24px', background: '#ff70a6', color: '#fff',
-                  border: '2px solid #111', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
-                }}
-                onClick={() => setSelectedDocModal(null)}
-              >
-                열람 닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </article>
   );
 };

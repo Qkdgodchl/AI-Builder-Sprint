@@ -78,3 +78,10 @@ export const fetchMyClmDocuments = async (_email?: string): Promise<ClmDocumentD
     return [];
   }
 };
+
+export const fetchManagerApplicationClmDocuments = (
+  applicationPublicId: string,
+): Promise<ClmDocumentDto[]> =>
+  apiRequest<ClmDocumentDto[]>(
+    `/api/v1/manager/applications/${applicationPublicId}/clm-documents`,
+  );

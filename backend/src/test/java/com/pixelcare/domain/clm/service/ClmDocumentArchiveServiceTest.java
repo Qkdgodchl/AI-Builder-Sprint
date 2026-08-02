@@ -25,7 +25,7 @@ class ClmDocumentArchiveServiceTest {
     @Test
     void storesSignedDocumentAndAuditTrailWithHashes() throws Exception {
         ClmDocumentFileRepository fileRepository = mock(ClmDocumentFileRepository.class);
-        ClmDocumentRepository documentRepository = mock(ClmDocumentRepository.class);
+        ClmDocumentAccessService accessService = mock(ClmDocumentAccessService.class);
         ModusignApiClient apiClient = mock(ModusignApiClient.class);
         byte[] signedPdf = "signed-pdf".getBytes(StandardCharsets.UTF_8);
         byte[] auditPdf = "audit-pdf".getBytes(StandardCharsets.UTF_8);
@@ -40,7 +40,7 @@ class ClmDocumentArchiveServiceTest {
         ReflectionTestUtils.setField(document, "id", 33L);
 
         ClmDocumentArchiveService service = new ClmDocumentArchiveService(
-                fileRepository, documentRepository, apiClient, tempDir.toString()
+                fileRepository, accessService, apiClient, tempDir.toString()
         );
         service.archiveCompletedFiles(document);
 
@@ -57,7 +57,7 @@ class ClmDocumentArchiveServiceTest {
     @Test
     void duplicateWebhookDoesNotDownloadAgain() {
         ClmDocumentFileRepository fileRepository = mock(ClmDocumentFileRepository.class);
-        ClmDocumentRepository documentRepository = mock(ClmDocumentRepository.class);
+        ClmDocumentAccessService accessService = mock(ClmDocumentAccessService.class);
         ModusignApiClient apiClient = mock(ModusignApiClient.class);
         when(fileRepository.existsByClmDocumentIdAndFileTypeAndIsDeletedFalse(33L, "SIGNED_DOCUMENT"))
                 .thenReturn(true);
@@ -68,7 +68,7 @@ class ClmDocumentArchiveServiceTest {
         );
         ReflectionTestUtils.setField(document, "id", 33L);
         ClmDocumentArchiveService service = new ClmDocumentArchiveService(
-                fileRepository, documentRepository, apiClient, tempDir.toString()
+                fileRepository, accessService, apiClient, tempDir.toString()
         );
 
         service.archiveCompletedFiles(document);
