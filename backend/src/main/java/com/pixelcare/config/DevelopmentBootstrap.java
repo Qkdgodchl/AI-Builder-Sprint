@@ -14,8 +14,11 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -127,57 +130,43 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 int offset = 0;
                 for (OpportunitySeed seed : EXTRA_OPPORTUNITIES) {
                         offset++;
-                        boolean volunteer = "VOLUNTEER".equals(seed.type());
-                        // 봉사 시간 집계가 활동 시각에서 나오므로 공고마다 4시간 일정을 부여한다.
-                        jdbcTemplate.update(
-                                        """
-                                                        INSERT INTO opportunities (
-                                                            organization_id, opportunity_type, category, title, summary, description,
-                                                            region, location, participation_mode, capacity, target_amount, current_amount,
-                                                            recruitment_end_at, activity_start_at, activity_end_at,
-                                                            status, created_by, published_at
-                                                        )
-                                                        SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'OFFLINE', ?, ?, ?,
-                                                               %s, %s, %s,
-                                                               'PUBLISHED', ?, CURRENT_TIMESTAMP
-                                                        FROM DUAL
-                                                        WHERE NOT EXISTS (SELECT 1 FROM opportunities o WHERE o.title = ?)
-                                                        """
-                                                        .formatted(
-                                                                        volunteer ? "DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)"
-                                                                                        : "NULL",
-                                                                        volunteer
-                                                                                        ? "DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), INTERVAL 9 HOUR)"
-                                                                                        : "NULL",
-                                                                        volunteer
-                                                                                        ? "DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), INTERVAL 13 HOUR)"
-                                                                                        : "NULL"),
-                                        buildExtraOpportunityArgs(seed, managerId, organizationId, offset, volunteer));
-                }
-        }
+                        Integer count = jdbcTemplate.queryForObject(
+                                        "SELECT COUNT(*) FROM opportunities WHERE title = ?",
+                                        Integer.class, seed.title());
+                        if (count != null && count > 0) {
+                                continue;
+                        }
 
-        private Object[] buildExtraOpportunityArgs(
-                        OpportunitySeed seed, Long managerId, Long organizationId, int offset, boolean volunteer) {
-                List<Object> args = new java.util.ArrayList<>(List.of(
-                                organizationId,
-                                seed.type(),
-                                seed.category(),
-                                seed.title(),
-                                seed.organizer(),
-                                seed.title() + " 프로그램의 상세 안내입니다."));
-                args.add(seed.region());
-                args.add(seed.location());
-                args.add(seed.capacity());
-                args.add(seed.targetAmount());
-                args.add(seed.currentAmount() == null ? 0L : seed.currentAmount());
-                if (volunteer) {
-                        args.add(offset + 6);
-                        args.add(offset + 9);
-                        args.add(offset + 9);
+                        boolean volunteer = "VOLUNTEER".equals(seed.type());
+                        LocalDate today = LocalDate.now();
+                        Timestamp recruitmentEndAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 6).atStartOfDay()) : null;
+                        Timestamp activityStartAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 9).atTime(9, 0)) : null;
+                        Timestamp activityEndAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 9).atTime(13, 0)) : null;
+
+                        jdbcTemplate.update("""
+                                        INSERT INTO opportunities (
+                                            organization_id, opportunity_type, category, title, summary, description,
+                                            region, location, participation_mode, capacity, target_amount, current_amount,
+                                            recruitment_end_at, activity_start_at, activity_end_at,
+                                            status, created_by, published_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OFFLINE', ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, CURRENT_TIMESTAMP)
+                                        """,
+                                        organizationId,
+                                        seed.type(),
+                                        seed.category(),
+                                        seed.title(),
+                                        seed.organizer(),
+                                        seed.title() + " 프로그램의 상세 안내입니다.",
+                                        seed.region(),
+                                        seed.location(),
+                                        seed.capacity(),
+                                        seed.targetAmount(),
+                                        seed.currentAmount() == null ? 0L : seed.currentAmount(),
+                                        recruitmentEndAt,
+                                        activityStartAt,
+                                        activityEndAt,
+                                        managerId);
                 }
-                args.add(managerId);
-                args.add(seed.title());
-                return args.toArray();
         }
 
         /**
@@ -217,9 +206,9 @@ public class DevelopmentBootstrap implements CommandLineRunner {
         private void alignDemoFundingTargets() {
                 jdbcTemplate.update("""
                                 UPDATE opportunities
-                                SET target_amount = 300000 + (id %% 3) * 100000
+                                SET target_amount = 300000 + MOD(id, 3) * 100000
                                 WHERE target_amount IS NOT NULL AND target_amount > 0
-                                """.formatted());
+                                """);
         }
 
         /**
@@ -275,16 +264,23 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         return;
 
                 // 봉사 시간은 공고의 활동 시각에서 계산하므로 비어 있는 공고를 4시간 일정으로 채운다.
-                jdbcTemplate.update("""
-                                UPDATE opportunities
-                                SET recruitment_end_at = DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 5 DAY),
-                                    activity_start_at = DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 8 DAY),
-                                                                 INTERVAL 9 HOUR),
-                                    activity_end_at = DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 8 DAY),
-                                                               INTERVAL 13 HOUR)
+                List<Long> volIds = jdbcTemplate.query("""
+                                SELECT id FROM opportunities
                                 WHERE organization_id = ? AND opportunity_type = 'VOLUNTEER'
                                   AND is_deleted = FALSE AND activity_start_at IS NULL
-                                """, organizationId);
+                                """, (rs, rowNum) -> rs.getLong("id"), organizationId);
+                LocalDate today = LocalDate.now();
+                for (Long id : volIds) {
+                        long daysOffset = id % 20;
+                        Timestamp recruitmentEndAt = Timestamp.valueOf(today.plusDays(daysOffset + 5).atStartOfDay());
+                        Timestamp activityStartAt = Timestamp.valueOf(today.plusDays(daysOffset + 8).atTime(9, 0));
+                        Timestamp activityEndAt = Timestamp.valueOf(today.plusDays(daysOffset + 8).atTime(13, 0));
+                        jdbcTemplate.update("""
+                                        UPDATE opportunities
+                                        SET recruitment_end_at = ?, activity_start_at = ?, activity_end_at = ?
+                                        WHERE id = ?
+                                        """, recruitmentEndAt, activityStartAt, activityEndAt, id);
+                }
 
                 List<Long> volunteerOpportunities = opportunityIds(organizationId, true);
                 List<Long> donationOpportunities = opportunityIds(organizationId, false);
@@ -338,14 +334,27 @@ public class DevelopmentBootstrap implements CommandLineRunner {
          * 초기 시드에는 이 값이 없어 캘린더가 비어 보이므로 활동 일정에서 채운다.
          */
         private void backfillParticipationDates() {
-                jdbcTemplate.update("""
-                                UPDATE applications a
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                                SELECT a.id AS app_id, o.activity_start_at AS act_start
+                                FROM applications a
                                 JOIN opportunities o ON o.id = a.opportunity_id
-                                SET a.participation_date = COALESCE(
-                                        DATE(o.activity_start_at),
-                                        DATE_SUB(CURRENT_DATE, INTERVAL (a.id %% 28) DAY))
                                 WHERE a.participation_date IS NULL
-                                """.formatted());
+                                """);
+                for (Map<String, Object> row : rows) {
+                        Long appId = ((Number) row.get("app_id")).longValue();
+                        Object actStartObj = row.get("act_start");
+                        LocalDate participationDate;
+                        if (actStartObj instanceof Timestamp ts) {
+                                participationDate = ts.toLocalDateTime().toLocalDate();
+                        } else if (actStartObj instanceof LocalDateTime ldt) {
+                                participationDate = ldt.toLocalDate();
+                        } else if (actStartObj instanceof Date d) {
+                                participationDate = d.toLocalDate();
+                        } else {
+                                participationDate = LocalDate.now().minusDays(appId % 28);
+                        }
+                        jdbcTemplate.update("UPDATE applications SET participation_date = ? WHERE id = ?", Date.valueOf(participationDate), appId);
+                }
         }
 
         private boolean userExists(String email) {
@@ -414,6 +423,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 }, keyHolder);
                 Long commitmentId = keyHolder.getKey().longValue();
 
+                jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = 1", commitmentId);
                 jdbcTemplate.update("""
                                 INSERT INTO commitment_versions (
                                     commitment_id, version_no, terms_json, rendered_content, change_summary, created_by
@@ -488,13 +498,12 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 } else {
                         userId = existing.get(0);
                 }
-                jdbcTemplate.update("""
-                                INSERT INTO user_roles (user_id, role)
-                                SELECT ?, ?
-                                WHERE NOT EXISTS (
-                                    SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?
-                                )
-                                """, userId, role, userId, role);
+                Integer roleCount = jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM user_roles WHERE user_id = ? AND role = ?",
+                                Integer.class, userId, role);
+                if (roleCount == null || roleCount == 0) {
+                        jdbcTemplate.update("INSERT INTO user_roles (user_id, role) VALUES (?, ?)", userId, role);
+                }
                 jdbcTemplate.update(
                                 "UPDATE users SET role = ?, password_hash = COALESCE(password_hash, ?) WHERE id = ?",
                                 role,
@@ -635,6 +644,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 "MONTHLY".equals(frequency) ? "매월 정기" : "매년 정기",
                                 effectiveFrom,
                                 renewalDueAt);
+                jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = 1", commitmentId);
                 jdbcTemplate.update("""
                                 INSERT INTO commitment_versions (
                                     commitment_id, version_no, terms_json, rendered_content,
