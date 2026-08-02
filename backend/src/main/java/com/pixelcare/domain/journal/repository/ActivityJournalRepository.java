@@ -60,7 +60,7 @@ public class ActivityJournalRepository {
 
     public String createNote(
             Long applicationId, String authorType, Long authorUserId,
-            LocalDate activityDate, String content, List<Long> fileIds
+            LocalDate activityDate, String content, List<Long> fileIds, boolean shared
     ) {
         String publicId = UUID.randomUUID().toString();
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -68,15 +68,16 @@ public class ActivityJournalRepository {
             PreparedStatement statement = connection.prepareStatement("""
                     INSERT INTO activity_notes (
                         public_id, application_id, author_type, author_user_id,
-                        activity_date, content
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        visibility, activity_date, content
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, publicId);
             statement.setLong(2, applicationId);
             statement.setString(3, authorType);
             statement.setLong(4, authorUserId);
-            statement.setDate(5, Date.valueOf(activityDate));
-            statement.setString(6, content);
+            statement.setString(5, shared ? "SHARED" : "PRIVATE");
+            statement.setDate(6, Date.valueOf(activityDate));
+            statement.setString(7, content);
             return statement;
         }, keyHolder);
         Long noteId = keyHolder.getKey().longValue();
@@ -99,13 +100,13 @@ public class ActivityJournalRepository {
         List<Object[]> rows = jdbcTemplate.query("""
                 SELECT a.public_id AS application_public_id, a.status,
                        o.id AS opportunity_id, o.title, org.name AS organization_name,
-                       COALESCE(a.participation_date, DATE(o.activity_start_at), DATE(a.submitted_at)) AS activity_date
+                       a.participation_date AS activity_date
                 FROM applications a
                 JOIN opportunities o ON o.id = a.opportunity_id
                 JOIN organizations org ON org.id = o.organization_id
                 WHERE a.applicant_user_id = ?
-                  AND COALESCE(a.participation_date, DATE(o.activity_start_at), DATE(a.submitted_at))
-                      BETWEEN ? AND ?
+                  AND a.participation_date IS NOT NULL
+                  AND a.participation_date BETWEEN ? AND ?
                 ORDER BY activity_date DESC
                 """, (rs, rowNum) -> new Object[]{
                 rs.getString("application_public_id"),
@@ -126,18 +127,19 @@ public class ActivityJournalRepository {
                     (String) row[4],
                     (String) row[1],
                     (LocalDate) row[5],
-                    findNotes(applicationPublicId)
+                    findNotes(applicationPublicId, userId)
             ));
         }
         return entries;
     }
 
-    public List<ActivityNoteDtos.Note> findNotes(String applicationPublicId) {
+    /** 개인 메모(PRIVATE)는 작성자 본인에게만 보인다. */
+    public List<ActivityNoteDtos.Note> findNotes(String applicationPublicId, Long viewerUserId) {
         Map<String, ActivityNoteDtos.Note> byPublicId = new LinkedHashMap<>();
         Map<String, List<ActivityNoteDtos.NotePhoto>> photos = new LinkedHashMap<>();
 
         jdbcTemplate.query("""
-                SELECT n.public_id, n.author_type, n.activity_date, n.content, n.created_at,
+                SELECT n.public_id, n.author_type, n.visibility, n.activity_date, n.content, n.created_at,
                        u.nickname AS author_name,
                        f.stored_file_id, sf.original_name
                 FROM activity_notes n
@@ -146,6 +148,7 @@ public class ActivityJournalRepository {
                 LEFT JOIN activity_note_files f ON f.activity_note_id = n.id
                 LEFT JOIN stored_files sf ON sf.id = f.stored_file_id
                 WHERE a.public_id = ? AND n.is_deleted = FALSE
+                  AND (n.visibility = 'SHARED' OR n.author_user_id = ?)
                 ORDER BY n.created_at ASC, f.display_order ASC
                 """, rs -> {
             String publicId = rs.getString("public_id");
@@ -158,17 +161,18 @@ public class ActivityJournalRepository {
             byPublicId.putIfAbsent(publicId, new ActivityNoteDtos.Note(
                     publicId,
                     rs.getString("author_type"),
+                    rs.getString("visibility"),
                     rs.getString("author_name"),
                     rs.getDate("activity_date").toLocalDate(),
                     rs.getString("content"),
                     List.of(),
                     rs.getTimestamp("created_at").toLocalDateTime()
             ));
-        }, applicationPublicId);
+        }, applicationPublicId, viewerUserId);
 
         List<ActivityNoteDtos.Note> notes = new ArrayList<>();
         byPublicId.forEach((publicId, note) -> notes.add(new ActivityNoteDtos.Note(
-                note.publicId(), note.authorType(), note.authorName(),
+                note.publicId(), note.authorType(), note.visibility(), note.authorName(),
                 note.activityDate(), note.content(),
                 photos.getOrDefault(publicId, List.of()), note.createdAt()
         )));

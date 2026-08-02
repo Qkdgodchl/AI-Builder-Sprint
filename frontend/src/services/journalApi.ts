@@ -8,6 +8,7 @@ export interface JournalPhoto {
 export interface JournalNote {
   publicId: string;
   authorType: 'CENTER' | 'USER';
+  visibility: 'SHARED' | 'PRIVATE';
   authorName: string;
   activityDate: string;
   content?: string;
@@ -29,7 +30,7 @@ export const fetchMyJournal = () => apiRequest<JournalEntry[]>('/api/v1/me/journ
 
 export const addMyNote = (
   applicationPublicId: string,
-  payload: { activityDate: string; content: string; fileIds?: number[] },
+  payload: { activityDate: string; content: string; fileIds?: number[]; shared: boolean },
 ) =>
   apiRequest<JournalNote[]>(`/api/v1/applications/${applicationPublicId}/notes`, {
     method: 'POST',

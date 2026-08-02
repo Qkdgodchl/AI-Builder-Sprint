@@ -55,9 +55,11 @@ public class ActivityJournalController {
         if (!application.applicantUserId().equals(user.id())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "본인 참여 내역에만 기록할 수 있습니다.");
         }
+        // 기본은 개인 메모. 명시적으로 공유를 선택했을 때만 센터가 볼 수 있다.
+        boolean shared = Boolean.TRUE.equals(body.shared());
         repository.createNote(application.applicationId(), "USER", user.id(),
-                body.activityDate(), body.content(), body.fileIds());
-        return ApiResponse.success(repository.findNotes(applicationPublicId));
+                body.activityDate(), body.content(), body.fileIds(), shared);
+        return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
     }
 
     /** 담당 센터가 참여자에게 남기는 사진과 코멘트. */
@@ -75,8 +77,8 @@ public class ActivityJournalController {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "담당 센터만 기록을 남길 수 있습니다.");
         }
         repository.createNote(application.applicationId(), "CENTER", user.id(),
-                body.activityDate(), body.content(), body.fileIds());
-        return ApiResponse.success(repository.findNotes(applicationPublicId));
+                body.activityDate(), body.content(), body.fileIds(), true);
+        return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
     }
 
     /** 참여자와 담당 센터 모두 같은 기록을 본다. */
@@ -92,6 +94,6 @@ public class ActivityJournalController {
         if (!allowed) {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "기록을 볼 권한이 없습니다.");
         }
-        return ApiResponse.success(repository.findNotes(applicationPublicId));
+        return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
     }
 }

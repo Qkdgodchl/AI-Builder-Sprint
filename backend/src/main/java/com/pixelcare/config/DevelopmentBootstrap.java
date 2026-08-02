@@ -73,6 +73,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
         alignDemoFundingTargets();
         seedRecurringCommitments(donorId, organizationId);
         seedCommunityActivity(organizationId);
+        backfillParticipationDates();
     }
 
     private record OpportunitySeed(
@@ -332,6 +333,21 @@ public class DevelopmentBootstrap implements CommandLineRunner {
             insertClmDocument(commitmentId, opportunityId, memberId, signed);
             if (signed) signedCount++;
         }
+    }
+
+    /**
+     * 다이어리는 참여 희망일을 기준으로 날짜를 잡는다.
+     * 초기 시드에는 이 값이 없어 캘린더가 비어 보이므로 활동 일정에서 채운다.
+     */
+    private void backfillParticipationDates() {
+        jdbcTemplate.update("""
+                UPDATE applications a
+                JOIN opportunities o ON o.id = a.opportunity_id
+                SET a.participation_date = COALESCE(
+                        DATE(o.activity_start_at),
+                        DATE_SUB(CURRENT_DATE, INTERVAL (a.id %% 28) DAY))
+                WHERE a.participation_date IS NULL
+                """.formatted());
     }
 
     private boolean userExists(String email) {

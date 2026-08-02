@@ -4,7 +4,7 @@ import {
   addMyNote,
   type JournalEntry,
 } from '../../services/journalApi';
-import { uploadPhoto, photoUrl } from '../../services/photoApi';
+import { uploadPhoto, photoUrl, photoDownloadUrl } from '../../services/photoApi';
 
 interface ActivityCalendarProps {
   showNotice: (message: string) => void;
@@ -28,6 +28,8 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
   const [draft, setDraft] = useState('');
   const [photo, setPhoto] = useState<{ id: number; name: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  // 기본은 나만 보는 메모. 필요할 때만 센터에 공유한다.
+  const [shareWithCenter, setShareWithCenter] = useState(false);
 
   const load = () => {
     fetchMyJournal()
@@ -79,6 +81,7 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
         activityDate: selectedDate,
         content: draft.trim(),
         fileIds: photo ? [photo.id] : [],
+        shared: shareWithCenter,
       });
       setDraft('');
       setPhoto(null);
@@ -96,11 +99,11 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
     setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + step, 1));
 
   return (
-    <section className="activity-calendar" aria-label="봉사 다이어리">
+    <section className="activity-calendar" aria-label="잇다 다이어리">
       <div className="user-panel-heading activity-calendar-heading">
         <div>
           <span>MY DIARY</span>
-          <h3>봉사 다이어리</h3>
+          <h3>잇다 다이어리</h3>
         </div>
         <div className="activity-calendar-nav">
           <button type="button" onClick={() => moveMonth(-1)} aria-label="이전 달">←</button>
@@ -159,17 +162,21 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
                   >
                     <div className="activity-note-meta">
                       <em>{note.authorType === 'CENTER' ? '센터 기록' : '내 기록'}</em>
+                      {note.authorType === 'USER' && (
+                        <b className={`activity-note-visibility ${note.visibility.toLowerCase()}`}>
+                          {note.visibility === 'PRIVATE' ? '나만 보기' : '센터 공유'}
+                        </b>
+                      )}
                       <span>{note.authorName}</span>
                     </div>
                     {note.content && <p>{note.content}</p>}
                     {note.photos.length > 0 && (
                       <div className="activity-note-photos">
                         {note.photos.map((item) => (
-                          <img
-                            key={item.fileId}
-                            src={photoUrl(item.fileId)}
-                            alt={item.originalName}
-                          />
+                          <figure key={item.fileId}>
+                            <img src={photoUrl(item.fileId)} alt={item.originalName} />
+                            <a href={photoDownloadUrl(item.fileId)}>사진 저장</a>
+                          </figure>
                         ))}
                       </div>
                     )}
@@ -182,7 +189,11 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
                   rows={3}
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder="이 날의 기억을 남겨보세요."
+                  placeholder={
+                    shareWithCenter
+                      ? '센터에도 전달될 내용입니다.'
+                      : '나만 보는 메모입니다. 센터에는 전달되지 않아요.'
+                  }
                 />
                 <div className="activity-note-composer-actions">
                   <input
@@ -191,6 +202,14 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
                     onChange={(event) => void attachPhoto(event.target.files?.[0])}
                   />
                   {photo && <small>{photo.name}</small>}
+                  <label className="activity-note-share">
+                    <input
+                      type="checkbox"
+                      checked={shareWithCenter}
+                      onChange={(event) => setShareWithCenter(event.target.checked)}
+                    />
+                    센터에도 공유
+                  </label>
                   <button
                     type="button"
                     disabled={saving || (!draft.trim() && !photo)}

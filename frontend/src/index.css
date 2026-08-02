@@ -8563,3 +8563,47 @@ strong, small, em, span, label, button, a {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* 기록 공개 범위와 사진 저장 */
+.activity-note-visibility {
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.activity-note-visibility.private {
+  background: #ececE8;
+  color: #6f6f68;
+}
+
+.activity-note-visibility.shared {
+  background: #e6f2ec;
+  color: #237a57;
+}
+
+.activity-note-photos figure {
+  margin: 0;
+  text-align: center;
+}
+
+.activity-note-photos figure a {
+  display: block;
+  margin-top: 6px;
+  color: #6f6f68;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.activity-note-photos figure a:hover {
+  color: var(--magazine-accent);
+}
+
+.activity-note-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6f6f68;
+  font-size: 11px;
+  font-weight: 700;
+}

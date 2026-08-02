@@ -14,7 +14,9 @@ public final class ActivityNoteDtos {
     public record CreateRequest(
             @NotNull LocalDate activityDate,
             String content,
-            List<Long> fileIds
+            List<Long> fileIds,
+            /** 참여자 기록에만 쓰인다. false면 센터에 공유하지 않는 개인 메모. */
+            Boolean shared
     ) {}
 
     public record NotePhoto(Long fileId, String originalName) {}
@@ -22,6 +24,7 @@ public final class ActivityNoteDtos {
     public record Note(
             String publicId,
             String authorType,
+            String visibility,
             String authorName,
             LocalDate activityDate,
             String content,

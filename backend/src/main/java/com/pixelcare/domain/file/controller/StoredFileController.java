@@ -30,11 +30,18 @@ public class StoredFileController {
     /** 커뮤니티·활동 기록 사진은 목록에 바로 박히므로 로그인 없이 조회한다. */
     @GetMapping("/{fileId}/image")
     public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> image(
-            @PathVariable Long fileId
+            @PathVariable Long fileId,
+            @RequestParam(defaultValue = "false") boolean download
     ) {
         StoredFileReader.Content content = reader.readPublicImage(fileId);
+        // 상대가 받은 사진을 그대로 저장할 수 있도록 내려받기 모드를 지원한다.
+        String disposition = (download ? "attachment" : "inline")
+                + "; filename*=UTF-8''"
+                + java.net.URLEncoder.encode(content.filename(), java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("+", "%20");
         return org.springframework.http.ResponseEntity.ok()
                 .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, content.contentType())
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                 .body(content.resource());
     }

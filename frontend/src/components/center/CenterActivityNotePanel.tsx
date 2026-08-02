@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { addCenterNote, type JournalNote } from '../../services/journalApi';
-import { uploadPhoto, photoUrl } from '../../services/photoApi';
+import { uploadPhoto, photoUrl, photoDownloadUrl } from '../../services/photoApi';
 import { apiRequest } from '../../services/apiClient';
 
 interface CenterActivityNotePanelProps {
@@ -52,7 +52,7 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
       setNotes(updated);
       setContent('');
       setPhoto(null);
-      setStatus('참여자의 다이어리에 기록을 남겼습니다.');
+      setStatus('참여자의 잇다 다이어리에 기록을 남겼습니다.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : '기록 저장에 실패했습니다.');
     } finally {
@@ -65,7 +65,7 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
       <div className="center-note-heading">
         <span>ACTIVITY RECORD</span>
         <h3>참여자에게 남기는 기록</h3>
-        <p>여기 남긴 사진과 코멘트는 참여자의 봉사 다이어리에 그대로 표시됩니다.</p>
+        <p>여기 남긴 사진과 코멘트는 참여자의 잇다 다이어리에 그대로 표시됩니다.</p>
       </div>
 
       {notes.length > 0 && (
@@ -83,7 +83,10 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
               {note.photos.length > 0 && (
                 <div className="activity-note-photos">
                   {note.photos.map((item) => (
-                    <img key={item.fileId} src={photoUrl(item.fileId)} alt={item.originalName} />
+                    <figure key={item.fileId}>
+                      <img src={photoUrl(item.fileId)} alt={item.originalName} />
+                      <a href={photoDownloadUrl(item.fileId)}>사진 저장</a>
+                    </figure>
                   ))}
                 </div>
               )}
