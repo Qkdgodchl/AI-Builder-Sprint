@@ -15,7 +15,9 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://pg-278ea08-dropcast.i.aivencloud.com:21886/defaultdb?sslmode=require&sslfactory=org.postgresql.ssl.NonValidatingFactory}
     username: ${SPRING_DATASOURCE_USERNAME:avnadmin}
     password: ${SPRING_DATASOURCE_PASSWORD:}
-    driver-class-name: org.postgresql.Driver
+    # 배포는 PostgreSQL이고 로컬은 아직 MySQL이다.
+    # 드라이버가 고정이면 로컬에서 주소만 바꿔도 뜨지 않으므로 덮을 수 있게 둔다.
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
     hikari:
       maximum-pool-size: 5
       connection-timeout: 30000
@@ -26,14 +28,14 @@ spring:
     out-of-order: true
     locations: classpath:db/migration
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    database-platform: ${SPRING_JPA_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
     hibernate:
       ddl-auto: update
     open-in-view: false
     show-sql: ${SPRING_JPA_SHOW_SQL:false}
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: ${SPRING_JPA_DIALECT:org.hibernate.dialect.PostgreSQLDialect}
         temp:
           use_jdbc_metadata_defaults: false
         format_sql: true
