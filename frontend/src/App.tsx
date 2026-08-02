@@ -13,6 +13,8 @@ import { ManagerApplicationPage } from './components/user/ManagerApplicationPage
 import { MyPage } from './components/user/MyPage';
 import { MyCenterPage } from './components/center/MyCenterPage';
 import { ManagementPage } from './components/operator/ManagementPage';
+import { HomePage } from './components/home/HomePage';
+import { GoodNewsPage } from './components/news/GoodNewsPage';
 import { playBeep } from './services/soundFx';
 import { logout as logoutApi } from './services/authApi';
 import type { SessionUser } from './types';
@@ -121,11 +123,12 @@ export function App() {
 
       <main>
         <Routes>
-          <Route path="/" element={<Navigate to="/volunteer" replace />} />
+          <Route path="/" element={<HomePage currentUser={currentUser} onLogin={() => setIsAuthModalOpen(true)} />} />
           <Route path="/volunteer/*" element={<VolunteerCatalog currentUser={currentUser} showToast={triggerToast} />} />
           <Route path="/community" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/community/posts/:id" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
+          <Route path="/news" element={<GoodNewsPage />} />
           <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
           <Route
             path="/my-page/*"

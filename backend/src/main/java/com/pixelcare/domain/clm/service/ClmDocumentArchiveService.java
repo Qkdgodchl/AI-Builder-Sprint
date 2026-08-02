@@ -30,18 +30,18 @@ public class ClmDocumentArchiveService {
     private static final String AUDIT_TRAIL = "AUDIT_TRAIL";
 
     private final ClmDocumentFileRepository fileRepository;
-    private final ClmDocumentRepository documentRepository;
+    private final ClmDocumentAccessService accessService;
     private final ModusignApiClient modusignApiClient;
     private final Path archivePath;
 
     public ClmDocumentArchiveService(
             ClmDocumentFileRepository fileRepository,
-            ClmDocumentRepository documentRepository,
+            ClmDocumentAccessService accessService,
             ModusignApiClient modusignApiClient,
             @Value("${app.storage.path:storage}") String storagePath
     ) {
         this.fileRepository = fileRepository;
-        this.documentRepository = documentRepository;
+        this.accessService = accessService;
         this.modusignApiClient = modusignApiClient;
         this.archivePath = Path.of(storagePath).toAbsolutePath().normalize().resolve("clm");
     }
@@ -61,7 +61,7 @@ public class ClmDocumentArchiveService {
 
     @Transactional(readOnly = true)
     public List<ClmDocumentFileResponse> list(Long documentId, CurrentUser user) {
-        requireDocumentAccess(documentId, user);
+        accessService.requireAccess(documentId, user);
         return fileRepository.findByClmDocumentIdAndIsDeletedFalseOrderByIdAsc(documentId)
                 .stream()
                 .map(ClmDocumentFileResponse::from)
@@ -70,7 +70,7 @@ public class ClmDocumentArchiveService {
 
     @Transactional(readOnly = true)
     public DownloadedFile download(Long documentId, Long fileId, CurrentUser user) {
-        requireDocumentAccess(documentId, user);
+        accessService.requireAccess(documentId, user);
         ClmDocumentFile file = fileRepository.findByIdAndIsDeletedFalse(fileId)
                 .filter(found -> found.getClmDocumentId().equals(documentId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLM_FILE_NOT_FOUND", "보관된 전자서명 파일을 찾을 수 없습니다."));
@@ -100,15 +100,4 @@ public class ClmDocumentArchiveService {
         }
     }
 
-    private ClmDocument requireDocumentAccess(Long documentId, CurrentUser user) {
-        ClmDocument document = documentRepository.findByIdAndIsDeletedFalse(documentId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLM_DOCUMENT_NOT_FOUND", "전자서명 서류를 찾을 수 없습니다."));
-        // 센터 관리자는 향후 application/organization FK로 소속 센터가 확인될 때만 허용한다.
-        // 단순 MANAGER 역할만으로 전체 서류를 열면 타 센터 개인정보가 노출된다.
-        boolean staff = user.hasRole("OPERATOR") || user.hasRole("ROLE_OPERATOR");
-        if (!staff && !user.id().equals(document.getApplicantUserId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "CLM_DOCUMENT_FORBIDDEN", "해당 전자서명 서류를 볼 권한이 없습니다.");
-        }
-        return document;
-    }
 }

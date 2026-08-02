@@ -32,9 +32,10 @@ export const Header: React.FC<HeaderProps> = ({
   const location = useLocation();
 
   const navigation: NavigationItem[] = [
-    { label: 'HOME', path: '/ai' },
+    { label: 'HOME', path: '/' },
     { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
     { label: 'COMMUNITY', path: '/community' },
+    { label: 'GOOD NEWS', path: '/news' },
     { label: 'MY PAGE', path: currentUser ? '/my-page' : '/roadmap' },
   ];
 
@@ -50,10 +51,13 @@ export const Header: React.FC<HeaderProps> = ({
     location.pathname.startsWith('/manager-application') ||
     location.pathname.startsWith('/my-centers') ||
     location.pathname.startsWith('/management') ||
-    location.pathname.startsWith('/my-page');
+    location.pathname.startsWith('/my-page') ||
+    location.pathname.startsWith('/news');
 
   const isPathActive = (path: string) => {
     if (path === '/community') return location.pathname.startsWith('/community');
+    if (path === '/') return location.pathname === '/';
+    if (path === '/news') return location.pathname.startsWith('/news');
     if (path === '/volunteer') return location.pathname.startsWith('/volunteer');
     if (path === '/my-centers') return location.pathname.startsWith('/my-centers');
     if (path === '/management') return location.pathname.startsWith('/management');
@@ -63,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className={`magazine-header ${usesContentDivider ? 'flush-content' : ''}`}>
       <div className="magazine-header-top">
-        <button className="brand-button" type="button" onClick={() => navigate('/volunteer')}>
+        <button className="brand-button" type="button" onClick={() => navigate('/')}>
           PIXEL CARE STUDIO
         </button>
 
@@ -100,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <h1 className="magazine-title" onClick={() => navigate('/volunteer')}>
+      <h1 className="magazine-title" onClick={() => navigate('/')}>
         PIXEL CARE MAGAZINE
       </h1>
 

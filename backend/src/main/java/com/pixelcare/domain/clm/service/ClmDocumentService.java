@@ -5,6 +5,7 @@ import com.pixelcare.domain.clm.dto.ClmSignRequestDto;
 import com.pixelcare.domain.clm.entity.ClmDocument;
 import com.pixelcare.domain.clm.repository.ClmDocumentRepository;
 import com.pixelcare.domain.clm.repository.ClmCommitmentRepository;
+import com.pixelcare.domain.clm.repository.ClmDocumentAccessRepository;
 import com.pixelcare.domain.clm.repository.WebhookEventRepository;
 import com.pixelcare.global.error.ApiException;
 import com.pixelcare.global.auth.CurrentUser;
@@ -23,17 +24,23 @@ public class ClmDocumentService {
     private final WebhookEventRepository webhookEventRepository;
     private final ModusignApiClient modusignApiClient;
     private final ClmDocumentArchiveService archiveService;
+    private final ClmDocumentAccessService accessService;
+    private final ClmDocumentAccessRepository accessRepository;
 
     public ClmDocumentService(ClmDocumentRepository clmDocumentRepository,
                               ClmCommitmentRepository commitmentRepository,
                               WebhookEventRepository webhookEventRepository,
                               ModusignApiClient modusignApiClient,
-                              ClmDocumentArchiveService archiveService) {
+                              ClmDocumentArchiveService archiveService,
+                              ClmDocumentAccessService accessService,
+                              ClmDocumentAccessRepository accessRepository) {
         this.clmDocumentRepository = clmDocumentRepository;
         this.commitmentRepository = commitmentRepository;
         this.webhookEventRepository = webhookEventRepository;
         this.modusignApiClient = modusignApiClient;
         this.archiveService = archiveService;
+        this.accessService = accessService;
+        this.accessRepository = accessRepository;
     }
 
     @Transactional
@@ -99,6 +106,24 @@ public class ClmDocumentService {
     }
 
     @Transactional
+    public List<ClmDocumentResponseDto> getManagerApplicationDocuments(
+            String applicationPublicId,
+            CurrentUser manager
+    ) {
+        List<Long> documentIds = accessRepository.findAccessibleDocumentIds(
+                manager.id(), applicationPublicId
+        );
+        return documentIds.stream()
+                .map(id -> clmDocumentRepository.findByIdAndIsDeletedFalse(id).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(document -> {
+                    synchronizeModusignStatus(document);
+                    return ClmDocumentResponseDto.fromEntity(document);
+                })
+                .toList();
+    }
+
+    @Transactional
     public void applyWebhookEvent(String eventId, String modusignDocumentId, String eventType, String payload) {
         if (!webhookEventRepository.start("MODUSIGN", eventId, eventType, payload)) return;
         try {
@@ -143,13 +168,7 @@ public class ClmDocumentService {
     }
 
     private ClmDocument findOwnedDocument(Long documentId, CurrentUser currentUser) {
-        ClmDocument doc = clmDocumentRepository.findByIdAndIsDeletedFalse(documentId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLM_DOCUMENT_NOT_FOUND", "전자서명 서류를 찾을 수 없습니다."));
-        boolean operator = currentUser.hasRole("OPERATOR") || currentUser.hasRole("ROLE_OPERATOR");
-        if (!operator && !currentUser.id().equals(doc.getApplicantUserId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "CLM_DOCUMENT_FORBIDDEN", "해당 전자서명 서류를 볼 권한이 없습니다.");
-        }
-        return doc;
+        return accessService.requireAccess(documentId, currentUser);
     }
 
     private String signatureState(String eventType) {
