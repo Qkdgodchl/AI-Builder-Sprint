@@ -62,9 +62,10 @@ public class WarmthService {
                 "SELECT temperature FROM users WHERE id = ?", BigDecimal.class, userId);
         if (current == null) return BigDecimal.ZERO;
 
+        // CURRENT_DATE로 쓴다. CURDATE()는 MySQL에만 있어 PostgreSQL에서 깨진다.
         BigDecimal earnedToday = jdbcTemplate.queryForObject("""
                 SELECT COALESCE(SUM(delta), 0) FROM warmth_events
-                WHERE user_id = ? AND created_at >= CURDATE()
+                WHERE user_id = ? AND created_at >= CURRENT_DATE
                 """, BigDecimal.class, userId);
         if (earnedToday == null) earnedToday = BigDecimal.ZERO;
 
@@ -76,9 +77,10 @@ public class WarmthService {
         granted = granted.setScale(1, RoundingMode.DOWN);
         if (granted.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
 
+        // created_at을 직접 넣는다. JPA가 만든 표에는 기본값이 없어 비워 두면 들어가지 않는다.
         jdbcTemplate.update(
-                "INSERT INTO warmth_events (user_id, reason, delta) VALUES (?, ?, ?)",
-                userId, reason.name(), granted);
+                "INSERT INTO warmth_events (user_id, reason, delta, created_at) VALUES (?, ?, ?, ?)",
+                userId, reason.name(), granted, java.sql.Timestamp.valueOf(java.time.LocalDateTime.now()));
         jdbcTemplate.update(
                 "UPDATE users SET temperature = LEAST(?, temperature + ?) WHERE id = ?",
                 MAX, granted, userId);
