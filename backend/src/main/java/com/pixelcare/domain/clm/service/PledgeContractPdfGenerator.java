@@ -243,6 +243,10 @@ public class PledgeContractPdfGenerator {
 
     private PdfFont loadKoreanFont() {
         String[] fontPaths = {
+            // 배포 컨테이너에 설치한 한글 폰트를 가장 먼저 본다.
+            // 여기서 못 찾으면 한글이 빠진 대체 폰트로 떨어져 약정서가 깨진다.
+            "/usr/share/fonts/noto/NotoSansCJK-Regular.ttc,0",
+            "/usr/share/fonts/noto/NotoSansCJK-Regular.ttc",
             "/System/Library/Fonts/Supplemental/AppleGothic.ttf",
             "/System/Library/Fonts/AppleSDGothicNeo.ttc",
             "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
@@ -252,7 +256,9 @@ public class PledgeContractPdfGenerator {
         };
         for (String path : fontPaths) {
             try {
-                if (new java.io.File(path).exists()) {
+                // ttc 묶음 폰트는 "파일,순번"으로 지정한다. 파일 존재 확인은 순번을 뗀 경로로 한다.
+                String filePath = path.contains(",") ? path.substring(0, path.lastIndexOf(',')) : path;
+                if (new java.io.File(filePath).exists()) {
                     return PdfFontFactory.createFont(path, PdfEncodings.IDENTITY_H, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
                 }
             } catch (Exception ignored) {}
@@ -304,20 +310,41 @@ public class PledgeContractPdfGenerator {
         return sanitizeText(s);
     }
 
+    /**
+     * 약정서에 실을 수 있는 문자만 남긴다.
+     *
+     * 배포 환경(alpine 컨테이너)에는 시스템 한글 폰트가 없어 CID 한글 폰트로 떨어지는데,
+     * 이 폰트는 한글·한자·아스키만 담고 있다. BMP 안이라도 ❤ ✨ 같은 기호나
+     * 이모지 뒤에 붙는 변형 선택자(U+FE0F)가 섞이면 글리프를 찾지 못해
+     * 약정서 생성이 통째로 실패한다. 그래서 범위를 지정해 남긴다.
+     */
     private String sanitizeText(String text) {
         if (text == null || text.isBlank()) return "-";
+        String normalized = text
+                .replace('‘', '\'').replace('’', '\'')
+                .replace('“', '"').replace('”', '"')
+                .replace('–', '-').replace('—', '-')
+                .replace("…", "...");
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < text.length(); ) {
-            int codePoint = text.codePointAt(i);
-            // BMP (Basic Multilingual Plane, U+0000 ~ U+FFFF) 범위 내 문자만 허용 (이모지 범주 방지)
-            if (codePoint <= 0xFFFF) {
-                sb.appendCodePoint(codePoint);
-            } else {
-                sb.append(" ");
-            }
-            i += Character.charCount(codePoint);
+        for (int i = 0; i < normalized.length(); ) {
+            int cp = normalized.codePointAt(i);
+            sb.append(isRenderable(cp) ? Character.toString(cp) : " ");
+            i += Character.charCount(cp);
         }
-        return sb.toString().trim();
+        // 걸러낸 자리에 공백이 여러 개 남으면 문장이 벌어져 보인다.
+        return sb.toString().replaceAll("\\s{2,}", " ").trim();
+    }
+
+    private boolean isRenderable(int cp) {
+        if (cp == '\n' || cp == '\t') return true;
+        if (cp >= 0x20 && cp <= 0x7E) return true;              // 아스키 인쇄 문자
+        if (cp >= 0xAC00 && cp <= 0xD7A3) return true;          // 한글 음절
+        if (cp >= 0x1100 && cp <= 0x11FF) return true;          // 한글 자모
+        if (cp >= 0x3130 && cp <= 0x318F) return true;          // 호환 자모
+        if (cp >= 0x4E00 && cp <= 0x9FFF) return true;          // 한자
+        if (cp >= 0x3000 && cp <= 0x303F) return true;          // 한중일 문장부호
+        if (cp >= 0xFF01 && cp <= 0xFF60) return true;          // 전각 영숫자·기호
+        return cp == 0x20A9;                                     // 원화 기호
     }
 
     private String resolveKoreanTitle(String type) {

@@ -123,6 +123,12 @@ public class GoodNewsService {
             saveSnapshot(region, fresh);
             return response(region, items, now, false, null, limit);
         } catch (RuntimeException error) {
+            // 어떤 단계에서 막혔는지 남긴다. 원인 없이 "불러오지 못했습니다"만 보면
+            // 차단인지, 지연인지, 응답 형식 문제인지 가릴 수가 없다.
+            Throwable cause = error.getCause() != null ? error.getCause() : error;
+            System.err.println("지역 선행 소식 수집 실패 [" + region + "] "
+                    + error.getClass().getSimpleName() + ": " + error.getMessage()
+                    + " / 원인 " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
             if (cached != null) {
                 return response(region, cached.items(), cached.fetchedAt(), true,
                         "뉴스 제공처 연결이 지연되어 마지막으로 수집한 소식을 보여드립니다.", limit);
