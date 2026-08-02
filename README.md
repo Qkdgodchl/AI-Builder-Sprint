@@ -3,6 +3,7 @@
 > **Upstage Solar LLM AI & CLM 전자서명 기반 AI 기부·봉사 커뮤니티 플랫폼**  
 > **AI Builder Sprint 2026** (부산대학교 APPTIVE 주최 / Upstage 후원)
 
+[![Vercel](https://img.shields.io/badge/Vercel-Live--Demo-000000?style=flat-square&logo=vercel&logoColor=white)](https://itdafront.vercel.app/)
 ![Java](https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
@@ -19,6 +20,12 @@
 | 데모 계정 | `manager@pixelcare.demo` / `Manager123!` (센터 관리자) |
 
 > 백엔드는 Render 무료 인스턴스라 접속이 없으면 절전 상태가 됩니다. 첫 요청은 응답까지 50초 남짓 걸릴 수 있습니다.
+
+---
+
+## 🌐 라이브 서비스 & 배포 주소 (Live Production URL)
+
+- 🚀 **실제 작동 서비스 웹 링크 (Vercel)**: [https://itdafront.vercel.app/](https://itdafront.vercel.app/)
 
 ---
 
@@ -95,13 +102,14 @@
 
 ## 🚀 4. 배포 / 데모 및 실행 가이드 (Deployment & Getting Started)
 
+### 🌐 라이브 프로덕션 배포 주소
+- **프론트엔드 배포 (Vercel)**: [https://itdafront.vercel.app/](https://itdafront.vercel.app/)
+- **백엔드 배포 (Render Cloud)**: PostgreSQL Native SQL Initialization 구축
+
 ### 🔑 로컬 부트스트랩 테스트 계정 안내
 - **센터 관리자 계정**: `manager@pixelcare.demo` / `Manager123!`
 - **운영진 계정**: `operator@pixelcare.local` / `Operator123!`
 - **일반 사용자 계정**: `donor@pixelcare.demo` / `User123!`
-
-### 🌐 프로덕션 배포 환경
-- **배포 플랫폼**: Render Cloud (PostgreSQL Native SQL Initialization)
 
 ### 🛠️ 로컬 개발 환경 실행 방법
 
@@ -173,8 +181,8 @@ AI-Builder-Sprint/
 
 | 구분 | 사용 기술 명세 |
 | :--- | :--- |
-| **Frontend** | React 18, TypeScript, Vite, Editorial Bento Grid CSS |
-| **Backend** | Java 21, Spring Boot 3.3.4, Spring Data JPA, JdbcTemplate |
+| **Frontend** | React 18, TypeScript, Vite, Editorial Bento Grid CSS (Vercel Deployment) |
+| **Backend** | Java 21, Spring Boot 3.3.4, Spring Data JPA, JdbcTemplate (Render Cloud) |
 | **Database** | PostgreSQL (Render Deployment), MySQL 8.4 LTS (Local Docker) |
 | **AI LLM** | Upstage Solar LLM API (`solar-1-mini-chat`) |
 | **E-Signature** | 모두싸인 (Modusign) Webhook API & PDF SHA-256 Archive |
