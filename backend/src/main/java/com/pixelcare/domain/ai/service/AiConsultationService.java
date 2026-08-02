@@ -284,15 +284,22 @@ public class AiConsultationService {
         }
 
         // 4. 모든 필수 정보가 채워진 최종 상태
-        sb.append("감사합니다! 약정 필수 정보가 모두 수집되었어요! ✨\n\n");
-        sb.append("📋 [정리된 약정 내역]\n");
-        sb.append(" • 후원 / 활동 지역: %s\n".formatted(intent.region()));
-        sb.append(" • 수혜 대상 및 기관: %s\n".formatted(beneficiary));
-        if (!"VOLUNTEER".equals(type) && intent.amount() != null) {
+        //    봉사는 금액도 답례품도 세액공제도 없다. 기부 문구를 그대로 쓰면 엉뚱한 안내가 된다.
+        boolean volunteering = "VOLUNTEER".equals(type);
+
+        sb.append(volunteering
+                ? "감사합니다! 참여에 필요한 정보가 모두 모였어요! ✨\n\n"
+                : "감사합니다! 약정 필수 정보가 모두 수집되었어요! ✨\n\n");
+        sb.append(volunteering ? "📋 [정리된 참여 내역]\n" : "📋 [정리된 약정 내역]\n");
+        sb.append(" • %s: %s\n".formatted(volunteering ? "활동 지역" : "후원 / 활동 지역", intent.region()));
+        sb.append(" • %s: %s\n".formatted(volunteering ? "활동 기관" : "수혜 대상 및 기관", beneficiary));
+        if (volunteering) {
+            sb.append(" • 참여 주기: %s\n".formatted(resolveFrequencyKorean(intent.frequency())));
+        } else if (intent.amount() != null) {
             sb.append(" • 약정 금액: %,d원 (%s)\n".formatted(intent.amount().longValue(), resolveFrequencyKorean(intent.frequency())));
         }
         if (intent.startDate() != null) {
-            sb.append(" • 약정 개시일: %s\n".formatted(intent.startDate()));
+            sb.append(" • %s: %s\n".formatted(volunteering ? "활동 시작일" : "약정 개시일", intent.startDate()));
         }
 
         if ("HOMETOWN_DONATION".equals(type)) {
@@ -307,7 +314,13 @@ public class AiConsultationService {
             sb.append("\n🏛️ [유산/문화유산 보존]: 민법 제1060조 유증 기부 및 영구 보존 기금으로 지정 관리됩니다.\n");
         }
 
-        sb.append("\n아래 카드 및 답례품몰에서 개시일자, 답례품, 세액공제 신청 및 희망 메시지를 최종 확인하신 뒤 **약정 의사 확정하기** 버튼을 눌러주세요! 😊");
+        if (volunteering) {
+            sb.append("\n아래 카드에서 참여 주기와 활동 지역을 확인하신 뒤 **약정 의사 확정하기** 버튼을 눌러주세요! 😊");
+        } else if ("HOMETOWN_DONATION".equals(type)) {
+            sb.append("\n아래 카드와 답례품 선택에서 개시일자, 답례품, 세액공제 신청을 최종 확인하신 뒤 **약정 의사 확정하기** 버튼을 눌러주세요! 😊");
+        } else {
+            sb.append("\n아래 카드에서 약정 내용을 최종 확인하신 뒤 **약정 의사 확정하기** 버튼을 눌러주세요! 😊");
+        }
         return sb.toString();
     }
 

@@ -475,8 +475,12 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             <section className="clm-document-section">
               <div className="clm-section-heading">
                 <span className="clm-step-badge">STEP 01</span>
-                <h3>기부 약정 정리</h3>
-                <p>AI와 대화를 나눠 기부금액, 약정 주기 및 기부 목적을 정리해 주세요.</p>
+                <h3>{isVolunteer ? '봉사 참여 정리' : '기부 약정 정리'}</h3>
+                <p>
+                  {isVolunteer
+                    ? 'AI와 대화를 나눠 참여 주기와 활동 지역을 정리해 주세요.'
+                    : 'AI와 대화를 나눠 기부금액, 약정 주기 및 기부 목적을 정리해 주세요.'}
+                </p>
               </div>
 
               {/* 채팅창 컨테이너 */}
@@ -542,7 +546,9 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 <div className="clm-intent-card">
                   <div className="clm-intent-title">
                     <span>AI SUMMARY</span>
-                    AI가 정리한 약정 내역 · 직접 고칠 수 있어요
+                    {isVolunteer
+                      ? 'AI가 정리한 참여 내역 · 직접 고칠 수 있어요'
+                      : 'AI가 정리한 약정 내역 · 직접 고칠 수 있어요'}
                   </div>
                   <div className="clm-intent-grid">
                     <label>
@@ -555,7 +561,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                       </select>
                     </label>
                     <label>
-                      주기 (납부/참여)
+                      {isVolunteer ? '참여 주기' : '납부 주기'}
                       <select value={intent.frequency || ''} onChange={(e) => setIntent({ ...intent, frequency: e.target.value })}>
                         <option value="ONE_TIME">일시 (1회성)</option>
                         <option value="WEEKLY">매주 (주간)</option>
@@ -564,7 +570,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                       </select>
                     </label>
                     <label>
-                      수혜 대상·기관
+                      {isVolunteer ? '활동 기관' : '수혜 대상·기관'}
                       <input value={intent.beneficiary || ''} onChange={(e) => setIntent({ ...intent, beneficiary: e.target.value })} />
                     </label>
                     <label>
