@@ -1,4 +1,5 @@
--- Flyway Migration V18: 유산기부 및 문화유산(유네스코) 후원 DB 구축
+-- Flyway Migration V20: 유산기부 및 문화유산(유네스코) 후원 DB 구축
+-- V18은 활동 다이어리가 이미 쓰고 있어 다음 빈 번호로 옮겼다.
 CREATE TABLE heritage_projects (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     project_code VARCHAR(100) NOT NULL,
