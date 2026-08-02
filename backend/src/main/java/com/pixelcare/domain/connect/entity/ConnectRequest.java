@@ -73,9 +73,13 @@ public class ConnectRequest extends BaseTimeEntity {
     /**
      * 두 센터가 같은 요청을 동시에 맡으려 하면 나중 것이 앞 것을 덮어쓴다.
      * 버전을 두어 뒤늦은 쪽이 실패하도록 한다.
+     *
+     * 값이 비어 있으면 Hibernate가 그 행을 갱신하지 못하므로 0으로 시작한다.
+     * (이 열이 생기기 전에 만들어진 행은 0으로 채워 줘야 한다.)
      */
     @Version
-    private Long version;
+    @Column(nullable = false)
+    private Long version = 0L;
 
     protected ConnectRequest() {
     }
