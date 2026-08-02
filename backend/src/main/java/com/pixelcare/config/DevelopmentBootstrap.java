@@ -479,8 +479,8 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 PreparedStatement statement = connection.prepareStatement("""
                         INSERT INTO users (
                             email, password_hash, nickname, name, role,
-                            account_status, privacy_consent_at
-                        ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP)
+                            account_status, privacy_consent_at, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                         """, Statement.RETURN_GENERATED_KEYS);
                 statement.setString(1, email);
                 statement.setString(2, passwordEncoder.encode(password));
