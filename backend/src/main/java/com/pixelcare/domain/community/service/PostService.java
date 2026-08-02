@@ -8,6 +8,7 @@ import com.pixelcare.domain.community.entity.PostLike;
 import com.pixelcare.domain.community.repository.PostLikeRepository;
 import com.pixelcare.domain.community.repository.PostRepository;
 import com.pixelcare.domain.management.repository.OperatorAuditRepository;
+import com.pixelcare.domain.user.service.WarmthService;
 import com.pixelcare.global.auth.CurrentUser;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.http.HttpStatus;
@@ -24,15 +25,18 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final OperatorAuditRepository auditRepository;
+    private final WarmthService warmthService;
 
     public PostService(
             PostRepository postRepository,
             PostLikeRepository postLikeRepository,
-            OperatorAuditRepository auditRepository
+            OperatorAuditRepository auditRepository,
+            WarmthService warmthService
     ) {
         this.postRepository = postRepository;
         this.postLikeRepository = postLikeRepository;
         this.auditRepository = auditRepository;
+        this.warmthService = warmthService;
     }
 
     public Page<PostResponse> getPosts(String category, String sort, int page, int size) {
@@ -90,6 +94,8 @@ public class PostService {
             postLikeRepository.save(new PostLike(id, userId));
             post.updateLikeCount(1);
             liked = true;
+            // 응원을 거둘 때는 온기를 되돌리지 않는다. 눌렀다 뗐다로 올릴 수 없게 하루 상한이 막는다.
+            warmthService.awardQuietly(userId, WarmthService.Reason.POST_LIKED);
         }
 
         return new PostLikeResponse(id, liked, post.getLikeCount());
@@ -112,6 +118,7 @@ public class PostService {
                 request.getImageUrl()
         );
         Post savedPost = postRepository.save(post);
+        warmthService.awardQuietly(authorUserId, WarmthService.Reason.POST_WRITTEN);
         return new PostResponse(savedPost);
     }
 

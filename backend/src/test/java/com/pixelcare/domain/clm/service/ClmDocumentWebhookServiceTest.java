@@ -33,6 +33,7 @@ class ClmDocumentWebhookServiceTest {
     @Mock AiConsultationService consultationService;
     @Mock PledgeContractPdfGenerator pdfGenerator;
     @Mock ClmCompletionMessageService completionMessageService;
+    @Mock com.pixelcare.domain.user.service.WarmthService warmthService;
 
     private ClmDocumentService service;
 
@@ -41,7 +42,7 @@ class ClmDocumentWebhookServiceTest {
         service = new ClmDocumentService(documentRepository, commitmentRepository,
                 webhookEventRepository, modusignApiClient, archiveService,
                 accessService, accessRepository, consultationRepository,
-                consultationService, pdfGenerator, completionMessageService);
+                consultationService, pdfGenerator, completionMessageService, warmthService);
     }
 
     @Test

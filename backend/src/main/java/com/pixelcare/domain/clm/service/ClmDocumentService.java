@@ -33,6 +33,7 @@ public class ClmDocumentService {
     private final AiConsultationService consultationService;
     private final PledgeContractPdfGenerator pdfGenerator;
     private final ClmCompletionMessageService completionMessageService;
+    private final com.pixelcare.domain.user.service.WarmthService warmthService;
 
     public ClmDocumentService(ClmDocumentRepository clmDocumentRepository,
                               ClmCommitmentRepository commitmentRepository,
@@ -44,7 +45,8 @@ public class ClmDocumentService {
                               AiConsultationRepository consultationRepository,
                               AiConsultationService consultationService,
                               PledgeContractPdfGenerator pdfGenerator,
-                              ClmCompletionMessageService completionMessageService) {
+                              ClmCompletionMessageService completionMessageService,
+                              com.pixelcare.domain.user.service.WarmthService warmthService) {
         this.clmDocumentRepository = clmDocumentRepository;
         this.commitmentRepository = commitmentRepository;
         this.webhookEventRepository = webhookEventRepository;
@@ -56,6 +58,7 @@ public class ClmDocumentService {
         this.consultationService = consultationService;
         this.pdfGenerator = pdfGenerator;
         this.completionMessageService = completionMessageService;
+        this.warmthService = warmthService;
     }
 
     @Transactional
@@ -209,6 +212,14 @@ public class ClmDocumentService {
         }
     }
 
+    /** 서명이 확정되면 약정 상태를 넘기고, 체결한 회원의 온기를 올린다. */
+    private void markSigned(ClmDocument document) {
+        commitmentRepository.applySignatureState(
+                document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+        warmthService.awardQuietly(document.getApplicantUserId(),
+                com.pixelcare.domain.user.service.WarmthService.Reason.COMMITMENT_SIGNED);
+    }
+
     private void synchronizeModusignStatus(ClmDocument document) {
         boolean settled = "SIGNED".equals(document.getStatus())
                 || "REJECTED".equals(document.getStatus())
@@ -218,14 +229,12 @@ public class ClmDocumentService {
             try {
                 archiveService.archiveCompletedFiles(document);
                 if (document.applyModusignEvent("document_all_signed")) {
-                    commitmentRepository.applySignatureState(
-                            document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                    markSigned(document);
                 }
             } catch (Exception e) {
                 if (document.getModusignDocumentId() != null && document.getModusignDocumentId().startsWith("MODU_SIGNED_")) {
                     if (document.applyModusignEvent("document_all_signed")) {
-                        commitmentRepository.applySignatureState(
-                                document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                        markSigned(document);
                     }
                     return;
                 }
@@ -234,8 +243,7 @@ public class ClmDocumentService {
                 }
                 System.err.println("모두싸인 동기화 원활하지 않음 (Smart Failover 서명 완료 적용): " + e.getMessage());
                 if (document.applyModusignEvent("document_all_signed")) {
-                    commitmentRepository.applySignatureState(
-                            document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                    markSigned(document);
                 }
             }
         }

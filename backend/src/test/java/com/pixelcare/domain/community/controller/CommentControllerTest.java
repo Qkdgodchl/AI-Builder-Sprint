@@ -44,7 +44,7 @@ class CommentControllerTest {
     void authenticatedCommentUsesAccountNicknameInsteadOfRequestNickname() throws Exception {
         CurrentUser user = new CurrentUser(20L, "user@example.com", "전설", Set.of("USER"));
         when(authGuard.resolveUser(any(HttpServletRequest.class))).thenReturn(user);
-        when(commentService.createComment(eq(1L), any(CommentCreateRequest.class), eq("전설"), eq("LV2_WARMTH")))
+        when(commentService.createComment(eq(1L), any(CommentCreateRequest.class), eq("전설"), eq("LV2_WARMTH"), eq(20L)))
                 .thenReturn(new CommentResponse(5L, 1L, "좋아요", "전설", "LV2_WARMTH", LocalDateTime.now()));
 
         mockMvc.perform(post("/api/posts/1/comments")
@@ -54,7 +54,7 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.data.authorNickname").value("전설"));
 
         ArgumentCaptor<CommentCreateRequest> requestCaptor = ArgumentCaptor.forClass(CommentCreateRequest.class);
-        verify(commentService).createComment(eq(1L), requestCaptor.capture(), eq("전설"), eq("LV2_WARMTH"));
+        verify(commentService).createComment(eq(1L), requestCaptor.capture(), eq("전설"), eq("LV2_WARMTH"), eq(20L));
         assertThat(requestCaptor.getValue().getAuthorNickname()).isEqualTo("전설");
     }
 }

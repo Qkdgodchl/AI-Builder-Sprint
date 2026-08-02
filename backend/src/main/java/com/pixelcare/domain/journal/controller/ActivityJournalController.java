@@ -22,8 +22,11 @@ public class ActivityJournalController {
 
     private final AuthGuard authGuard;
     private final ActivityJournalRepository repository;
+    private final com.pixelcare.domain.user.service.WarmthService warmthService;
 
-    public ActivityJournalController(AuthGuard authGuard, ActivityJournalRepository repository) {
+    public ActivityJournalController(AuthGuard authGuard, ActivityJournalRepository repository,
+                                     com.pixelcare.domain.user.service.WarmthService warmthService) {
+        this.warmthService = warmthService;
         this.authGuard = authGuard;
         this.repository = repository;
     }
@@ -59,6 +62,8 @@ public class ActivityJournalController {
         boolean shared = Boolean.TRUE.equals(body.shared());
         repository.createNote(application.applicationId(), "USER", user.id(),
                 resolveDate(body, application), body.content(), body.fileIds(), shared);
+        warmthService.awardQuietly(user.id(),
+                com.pixelcare.domain.user.service.WarmthService.Reason.JOURNAL_WRITTEN);
         return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
     }
 

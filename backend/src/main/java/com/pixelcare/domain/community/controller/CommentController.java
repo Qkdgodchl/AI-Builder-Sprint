@@ -44,7 +44,9 @@ public class CommentController {
                 ? request
                 : new CommentCreateRequest(request.getContent(), currentUser.nickname(), badge);
 
-        CommentResponse comment = commentService.createComment(postId, sanitizedRequest, nickname, badge);
+        CommentResponse comment = commentService.createComment(
+                postId, sanitizedRequest, nickname, badge,
+                currentUser != null ? currentUser.id() : null);
         return ApiResponse.success(comment, "댓글이 등록되었습니다.");
     }
 

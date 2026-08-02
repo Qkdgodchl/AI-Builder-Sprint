@@ -8,11 +8,20 @@ interface BadgeGridProps {
   onSelect?: (badge: BadgeProgress, unlocked: boolean) => void;
 }
 
+/** 온기는 36.5에서 시작하므로 소수 한 자리까지, 건수는 정수로 보여준다. */
+const formatValue = (value: number) =>
+  Number.isInteger(value) ? String(value) : value.toFixed(1);
+
 export const BadgeGrid: React.FC<BadgeGridProps> = ({ badges, preview = false, onSelect }) => (
   <div className={`roadmap-badge-grid${preview ? ' is-preview' : ''}`}>
     {badges.map((badge) => {
       const unlocked = badge.current >= badge.goal;
-      const percent = Math.min(100, Math.round((badge.current / badge.goal) * 100));
+      // 온기 뱃지는 0이 아니라 직전 단계에서 출발한다.
+      // 그냥 현재/목표로 재면 36.5°C가 38°C 목표의 96%로 보여 거의 다 찬 것처럼 나온다.
+      const span = badge.goal - badge.base;
+      const percent = span <= 0
+        ? 100
+        : Math.min(100, Math.max(0, Math.round(((badge.current - badge.base) / span) * 100)));
       return (
         <button
           type="button"
@@ -29,7 +38,11 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ badges, preview = false, o
             <span style={{ width: `${percent}%` }} />
           </div>
           <em>
-            {preview ? '로그인 후 확인' : unlocked ? '획득 완료' : `${badge.current} / ${badge.goal}`}
+            {preview
+              ? '로그인 후 확인'
+              : unlocked
+                ? '획득 완료'
+                : `${formatValue(badge.current)} / ${badge.goal}${badge.unit}`}
           </em>
         </button>
       );

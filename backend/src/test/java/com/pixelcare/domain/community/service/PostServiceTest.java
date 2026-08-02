@@ -29,7 +29,8 @@ class PostServiceTest {
         postService = new PostService(
                 postRepository,
                 postLikeRepository,
-                mock(OperatorAuditRepository.class)
+                mock(OperatorAuditRepository.class),
+                mock(com.pixelcare.domain.user.service.WarmthService.class)
         );
     }
 
