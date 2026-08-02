@@ -26,8 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GoodNewsService {
 
-    private static final String PROVIDER_NAVER = "네이버 뉴스";
-    private static final String PROVIDER_GOOGLE = "Google News RSS";
+    private static final String PROVIDER = "Google News RSS";
     // 구글 뉴스 RSS는 짧은 시간에 반복 호출하면 결과를 거의 돌려주지 않는다.
     // 캐시를 길게 잡아 외부 호출 자체를 줄인다.
     private static final Duration CACHE_TTL = Duration.ofHours(6);
@@ -50,19 +49,10 @@ public class GoodNewsService {
             new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
     private final java.nio.file.Path snapshotDir;
 
-    private final String naverClientId;
-    private final String naverClientSecret;
-
     public GoodNewsService(
             @org.springframework.beans.factory.annotation.Value("${app.storage.path:storage}")
-            String storagePath,
-            @org.springframework.beans.factory.annotation.Value("${naver.search.client-id:}")
-            String naverClientId,
-            @org.springframework.beans.factory.annotation.Value("${naver.search.client-secret:}")
-            String naverClientSecret
+            String storagePath
     ) {
-        this.naverClientId = naverClientId;
-        this.naverClientSecret = naverClientSecret;
         this.snapshotDir = java.nio.file.Path.of(storagePath)
                 .toAbsolutePath().normalize().resolve("news-cache");
         restoreSnapshots();
@@ -157,30 +147,8 @@ public class GoodNewsService {
             "고발", "사기", "갈등", "반발", "폐지", "삭감", "적발", "수사", "재판",
             "소송", "파산", "분쟁", "학대", "폭행", "성추행", "마약", "음주운전");
 
-    /**
-     * 네이버 검색 API를 먼저 쓰고, 키가 없거나 실패하면 구글 뉴스 RSS로 넘어간다.
-     * 구글 RSS는 인증이 없어 짧은 시간에 반복 호출하면 결과를 거의 주지 않는다.
-     */
     private List<GoodNewsItem> fetch(String region) {
-        if (hasNaverCredentials()) {
-            try {
-                List<GoodNewsItem> naverItems = filterItems(region, fetchFromNaver(region));
-                if (!naverItems.isEmpty()) return naverItems;
-            } catch (RuntimeException error) {
-                System.err.println("네이버 뉴스 검색 실패, 구글 RSS로 전환: "
-                        + error.getClass().getSimpleName());
-            }
-        }
-        return filterItems(region, fetchFromGoogle(region));
-    }
-
-    private boolean hasNaverCredentials() {
-        return naverClientId != null && !naverClientId.isBlank()
-                && naverClientSecret != null && !naverClientSecret.isBlank();
-    }
-
-    private List<GoodNewsItem> filterItems(String region, List<GoodNewsItem> items) {
-        return items.stream()
+        return fetchFromGoogle(region).stream()
                 .filter(GoodNewsService::isGoodNews)
                 .filter(item -> matchesRegion(region, item))
                 .toList();
@@ -195,53 +163,6 @@ public class GoodNewsService {
                 .body(String.class);
         if (xml == null || xml.isBlank()) throw new IllegalStateException("빈 RSS 응답입니다.");
         return parse(region, xml);
-    }
-
-    private List<GoodNewsItem> fetchFromNaver(String region) {
-        String subject = "기부 OR 성금 OR 기탁 OR 후원 OR 나눔 OR 봉사 OR 선행 OR 온정";
-        String query = ("전국".equals(region) ? "" : region + " ") + subject;
-        String url = "https://openapi.naver.com/v1/search/news.json?display=100&sort=date&query="
-                + URLEncoder.encode(query, StandardCharsets.UTF_8).replace("+", "%20");
-
-        String body = restClient.get().uri(java.net.URI.create(url))
-                .header("X-Naver-Client-Id", naverClientId)
-                .header("X-Naver-Client-Secret", naverClientSecret)
-                .retrieve()
-                .body(String.class);
-        if (body == null || body.isBlank()) throw new IllegalStateException("빈 네이버 응답입니다.");
-
-        try {
-            com.fasterxml.jackson.databind.JsonNode items = objectMapper.readTree(body).path("items");
-            java.util.ArrayList<GoodNewsItem> parsed = new java.util.ArrayList<>();
-            for (com.fasterxml.jackson.databind.JsonNode node : items) {
-                String link = node.path("originallink").asText("");
-                if (link.isBlank()) link = node.path("link").asText("");
-                String title = cleanHtml(node.path("title").asText(""));
-                if (title.isBlank() || link.isBlank()) continue;
-                parsed.add(new GoodNewsItem(
-                        hash(link),
-                        region,
-                        title,
-                        cleanHtml(node.path("description").asText("")),
-                        hostOf(link),
-                        link,
-                        parsePublishedAt(node.path("pubDate").asText(""))
-                ));
-            }
-            return parsed;
-        } catch (Exception error) {
-            throw new IllegalStateException("네이버 응답을 해석하지 못했습니다.", error);
-        }
-    }
-
-    /** 네이버 응답에는 언론사명이 없어 링크 도메인을 출처로 쓴다. */
-    private String hostOf(String link) {
-        try {
-            String host = java.net.URI.create(link).getHost();
-            return host == null ? "뉴스" : host.replaceFirst("^www\\.", "");
-        } catch (Exception ignored) {
-            return "뉴스";
-        }
     }
 
     /**
@@ -310,7 +231,7 @@ public class GoodNewsService {
     ) {
         return new GoodNewsResponse(
                 region, items.stream().limit(limit).toList(), updatedAt,
-                hasNaverCredentials() ? PROVIDER_NAVER : PROVIDER_GOOGLE, stale, message
+                PROVIDER, stale, message
         );
     }
 
