@@ -30,7 +30,7 @@ export const fetchMyJournal = () => apiRequest<JournalEntry[]>('/api/v1/me/journ
 
 export const addMyNote = (
   applicationPublicId: string,
-  payload: { activityDate: string; content: string; fileIds?: number[]; shared: boolean },
+  payload: { content: string; fileIds?: number[]; shared: boolean; activityDate?: string },
 ) =>
   apiRequest<JournalNote[]>(`/api/v1/applications/${applicationPublicId}/notes`, {
     method: 'POST',
@@ -40,7 +40,7 @@ export const addMyNote = (
 /** 담당 센터가 참여자에게 남기는 사진·코멘트. */
 export const addCenterNote = (
   applicationPublicId: string,
-  payload: { activityDate: string; content: string; fileIds?: number[] },
+  payload: { content: string; fileIds?: number[]; activityDate?: string },
 ) =>
   apiRequest<JournalNote[]>(`/api/v1/manager/applications/${applicationPublicId}/notes`, {
     method: 'POST',

@@ -38,9 +38,10 @@ export const ActivityCalendar: React.FC<ActivityCalendarProps> = ({ showNotice }
       current[field] += 1;
       map.set(key, current);
     };
+    // 같은 활동의 기록은 모두 그 활동의 기준일 한 칸에 모은다.
     entries.forEach((entry) => {
       bump(entry.activityDate, 'activities');
-      entry.notes.forEach((note) => bump(note.activityDate, 'notes'));
+      entry.notes.forEach(() => bump(entry.activityDate, 'notes'));
     });
     return map;
   }, [entries]);

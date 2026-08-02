@@ -46,22 +46,20 @@ export const DiaryDayPage: React.FC<DiaryDayPageProps> = ({ currentUser }) => {
     [entries, date],
   );
 
-  /** 기록은 신청 건의 날짜가 아니라 기록 자신의 활동일이 속한 날에 표시한다. */
-  const dayNotes = useMemo<DayNote[]>(() => {
-    const collected: DayNote[] = [];
-    entries.forEach((entry) => {
-      entry.notes
-        .filter((note) => note.activityDate === date)
-        .forEach((note) =>
-          collected.push({
+  /** 같은 활동의 기록은 흩어지지 않도록 그 활동의 기준일에 함께 모아 본다. */
+  const dayNotes = useMemo<DayNote[]>(
+    () =>
+      dayEntries
+        .flatMap((entry) =>
+          entry.notes.map((note) => ({
             ...note,
             opportunityTitle: entry.opportunityTitle,
             organizationName: entry.organizationName,
-          }),
-        );
-    });
-    return collected.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }, [entries, date]);
+          })),
+        )
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [dayEntries],
+  );
 
   const attachPhoto = async (file: File | undefined) => {
     if (!file) return;
@@ -78,7 +76,6 @@ export const DiaryDayPage: React.FC<DiaryDayPageProps> = ({ currentUser }) => {
     setSaving(true);
     try {
       await addMyNote(applicationPublicId, {
-        activityDate: date,
         content: draft.trim(),
         fileIds: photo ? [photo.id] : [],
         shared: shareWithCenter,

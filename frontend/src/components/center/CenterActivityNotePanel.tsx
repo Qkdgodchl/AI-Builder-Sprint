@@ -15,7 +15,6 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
   applicationPublicId,
 }) => {
   const [notes, setNotes] = useState<JournalNote[]>([]);
-  const [activityDate, setActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [content, setContent] = useState('');
   const [photo, setPhoto] = useState<{ id: number; name: string } | null>(null);
   const [status, setStatus] = useState('');
@@ -47,7 +46,6 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
     setSaving(true);
     try {
       const updated = await addCenterNote(applicationPublicId, {
-        activityDate,
         content: content.trim(),
         fileIds: photo ? [photo.id] : [],
       });
@@ -98,14 +96,6 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
       )}
 
       <div className="center-note-form">
-        <label>
-          <span>활동일</span>
-          <input
-            type="date"
-            value={activityDate}
-            onChange={(event) => setActivityDate(event.target.value)}
-          />
-        </label>
         <label>
           <span>코멘트</span>
           <textarea

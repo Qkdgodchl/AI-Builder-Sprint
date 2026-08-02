@@ -58,7 +58,7 @@ public class ActivityJournalController {
         // 기본은 개인 메모. 명시적으로 공유를 선택했을 때만 센터가 볼 수 있다.
         boolean shared = Boolean.TRUE.equals(body.shared());
         repository.createNote(application.applicationId(), "USER", user.id(),
-                body.activityDate(), body.content(), body.fileIds(), shared);
+                resolveDate(body, application), body.content(), body.fileIds(), shared);
         return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
     }
 
@@ -77,8 +77,19 @@ public class ActivityJournalController {
             throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "담당 센터만 기록을 남길 수 있습니다.");
         }
         repository.createNote(application.applicationId(), "CENTER", user.id(),
-                body.activityDate(), body.content(), body.fileIds(), true);
+                resolveDate(body, application), body.content(), body.fileIds(), true);
         return ApiResponse.success(repository.findNotes(applicationPublicId, user.id()));
+    }
+
+    /** 같은 활동의 기록이 서로 다른 날에 흩어지지 않도록 참여 건의 기준일로 모은다. */
+    private LocalDate resolveDate(
+            ActivityNoteDtos.CreateRequest body,
+            ActivityJournalRepository.ApplicationOwner application
+    ) {
+        if (body.activityDate() != null) return body.activityDate();
+        return application.participationDate() != null
+                ? application.participationDate()
+                : LocalDate.now();
     }
 
     /** 참여자와 담당 센터 모두 같은 기록을 본다. */
