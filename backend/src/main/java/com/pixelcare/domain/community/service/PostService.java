@@ -1,8 +1,11 @@
 package com.pixelcare.domain.community.service;
 
 import com.pixelcare.domain.community.dto.PostCreateRequest;
+import com.pixelcare.domain.community.dto.PostLikeResponse;
 import com.pixelcare.domain.community.dto.PostResponse;
 import com.pixelcare.domain.community.entity.Post;
+import com.pixelcare.domain.community.entity.PostLike;
+import com.pixelcare.domain.community.repository.PostLikeRepository;
 import com.pixelcare.domain.community.repository.PostRepository;
 import com.pixelcare.domain.management.repository.OperatorAuditRepository;
 import com.pixelcare.global.auth.CurrentUser;
@@ -19,10 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class PostService {
 
     private final PostRepository postRepository;
+    private final PostLikeRepository postLikeRepository;
     private final OperatorAuditRepository auditRepository;
 
-    public PostService(PostRepository postRepository, OperatorAuditRepository auditRepository) {
+    public PostService(
+            PostRepository postRepository,
+            PostLikeRepository postLikeRepository,
+            OperatorAuditRepository auditRepository
+    ) {
         this.postRepository = postRepository;
+        this.postLikeRepository = postLikeRepository;
         this.auditRepository = auditRepository;
     }
 
@@ -60,6 +69,30 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않거나 삭제된 게시글입니다. id=" + id));
         post.incrementViewCount();
         return new PostResponse(post);
+    }
+
+    @Transactional
+    public PostLikeResponse toggleLike(Long id, Long userId) {
+        Post post = postRepository.findByIdForLikeUpdate(id)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND,
+                        "POST_NOT_FOUND",
+                        "존재하지 않거나 삭제된 게시글입니다."
+                ));
+
+        boolean liked;
+        var existingLike = postLikeRepository.findByPostIdAndUserId(id, userId);
+        if (existingLike.isPresent()) {
+            postLikeRepository.delete(existingLike.get());
+            post.updateLikeCount(-1);
+            liked = false;
+        } else {
+            postLikeRepository.save(new PostLike(id, userId));
+            post.updateLikeCount(1);
+            liked = true;
+        }
+
+        return new PostLikeResponse(id, liked, post.getLikeCount());
     }
 
     @Transactional

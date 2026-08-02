@@ -1,4 +1,4 @@
-import { apiRequest, getAccessToken } from './apiClient';
+import { API_ORIGIN, apiRequest, getAccessToken } from './apiClient';
 
 export interface ClmDocumentDto {
   id: number;
@@ -17,9 +17,7 @@ export interface ClmDocumentDto {
 }
 
 export interface ClmSignRequestPayload {
-  volunteerId: number;
-  applicantName: string;
-  applicantEmail: string;
+  commitmentPublicId: string;
   applicantPhone?: string;
 }
 
@@ -62,7 +60,7 @@ export const fetchClmDocumentFiles = (documentId: number): Promise<ClmDocumentFi
 export const loadClmDocumentFile = async (documentId: number, fileId: number) => {
   const token = getAccessToken();
   const response = await fetch(
-    `http://localhost:8080${API_BASE}/${documentId}/files/${fileId}/download`,
+    `${API_ORIGIN}${API_BASE}/${documentId}/files/${fileId}/download`,
     { headers: token ? { Authorization: `Bearer ${token}` } : {} },
   );
   if (!response.ok) throw new Error('전자서명 파일을 열지 못했습니다.');
@@ -80,3 +78,10 @@ export const fetchMyClmDocuments = async (_email?: string): Promise<ClmDocumentD
     return [];
   }
 };
+
+export const fetchManagerApplicationClmDocuments = (
+  applicationPublicId: string,
+): Promise<ClmDocumentDto[]> =>
+  apiRequest<ClmDocumentDto[]>(
+    `/api/v1/manager/applications/${applicationPublicId}/clm-documents`,
+  );

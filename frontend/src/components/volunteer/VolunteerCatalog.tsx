@@ -231,6 +231,7 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
       <ClmApplicationPreparation
         item={selectedItem}
         typeLabel={getProgramLabel(selectedItem.programType)}
+        currentUser={currentUser}
         onBack={() => navigate(`/volunteer/${selectedItem.id}`)}
       />
     );

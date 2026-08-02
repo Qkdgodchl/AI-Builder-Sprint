@@ -3,19 +3,28 @@ package com.pixelcare.domain.ai.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pixelcare.domain.ai.dto.AiRecommendResponse;
+import com.pixelcare.domain.ai.dto.PledgeIntent;
 import com.pixelcare.domain.ai.dto.RecommendedCardDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @Component
 public class UpstageApiClient {
+
+    private static final Set<String> PLEDGE_TYPES = Set.of(
+            "DONATION", "HOMETOWN_DONATION", "VOLUNTEER", "LEGACY_DONATION", "CULTURAL_HERITAGE_DONATION");
+    private static final Set<String> FREQUENCIES = Set.of("ONE_TIME", "MONTHLY", "ANNUAL", "NOT_APPLICABLE");
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -23,12 +32,86 @@ public class UpstageApiClient {
     @Value("${upstage.api.key}")
     private String apiKey;
 
-    @Value("${upstage.api.base-url:https://api.upstage.ai/v1/solar}")
+    @Value("${upstage.api.base-url:https://api.upstage.ai/v1}")
     private String baseUrl;
 
+    @Value("${upstage.api.model:solar-pro3}")
+    private String model = "solar-pro3";
+
     public UpstageApiClient() {
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+        requestFactory.setReadTimeout(Duration.ofSeconds(20));
+        this.restTemplate = new RestTemplate(requestFactory);
+        this.objectMapper = new ObjectMapper().findAndRegisterModules();
+    }
+
+    public record StructuredIntent(PledgeIntent intent, String source) {}
+
+    public Optional<StructuredIntent> structurePledgeIntent(String userInput, String previousIntentJson) {
+        if (apiKey == null || apiKey.contains("your_upstage") || apiKey.isBlank()) return Optional.empty();
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            String systemPrompt = """
+                    사용자의 기부·봉사 약정 의사를 아래 JSON 스키마로만 정리하는 계약 정보 추출기다.
+                    설명, 마크다운, 추측을 추가하지 말고 반드시 JSON 객체 하나만 출력하라.
+                    이전 구조화 결과가 있으면 유지하되 현재 사용자 문장으로 명시적으로 수정된 값만 갱신하라.
+                    모르는 값은 null로 두고 missingFields에는 필수 누락 필드명을 넣어라.
+                    pledgeType: DONATION|HOMETOWN_DONATION|VOLUNTEER|LEGACY_DONATION|CULTURAL_HERITAGE_DONATION
+                    frequency: ONE_TIME|MONTHLY|ANNUAL|NOT_APPLICABLE
+                    startDate: YYYY-MM-DD, amount: 원 단위 양수 숫자
+                    필드: pledgeType, beneficiary, amount, frequency, startDate, region, rewardPreference,
+                    taxDeductionConsent, privacyConsent, specialConditions, missingFields
+                    """;
+            String previous = previousIntentJson == null || previousIntentJson.isBlank() ? "없음" : previousIntentJson;
+            String userPrompt = "이전 구조화 약정 JSON:\n" + previous + "\n\n현재 사용자 문장:\n" + userInput;
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("temperature", 0);
+            requestBody.put("messages", List.of(
+                    Map.of("role", "system", "content", systemPrompt),
+                    Map.of("role", "user", "content", userPrompt)
+            ));
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    baseUrl + "/chat/completions",
+                    new HttpEntity<>(requestBody, headers),
+                    String.class
+            );
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) return Optional.empty();
+
+            JsonNode choices = objectMapper.readTree(response.getBody()).path("choices");
+            if (!choices.isArray() || choices.isEmpty()) return Optional.empty();
+            String content = choices.get(0).path("message").path("content").asText("");
+            if (content.isBlank()) return Optional.empty();
+            PledgeIntent intent = objectMapper.readValue(stripCodeFence(content), PledgeIntent.class);
+            if (!hasValidEnums(intent)) return Optional.empty();
+            return Optional.of(new StructuredIntent(intent, "UPSTAGE_SOLAR"));
+        } catch (Exception e) {
+            System.err.println("Upstage 약정 구조화 오류 (로컬 폴백 전환): " + e.getClass().getSimpleName());
+            return Optional.empty();
+        }
+    }
+
+    private String stripCodeFence(String content) {
+        String trimmed = content.trim();
+        if (!trimmed.startsWith("```")) return trimmed;
+        int firstLineEnd = trimmed.indexOf('\n');
+        int closingFence = trimmed.lastIndexOf("```");
+        if (firstLineEnd < 0 || closingFence <= firstLineEnd) return trimmed;
+        return trimmed.substring(firstLineEnd + 1, closingFence).trim();
+    }
+
+    private boolean hasValidEnums(PledgeIntent intent) {
+        return intent != null
+                && (intent.pledgeType() == null || PLEDGE_TYPES.contains(intent.pledgeType()))
+                && (intent.frequency() == null || FREQUENCIES.contains(intent.frequency()))
+                && (intent.amount() == null || intent.amount().signum() > 0);
     }
 
     /**
@@ -52,7 +135,7 @@ public class UpstageApiClient {
             headers.setBearerAuth(apiKey);
 
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "solar-mini");
+            requestBody.put("model", model);
 
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(Map.of("role", "system", "content", systemPrompt));

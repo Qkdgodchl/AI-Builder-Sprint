@@ -1,3 +1,5 @@
+import { apiRequest } from './apiClient';
+
 export interface RecommendedCard {
   opportunityId: number;
   title: string;
@@ -19,26 +21,16 @@ export interface ChatMessageItem {
   createdAt: string;
 }
 
-const AI_API_BASE_URL = 'http://localhost:8080/api/ai';
+const AI_API_BASE_URL = '/api/ai';
 
 /**
  * Upstage Solar LLM 챗봇 추천 대화 API 호출
  */
 export const sendAiMessage = async (userInput: string): Promise<AiRecommendResponseData> => {
-  const response = await fetch(`${AI_API_BASE_URL}/recommend`, {
+  return apiRequest<AiRecommendResponseData>(`${AI_API_BASE_URL}/recommend`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ userInput }),
   });
-
-  if (!response.ok) {
-    throw new Error(`AI 추천 요청 실패: ${response.status}`);
-  }
-
-  const result = await response.json();
-  return result.data;
 };
 
 /**
@@ -46,19 +38,7 @@ export const sendAiMessage = async (userInput: string): Promise<AiRecommendRespo
  */
 export const fetchAiHistory = async (): Promise<ChatMessageItem[]> => {
   try {
-    const response = await fetch(`${AI_API_BASE_URL}/messages`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`대화 히스토리 조회 실패: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.data || [];
+    return await apiRequest<ChatMessageItem[]>(`${AI_API_BASE_URL}/messages`);
   } catch (error) {
     console.error('AI 히스토리 조회 오류:', error);
     return [];
@@ -70,19 +50,10 @@ export const fetchAiHistory = async (): Promise<ChatMessageItem[]> => {
  */
 export const clearAiHistory = async (): Promise<boolean> => {
   try {
-    const response = await fetch(`${AI_API_BASE_URL}/messages`, {
+    await apiRequest<string>(`${AI_API_BASE_URL}/messages`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
     });
-
-    if (!response.ok) {
-      throw new Error(`AI 히스토리 삭제 실패: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result.success ?? true;
+    return true;
   } catch (error) {
     console.error('AI 히스토리 삭제 오류:', error);
     return false;

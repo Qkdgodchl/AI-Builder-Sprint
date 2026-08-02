@@ -13,6 +13,12 @@ public class ClmDocument extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "commitment_id")
+    private Long commitmentId;
+
+    @Column(name = "signature_request_id")
+    private Long signatureRequestId;
+
     @Column(name = "volunteer_id", nullable = false)
     private Long volunteerId;
 
@@ -61,12 +67,18 @@ public class ClmDocument extends BaseTimeEntity {
     @Column(name = "last_event_type")
     private String lastEventType;
 
+    @Column(name = "last_event_rank", nullable = false)
+    private int lastEventRank;
+
     public ClmDocument() {}
 
-    public ClmDocument(Long volunteerId, String volunteerTitle, Long applicantUserId,
+    public ClmDocument(Long commitmentId, Long signatureRequestId,
+                       Long volunteerId, String volunteerTitle, Long applicantUserId,
                        String applicantName, String applicantEmail, String applicantPhone,
                        String modusignDocumentId, String modusignParticipantId, String modusignTemplateId,
                        String signingUrl, LocalDateTime signingUrlExpiresAt) {
+        this.commitmentId = commitmentId;
+        this.signatureRequestId = signatureRequestId;
         this.volunteerId = volunteerId;
         this.volunteerTitle = volunteerTitle;
         this.applicantUserId = applicantUserId;
@@ -82,7 +94,18 @@ public class ClmDocument extends BaseTimeEntity {
         this.status = "PENDING_SIGNATURE";
     }
 
+    public ClmDocument(Long volunteerId, String volunteerTitle, Long applicantUserId,
+                       String applicantName, String applicantEmail, String applicantPhone,
+                       String modusignDocumentId, String modusignParticipantId, String modusignTemplateId,
+                       String signingUrl, LocalDateTime signingUrlExpiresAt) {
+        this(null, null, volunteerId, volunteerTitle, applicantUserId, applicantName, applicantEmail,
+                applicantPhone, modusignDocumentId, modusignParticipantId, modusignTemplateId,
+                signingUrl, signingUrlExpiresAt);
+    }
+
     public Long getId() { return id; }
+    public Long getCommitmentId() { return commitmentId; }
+    public Long getSignatureRequestId() { return signatureRequestId; }
     public Long getVolunteerId() { return volunteerId; }
     public String getVolunteerTitle() { return volunteerTitle; }
     public Long getApplicantUserId() { return applicantUserId; }
@@ -99,9 +122,13 @@ public class ClmDocument extends BaseTimeEntity {
     public LocalDateTime getSignedAt() { return signedAt; }
     public LocalDateTime getRejectedAt() { return rejectedAt; }
     public String getLastEventType() { return lastEventType; }
+    public int getLastEventRank() { return lastEventRank; }
 
-    public void applyModusignEvent(String eventType) {
+    public boolean applyModusignEvent(String eventType) {
+        int incomingRank = eventRank(eventType);
+        if (incomingRank < lastEventRank || lastEventRank >= 100) return false;
         this.lastEventType = eventType;
+        this.lastEventRank = incomingRank;
         switch (eventType) {
             case "document_started" -> this.status = "SIGNING";
             case "document_signed" -> this.status = "PARTIALLY_SIGNED";
@@ -115,8 +142,19 @@ public class ClmDocument extends BaseTimeEntity {
             }
             case "document_request_canceled" -> this.status = "CANCELED";
             case "document_signing_canceled" -> this.status = "SIGNING_CANCELED";
-            default -> { }
+            default -> { return false; }
         }
+        return true;
+    }
+
+    private int eventRank(String eventType) {
+        return switch (eventType) {
+            case "document_started" -> 10;
+            case "document_signed" -> 20;
+            case "document_signing_canceled" -> 30;
+            case "document_all_signed", "document_rejected", "document_request_canceled" -> 100;
+            default -> -1;
+        };
     }
 
     public void updateSecureLink(String signingUrl, LocalDateTime expiresAt) {

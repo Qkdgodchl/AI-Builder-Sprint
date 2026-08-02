@@ -3,6 +3,8 @@ package com.pixelcare.domain.application.controller;
 import com.pixelcare.domain.application.dto.ApplicationDecisionRequest;
 import com.pixelcare.domain.application.dto.ApplicationResponse;
 import com.pixelcare.domain.application.service.ApplicationService;
+import com.pixelcare.domain.clm.dto.ClmDocumentResponseDto;
+import com.pixelcare.domain.clm.service.ClmDocumentService;
 import com.pixelcare.global.auth.AuthGuard;
 import com.pixelcare.global.auth.CurrentUser;
 import com.pixelcare.global.common.ApiResponse;
@@ -17,10 +19,27 @@ public class ManagerApplicationReviewController {
 
     private final AuthGuard authGuard;
     private final ApplicationService service;
+    private final ClmDocumentService clmDocumentService;
 
-    public ManagerApplicationReviewController(AuthGuard authGuard, ApplicationService service) {
+    public ManagerApplicationReviewController(
+            AuthGuard authGuard,
+            ApplicationService service,
+            ClmDocumentService clmDocumentService
+    ) {
         this.authGuard = authGuard;
         this.service = service;
+        this.clmDocumentService = clmDocumentService;
+    }
+
+    @GetMapping("/applications/{publicId}/clm-documents")
+    public ApiResponse<List<ClmDocumentResponseDto>> clmDocuments(
+            HttpServletRequest request,
+            @PathVariable String publicId
+    ) {
+        CurrentUser manager = authGuard.requireRole(request, "CENTER_MANAGER");
+        return ApiResponse.success(
+                clmDocumentService.getManagerApplicationDocuments(publicId, manager)
+        );
     }
 
     @GetMapping("/opportunities/{opportunityId}/applications")

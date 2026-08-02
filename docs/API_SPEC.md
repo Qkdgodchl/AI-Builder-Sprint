@@ -473,20 +473,25 @@ GET /api/v1/opportunities
 
 | 구현 | 성공 | 실패 | Method | Path | 권한 | 설명 |
 |---|---|---|---|---|---|---|
-| [ ] | [ ] | [ ] | POST | `/ai/consultations` | USER | 상담 세션 시작 |
-| [ ] | [ ] | [ ] | POST | `/ai/consultations/{id}/messages` | 상담 소유자 | 메시지 전송·의향 구조화 |
-| [ ] | [ ] | [ ] | GET | `/ai/consultations/{id}` | 상담 소유자 | 상담·구조화 결과 조회 |
-| [ ] | [ ] | [ ] | PATCH | `/ai/consultations/{id}/intent` | 상담 소유자 | 구조화 값 직접 수정 |
-| [ ] | [ ] | [ ] | POST | `/ai/consultations/{id}/confirm` | 상담 소유자 | 의향 최종 확인 |
+| [x] | [ ] | [ ] | POST | `/ai/consultations` | USER | 상담 세션 시작·의향 구조화 |
+| [x] | [ ] | [ ] | POST | `/ai/consultations/{id}/messages` | 상담 소유자 | 후속 메시지 전송·의향 재구조화 |
+| [x] | [ ] | [ ] | GET | `/ai/consultations/{id}` | 상담 소유자 | 상담·구조화 결과 조회 |
+| [x] | [ ] | [ ] | PATCH | `/ai/consultations/{id}/intent` | 상담 소유자 | 구조화 값 직접 수정 |
+| [x] | [ ] | [ ] | POST | `/ai/consultations/{id}/confirm` | 상담 소유자 | 필수 필드 검증·의향 최종 확인 |
 | [ ] | [ ] | [ ] | GET | `/ai/consultations/{id}/recommendations` | 상담 소유자 | 조건 기반 추천 |
 
 메시지 요청:
 
 ```json
 {
-  "message": "부산에서 8월 10일 오전에 환경 봉사를 하고 싶어요."
+  "message": "부산에서 8월 10일 오전에 환경 봉사를 하고 싶어요.",
+  "externalAiConsent": true
 }
 ```
+
+`externalAiConsent`는 기본적으로 `false`다. `true`인 요청만 사용자 문장과 이전 구조화 약정 JSON을
+Upstage Solar에 전송하며, 서버는 동의 시각과 제공자를 저장한다. 미동의·API 오류·응답 스키마 오류 시
+동일한 응답 스키마의 로컬 규칙 폴백을 사용한다.
 
 응답:
 
@@ -602,6 +607,7 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 | [x] | [x] | [x] | GET | `/commitments/{publicId}` | 약정 소유자·해당 센터 관리자 | 약정 상세 |
 | [x] | [x] | [x] | PATCH | `/commitments/{publicId}` | 약정 소유자 | 초안·수정요청 상태 편집 |
 | [x] | [x] | [x] | POST | `/commitments/{publicId}/submit-review` | 약정 소유자 | 사용자 검토 완료 |
+| [x] | [ ] | [ ] | POST | `/commitments/{publicId}/renew` | 약정 소유자 | 월간·연간 활성 약정 갱신 |
 | [ ] | [ ] | [ ] | POST | `/commitments/{id}/documents` | 약정 소유자·센터 관리자 | 유형별 문서 생성 |
 | [ ] | [ ] | [ ] | GET | `/commitments/{id}/documents` | 약정 소유자·해당 센터 관리자 | 문서 목록 |
 | [ ] | [ ] | [ ] | GET | `/documents/{id}` | 문서 접근 권한자 | 문서 메타데이터 |
@@ -668,7 +674,8 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 | [x] | [x] | [ ] | GET | `/clm/documents/my` | 로그인 사용자 | 본인 제출 서류 목록 조회 |
 | [x] | [x] | [ ] | GET | `/clm/documents/{id}/files` | 서류 소유자·OPERATOR | 보관된 완료 PDF·감사추적인증서 목록 |
 | [x] | [x] | [ ] | GET | `/clm/documents/{id}/files/{fileId}/download` | 서류 소유자·OPERATOR | 보관된 PDF 열람·다운로드 |
-| [x] | [ ] | [ ] | POST | `/webhooks/modusign` | Modusign | 서명 상태 Webhook |
+| [x] | [x] | [x] | POST | `/webhooks/modusign` | Modusign | 이벤트 ID 멱등·단조 상태 Webhook |
+| [x] | [x] | [x] | POST | `/clm/documents/request-sign` | 약정 소유자 | 약정 공개 ID 기반 모두싸인 요청 |
 | [ ] | [ ] | [ ] | POST | `/commitments/{id}/signature-requests` | 약정 소유자 | 모두싸인 서명 요청 |
 | [ ] | [ ] | [ ] | GET | `/signature-requests/{id}` | 약정 소유자·해당 센터 관리자 | 서명 상태 조회 |
 | [ ] | [ ] | [ ] | POST | `/signature-requests/{id}/retry` | 약정 소유자·해당 센터 관리자 | 실패 서명 요청 재시도 |
@@ -987,8 +994,8 @@ Idempotency-Key: commitment-72-version-1
 
 ### 17.1 Upstage
 
-- [ ] Solar 정상 응답 파싱
-- [ ] JSON Schema 검증 실패
+- [x] Solar 정상 응답 파싱
+- [x] JSON Schema 검증 실패 시 로컬 폴백
 - [ ] Information Extract 필드 일치·불일치
 - [ ] Document Parse 성공·파싱 불가
 - [ ] `401`, `429`, `5xx`, timeout

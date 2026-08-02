@@ -266,6 +266,6 @@ public class AiMateService {
      */
     @Transactional
     public void clearChatHistory(Long userId) {
-        chatMessageRepository.deleteAll();
+        chatMessageRepository.deleteByUserId(userId);
     }
 }

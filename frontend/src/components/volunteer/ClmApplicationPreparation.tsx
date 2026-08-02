@@ -1,11 +1,19 @@
-import React, { useState } from 'react';
-import type { VolunteerItem } from '../../types';
+import React, { useEffect, useState } from 'react';
+import type { SessionUser, VolunteerItem } from '../../types';
 import {
   createApplication,
   submitCommitment,
 } from '../../services/applicationApi';
 import { requestClmSign, fetchClmDocument, refreshClmSecureLink, fetchClmDocumentFiles } from '../../services/clmApi';
 import type { ClmDocumentDto, ClmDocumentFileDto } from '../../services/clmApi';
+import { API_ORIGIN } from '../../services/apiClient';
+import {
+  confirmConsultation,
+  startConsultation,
+  updateConsultationIntent,
+} from '../../services/consultationApi';
+import type { ConsultationResponse, PledgeIntent } from '../../services/consultationApi';
+import { fetchMyProfile } from '../../services/authApi';
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -15,16 +23,27 @@ interface ApplicationItem extends VolunteerItem {
 interface ClmApplicationPreparationProps {
   item: ApplicationItem;
   typeLabel: string;
+  currentUser: SessionUser | null;
   onBack: () => void;
 }
 
 export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps> = ({
   item,
   typeLabel,
+  currentUser,
   onBack,
 }) => {
   const isVolunteer = item.category === 'VOLUNTEER';
+  const isHometown = item.programType === 'HOMETOWN' || item.category === 'HOMETOWN';
+  const isLegacy = item.programType === 'LEGACY' || item.category === 'LEGACY';
   const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-PC-01호)' : '후원 및 기부 약정서 (제2026-PC-02호)';
+  const examplePrompt = isVolunteer
+    ? `${item.title}에 참여하고 싶어요. 가능한 날짜와 필요한 준비사항을 알려주세요.`
+    : isHometown
+      ? `${item.location} 지역을 위해 매월 3만원씩 고향사랑기부를 하고 싶고 답례품은 받지 않을게요.`
+      : isLegacy
+        ? `${item.organizer}에 유산기부를 상담받고 가능한 약정 범위와 절차를 안내받고 싶어요.`
+        : `${item.title}에 일시 3만원을 기부하고 기부금 사용처를 확인하고 싶어요.`;
 
   const [specialConditions, setSpecialConditions] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -34,19 +53,52 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [consultation, setConsultation] = useState<ConsultationResponse | null>(null);
+  const [intent, setIntent] = useState<PledgeIntent | null>(null);
+  const [aiConfirmed, setAiConfirmed] = useState(false);
+  const [structuringIntent, setStructuringIntent] = useState(false);
+  const [externalAiConsent, setExternalAiConsent] = useState(false);
+  const [commitmentPublicId, setCommitmentPublicId] = useState<string | null>(null);
 
   // 모두싸인 (Modusign) 전자서명 상태
-  const [applicantName, setApplicantName] = useState('부산 픽셀용사');
-  const [applicantEmail, setApplicantEmail] = useState('user@pixelcare.com');
+  const [applicantName, setApplicantName] = useState(currentUser?.nickname || '');
+  const [applicantEmail, setApplicantEmail] = useState(currentUser?.email || '');
   const [clmDoc, setClmDoc] = useState<ClmDocumentDto | null>(null);
   const [docFiles, setDocFiles] = useState<ClmDocumentFileDto[]>([]);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isDocViewModalOpen, setIsDocViewModalOpen] = useState(false);
   const [isSigned, setIsSigned] = useState(false);
   const [requestingSign, setRequestingSign] = useState(false);
   const [checkingSignature, setCheckingSignature] = useState(false);
   const [signatureStatusMessage, setSignatureStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (!currentUser) {
+      setApplicantName('');
+      setApplicantEmail('');
+      return;
+    }
+
+    setApplicantName(currentUser.nickname);
+    setApplicantEmail(currentUser.email);
+
+    let active = true;
+    fetchMyProfile()
+      .then((profile) => {
+        if (!active) return;
+        setApplicantName(profile.name?.trim() || profile.nickname || currentUser.nickname);
+        setApplicantEmail(profile.email || currentUser.email);
+      })
+      .catch((error) => {
+        console.error('서명자 프로필 조회 실패:', error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
 
   const handleOpenDocView = async () => {
     setIsDocViewModalOpen(true);
@@ -60,10 +112,55 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     }
   };
 
-  const canStartSigning = privacyConsent && thirdPartyConsent;
+  const canStartSigning = aiConfirmed && privacyConsent && thirdPartyConsent;
+
+  const handleStructureIntent = async () => {
+    if (!aiPrompt.trim()) return;
+    setStructuringIntent(true);
+    setAiFeedback('');
+    try {
+      const result = await startConsultation(aiPrompt.trim(), externalAiConsent);
+      const enriched: PledgeIntent = {
+        ...result.intent,
+        pledgeType: result.intent.pledgeType || (isHometown ? 'HOMETOWN_DONATION' : isVolunteer ? 'VOLUNTEER' : 'DONATION'),
+        beneficiary: result.intent.beneficiary || item.organizer,
+        region: result.intent.region || item.location,
+        frequency: result.intent.frequency || (isVolunteer ? 'NOT_APPLICABLE' : isHometown ? 'MONTHLY' : 'ONE_TIME'),
+      };
+      setConsultation(result);
+      setIntent(enriched);
+      setAiConfirmed(false);
+    } catch (error) {
+      setAiFeedback(error instanceof Error ? error.message : 'AI 약정 정리에 실패했습니다.');
+    } finally {
+      setStructuringIntent(false);
+    }
+  };
+
+  const handleConfirmIntent = async () => {
+    if (!consultation || !intent) return;
+    setStructuringIntent(true);
+    setAiFeedback('');
+    try {
+      const updated = await updateConsultationIntent(consultation.id, intent);
+      const confirmedIntent = await confirmConsultation(updated.id);
+      setConsultation(confirmedIntent);
+      setIntent(confirmedIntent.intent);
+      setSpecialConditions(confirmedIntent.intent.specialConditions || specialConditions);
+      setAiConfirmed(true);
+    } catch (error) {
+      setAiFeedback(error instanceof Error ? error.message : '약정 의사를 확정하지 못했습니다.');
+    } finally {
+      setStructuringIntent(false);
+    }
+  };
 
   // 모두싸인 서명 요청 시작
   const handleStartModusign = async () => {
+    if (!aiConfirmed || !consultation) {
+      alert('AI가 정리한 약정 의사를 먼저 확인·확정해 주세요.');
+      return;
+    }
     if (!canStartSigning) {
       alert('필수 동의 항목을 먼저 동의해 주세요.');
       return;
@@ -71,10 +168,22 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
     setRequestingSign(true);
     try {
+      let activeCommitmentId = commitmentPublicId;
+      if (!activeCommitmentId) {
+        const application = await createApplication(item.id, {
+          consultationId: consultation.id,
+          specialConditions,
+          privacyConsent,
+          thirdPartyConsent,
+          portraitConsent,
+        });
+        activeCommitmentId = application.commitment?.publicId || null;
+        if (!activeCommitmentId) throw new Error('생성된 약정서 식별자를 확인할 수 없습니다.');
+        await submitCommitment(activeCommitmentId);
+        setCommitmentPublicId(activeCommitmentId);
+      }
       const doc = await requestClmSign({
-        volunteerId: item.id,
-        applicantName: applicantName.trim() || '부산 픽셀용사',
-        applicantEmail: applicantEmail.trim() || 'user@pixelcare.com',
+        commitmentPublicId: activeCommitmentId,
       });
 
       setClmDoc(doc);
@@ -130,15 +239,6 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
     setSubmitting(true);
     setErrorMessage('');
     try {
-      const application = await createApplication(item.id, {
-        specialConditions,
-        privacyConsent,
-        thirdPartyConsent,
-        portraitConsent,
-      });
-      if (application.commitment?.publicId) {
-        await submitCommitment(application.commitment.publicId);
-      }
       setCompleted(true);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '신청에 실패했습니다.');
@@ -165,11 +265,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       </header>
 
       <ol className="clm-steps" aria-label="신청 진행 단계">
-        <li className="complete">
+        <li className={aiConfirmed ? 'complete' : 'current'}>
           <span>01</span>
-          <strong>신청 정보</strong>
+          <strong>AI 의사 정리</strong>
         </li>
-        <li className={privacyConsent && thirdPartyConsent ? 'complete' : 'current'}>
+        <li className={!aiConfirmed ? 'upcoming' : privacyConsent && thirdPartyConsent ? 'complete' : 'current'}>
           <span>02</span>
           <strong>서류 작성</strong>
         </li>
@@ -206,99 +306,266 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             </dl>
           </section>
 
+          <section className="clm-document-section clm-ai-intent-section" aria-busy={structuringIntent}>
+            <div className="clm-section-heading">
+              <div>
+                <span>STEP 01</span>
+                <h3>AI로 약정 의사 정리</h3>
+              </div>
+              <span className={`clm-status ${aiConfirmed ? 'complete' : 'pending'}`}>
+                {aiConfirmed ? '확정 완료' : '확인 필요'}
+              </span>
+            </div>
+            <p className="clm-ai-description">
+              하고 싶은 기부·봉사 내용을 편하게 적으면 약정 항목으로 정리합니다. 결과는 직접 수정한 뒤 확정할 수 있습니다.
+            </p>
+            <div className="clm-ai-example" aria-label="약정 의사 작성 예시">
+              <span>예시 문장</span>
+              <p>{examplePrompt}</p>
+            </div>
+            <label>
+              나의 약정 의사
+              <textarea
+                value={aiPrompt}
+                onChange={(event) => setAiPrompt(event.target.value)}
+                rows={3}
+                disabled={aiConfirmed}
+              />
+            </label>
+            {!intent && (
+              <label className="clm-ai-consent">
+                <input
+                  type="checkbox"
+                  checked={externalAiConsent}
+                  onChange={(event) => setExternalAiConsent(event.target.checked)}
+                  disabled={structuringIntent}
+                />
+                <span>
+                  <strong>Upstage Solar로 더 정확하게 정리하기</strong>
+                  약정 문장과 이전 구조화 결과를 Upstage API로 전송하는 데 동의합니다. 선택하지 않으면 외부 전송 없이 로컬에서 정리합니다.
+                </span>
+              </label>
+            )}
+            {!intent && (
+              <button
+                type="button"
+                className={`clm-ai-action ${structuringIntent ? 'loading' : ''}`}
+                onClick={handleStructureIntent}
+                disabled={!aiPrompt.trim() || structuringIntent}
+              >
+                {structuringIntent && <span className="clm-ai-spinner" aria-hidden="true" />}
+                {structuringIntent ? 'Upstage Solar 분석 중...' : 'AI로 약정 항목 정리하기'}
+              </button>
+            )}
+            {structuringIntent && (
+              <div className="clm-ai-progress" role="status" aria-live="polite">
+                <strong>AI가 약정 문장을 분석하고 있습니다.</strong>
+                <span>약정 유형·수혜 대상·금액·주기를 확인하고 있어요. 보통 10~20초 정도 걸립니다.</span>
+              </div>
+            )}
+            {aiFeedback && (
+              <div className="clm-ai-error" role="alert">
+                <strong>AI 약정 정리를 완료하지 못했습니다.</strong>
+                <span>{aiFeedback}</span>
+                {aiFeedback.includes('로그인') && <small>상단 로그인 버튼으로 다시 로그인한 뒤 재시도해주세요.</small>}
+              </div>
+            )}
+            {intent && (
+              <div className="clm-intent-editor">
+                <label>
+                  약정 유형
+                  <select
+                    value={intent.pledgeType || ''}
+                    onChange={(event) => setIntent({ ...intent, pledgeType: event.target.value })}
+                    disabled={aiConfirmed}
+                  >
+                    <option value="DONATION">일반 기부</option>
+                    <option value="HOMETOWN_DONATION">고향사랑기부</option>
+                    <option value="VOLUNTEER">봉사</option>
+                    <option value="LEGACY_DONATION">유산기부</option>
+                    <option value="CULTURAL_HERITAGE_DONATION">문화유산기부</option>
+                  </select>
+                </label>
+                <label>
+                  수혜 대상·기관
+                  <input
+                    value={intent.beneficiary || ''}
+                    onChange={(event) => setIntent({ ...intent, beneficiary: event.target.value })}
+                    disabled={aiConfirmed}
+                  />
+                </label>
+                {intent.pledgeType !== 'VOLUNTEER' && (
+                  <label>
+                    금액(원)
+                    <input
+                      type="number"
+                      min="0"
+                      value={intent.amount ?? ''}
+                      onChange={(event) => setIntent({ ...intent, amount: event.target.value ? Number(event.target.value) : null })}
+                      disabled={aiConfirmed}
+                    />
+                  </label>
+                )}
+                <label>
+                  주기
+                  <select
+                    value={intent.frequency || ''}
+                    onChange={(event) => setIntent({ ...intent, frequency: event.target.value })}
+                    disabled={aiConfirmed}
+                  >
+                    <option value="ONE_TIME">일시</option>
+                    <option value="MONTHLY">매월</option>
+                    <option value="ANNUAL">매년</option>
+                    <option value="NOT_APPLICABLE">해당 없음</option>
+                  </select>
+                </label>
+                <label>
+                  지역
+                  <input
+                    value={intent.region || ''}
+                    onChange={(event) => setIntent({ ...intent, region: event.target.value })}
+                    disabled={aiConfirmed}
+                  />
+                </label>
+                {intent.pledgeType === 'HOMETOWN_DONATION' && (
+                  <label>
+                    답례품
+                    <select
+                      value={intent.rewardPreference || 'UNSPECIFIED'}
+                      onChange={(event) => setIntent({ ...intent, rewardPreference: event.target.value })}
+                      disabled={aiConfirmed}
+                    >
+                      <option value="UNSPECIFIED">나중에 선택</option>
+                      <option value="NONE">받지 않음</option>
+                    </select>
+                  </label>
+                )}
+                <div className="clm-intent-summary">
+                  <span>정리 결과</span>
+                  <strong>{consultation?.summary}</strong>
+                  <small>구조화 방식: {consultation?.source === 'UPSTAGE_SOLAR' ? 'Upstage Solar' : '안전한 로컬 폴백'}</small>
+                </div>
+                {!aiConfirmed && (
+                  <button type="button" className="clm-ai-action" onClick={handleConfirmIntent} disabled={structuringIntent}>
+                    {structuringIntent && <span className="clm-ai-spinner" aria-hidden="true" />}
+                    {structuringIntent ? '약정 의사 확정 중...' : '수정한 약정 의사 확정하기'}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+
           <section className="clm-document-section">
             <div className="clm-section-heading">
               <div>
                 <span>STEP 02</span>
-                <h3>서류 작성 & 서식 열람</h3>
+                <h3>필수 동의 및 서명 정보 확인</h3>
               </div>
               <span className={`clm-status ${canStartSigning ? 'complete' : 'pending'}`}>
-                {canStartSigning ? '작성 완료' : '작성 중'}
+                {canStartSigning ? '서명 준비 완료' : '확인 필요'}
               </span>
             </div>
 
-            <div className="clm-document-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span>공식 서식 양식</span>
-                <strong>{documentName}</strong>
-                <p>
-                  참여 조건, 안전 수칙 준수, 픽셀 온기 보상 및 보안 동의 항목 포함
-                </p>
+            <p className="clm-step-guide">
+              아래 순서대로 필수 동의와 서명 정보를 확인한 뒤 모두싸인에서 전자서명을 완료해 주세요.
+            </p>
+
+            <div className={`clm-consent-block ${privacyConsent && thirdPartyConsent ? 'complete' : ''}`}>
+              <div className="clm-substep-heading">
+                <span>01</span>
+                <div>
+                  <strong>개인정보 및 신청 정보 제공 동의</strong>
+                  <small>전자서명 문서를 생성하기 전에 필수 동의 2개를 확인해 주세요.</small>
+                </div>
+                <em>{privacyConsent && thirdPartyConsent ? '필수 동의 완료' : '필수 동의 필요'}</em>
               </div>
+
+              <div className="clm-consent-list">
+                <label className="clm-final-consent required">
+                  <input
+                    type="checkbox"
+                    checked={privacyConsent}
+                    onChange={(event) => setPrivacyConsent(event.target.checked)}
+                  />
+                  <span><b>개인정보 수집·이용에 동의합니다.</b><small>필수</small></span>
+                </label>
+                <label className="clm-final-consent required">
+                  <input
+                    type="checkbox"
+                    checked={thirdPartyConsent}
+                    onChange={(event) => setThirdPartyConsent(event.target.checked)}
+                  />
+                  <span><b>주관기관에 신청 정보를 제공하는 데 동의합니다.</b><small>필수</small></span>
+                </label>
+                <label className="clm-final-consent optional">
+                  <input
+                    type="checkbox"
+                    checked={portraitConsent}
+                    onChange={(event) => setPortraitConsent(event.target.checked)}
+                  />
+                  <span><b>활동 사진의 초상권 활용 및 온기 뱃지 기록에 동의합니다.</b><small>선택</small></span>
+                </label>
+              </div>
+            </div>
+
+            <div className="clm-document-subsection">
+              <div className="clm-substep-heading">
+                <span>02</span>
+                <div>
+                  <strong>서명 정보 확인</strong>
+                  <small>로그인 계정 정보와 기관에 전달할 내용을 확인해 주세요.</small>
+                </div>
+              </div>
+
+              <div className="clm-identity-grid">
+                <label>
+                  신청자 성명
+                  <input type="text" className="pixel-input" value={applicantName} readOnly />
+                </label>
+                <label>
+                  신청자 이메일
+                  <input type="email" className="pixel-input" value={applicantEmail} readOnly />
+                </label>
+              </div>
+              <small className="clm-identity-note">서명자 정보는 로그인한 계정의 프로필을 기준으로 서버에서 검증합니다.</small>
+
+              <label className="clm-special-conditions">
+                특별 조건 및 전달사항
+                <textarea
+                  value={specialConditions}
+                  onChange={(event) => setSpecialConditions(event.target.value)}
+                  placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
+                  rows={3}
+                />
+              </label>
+            </div>
+
+            <div className={`clm-signing-cta-card ${canStartSigning ? 'ready' : ''}`}>
+              <div className="clm-substep-heading">
+                <span>03</span>
+                <div>
+                  <strong>약정서 확인 후 전자서명</strong>
+                  <small>{documentName}</small>
+                </div>
+              </div>
+              <p>
+                아래 버튼을 누르면 신청서와 약정서가 생성됩니다. 이어서 모두싸인 보안 창에서
+                약정서 전문을 확인하고 전자서명을 완료해 주세요.
+              </p>
               <button
                 type="button"
-                style={{
-                  padding: '8px 14px',
-                  background: '#faf0ca',
-                  border: '1.5px solid #111',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onClick={() => setIsPreviewModalOpen(true)}
+                className="clm-signing-primary"
+                disabled={!canStartSigning || requestingSign}
+                onClick={handleStartModusign}
               >
-                📄 약정서 전문 미리보기
+                {requestingSign ? '약정서와 서명창을 준비하고 있습니다...' : '모두싸인에서 약정서 확인하고 서명하기 →'}
               </button>
+              <small className="clm-signing-requirement">
+                {canStartSigning
+                  ? '필수 확인이 완료되었습니다. 이제 전자서명을 진행할 수 있습니다.'
+                  : 'STEP 01의 AI 약정 확정과 위 필수 동의를 완료하면 버튼이 활성화됩니다.'}
+              </small>
             </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <label style={{ flex: 1 }}>
-                신청자 성명
-                <input
-                  type="text"
-                  className="pixel-input"
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
-                  value={applicantName}
-                  onChange={(e) => setApplicantName(e.target.value)}
-                />
-              </label>
-              <label style={{ flex: 1 }}>
-                신청자 이메일
-                <input
-                  type="email"
-                  className="pixel-input"
-                  style={{ width: '100%', padding: '8px 12px', marginTop: '6px' }}
-                  value={applicantEmail}
-                  onChange={(e) => setApplicantEmail(e.target.value)}
-                />
-              </label>
-            </div>
-
-            <label>
-              특별 조건 및 전달사항
-              <textarea
-                value={specialConditions}
-                onChange={(event) => setSpecialConditions(event.target.value)}
-                placeholder="참여 가능한 시간이나 기관에 전달할 내용을 입력해주세요."
-                rows={3}
-              />
-            </label>
-
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={privacyConsent}
-                onChange={(event) => setPrivacyConsent(event.target.checked)}
-              />
-              <span>개인정보 수집·이용에 동의합니다. (필수)</span>
-            </label>
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={thirdPartyConsent}
-                onChange={(event) => setThirdPartyConsent(event.target.checked)}
-              />
-              <span>주관기관에 신청 정보를 제공하는 데 동의합니다. (필수)</span>
-            </label>
-            <label className="clm-final-consent">
-              <input
-                type="checkbox"
-                checked={portraitConsent}
-                onChange={(event) => setPortraitConsent(event.target.checked)}
-              />
-              <span>활동 사진의 초상권 활용 및 온기 뱃지 기록에 동의합니다. (선택)</span>
-            </label>
           </section>
 
           <section className="clm-signature-section">
@@ -308,7 +575,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 <h3>모두싸인 (Modusign) 전자서명</h3>
               </div>
               <span className={`clm-status ${isSigned ? 'complete' : canStartSigning ? 'pending' : 'locked'}`}>
-                {isSigned ? '서명 완료' : canStartSigning ? '서명 대기' : '서류 작성 후 가능'}
+                {isSigned ? '서명 완료' : clmDoc ? '서명 진행 중' : canStartSigning ? '서명 준비 완료' : 'STEP 02 완료 후 가능'}
               </span>
             </div>
 
@@ -322,23 +589,13 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               </p>
 
               {!isSigned ? (
-                <button
-                  type="button"
-                  style={{
-                    background: canStartSigning ? '#ff70a6' : '#aaa',
-                    cursor: canStartSigning ? 'pointer' : 'not-allowed',
-                    color: '#fff',
-                    padding: '12px 24px',
-                    fontSize: '14px',
-                    borderRadius: '8px',
-                    border: '2px solid #111',
-                    fontWeight: 'bold'
-                  }}
-                  disabled={!canStartSigning || requestingSign}
-                  onClick={handleStartModusign}
-                >
-                  {requestingSign ? '서명 창 로딩 중...' : '모두싸인 전자서명 시작'}
-                </button>
+                clmDoc ? (
+                  <button type="button" className="clm-signing-resume" onClick={() => setIsSigningModalOpen(true)}>
+                    진행 중인 전자서명 계속하기 →
+                  </button>
+                ) : (
+                  <span className="clm-signature-guidance">STEP 02의 큰 서명 버튼을 눌러 전자서명을 시작해 주세요.</span>
+                )
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                   <div style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '15px' }}>
@@ -388,7 +645,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           </label>
           <button
             type="button"
-            className="clm-final-submit"
+            className={`clm-final-submit ${completed ? 'completed' : ''}`}
             disabled={!privacyConsent || !thirdPartyConsent || !isSigned || !confirmed || submitting || completed}
             onClick={handleSubmit}
           >
@@ -403,92 +660,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         </aside>
       </div>
 
-      {/* 1. 모두싸인 실시간 템플릿 약정서 작성/서명 뷰어 모달 */}
-      {isPreviewModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 9999, padding: '20px'
-        }}>
-          <div style={{
-            background: '#fff', width: '100%', maxWidth: '640px',
-            borderRadius: '16px', border: '3px solid #111', padding: '28px', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)', textAlign: 'center'
-          }}>
-            <div style={{ borderBottom: '2px solid #111', paddingBottom: '16px', marginBottom: '20px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#ff3b30', color: '#fff', padding: '3px 8px', borderRadius: '4px' }}>
-                모두싸인 템플릿 연동 (ID: 47f3a310...)
-              </span>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', margin: '8px 0 4px', color: '#111' }}>
-                📜 {documentName}
-              </h3>
-              <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>
-                모두싸인 보안 서명창에서 실제 템플릿 서식의 빈칸을 직접 입력하고 서명합니다.
-              </p>
-            </div>
-
-            {/* 뷰어 안내 및 팝업 열기 버튼 */}
-            <div style={{ background: '#f8f9fa', border: '2px dashed #ff3b30', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
-              <span style={{ fontSize: '36px', display: 'block', marginBottom: '8px' }}>✒️</span>
-              <h4 style={{ margin: '0 0 6px', fontSize: '16px', fontWeight: 'bold', color: '#1a1a24' }}>
-                모두싸인 템플릿 전자약정서 서명창
-              </h4>
-              <p style={{ fontSize: '13px', color: '#555', margin: '0 0 16px', lineHeight: 1.5 }}>
-                보안 정책(X-Frame-Options) 차단 없이 안전하고 쾌적하게 작성하기 위해<br/>
-                <b>모두싸인 공식 서약창 팝업</b>으로 즉시 연결됩니다.
-              </p>
-
-              <button
-                type="button"
-                style={{
-                  padding: '12px 28px', background: '#ff3b30', color: '#fff',
-                  border: '2px solid #111', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px',
-                  cursor: 'pointer', boxShadow: '0 4px 10px rgba(255,59,48,0.3)',
-                  display: 'inline-flex', alignItems: 'center', gap: '8px'
-                }}
-                onClick={async () => {
-                  if (!clmDoc?.signingUrl) {
-                    await handleStartModusign();
-                  } else {
-                    window.open(clmDoc.signingUrl, 'ModusignWindow', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-                  }
-                }}
-              >
-                🚀 모두싸인 템플릿 서약창 열기 (팝업)
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', paddingTop: '12px', borderTop: '1px solid #eee' }}>
-              <button
-                type="button"
-                style={{
-                  padding: '10px 18px', background: '#e9ecef', color: '#495057',
-                  border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer'
-                }}
-                onClick={() => setIsPreviewModalOpen(false)}
-              >
-                닫기
-              </button>
-              <button
-                type="button"
-                style={{
-                  padding: '10px 22px', background: '#2ec4b6', color: '#fff',
-                  border: '2px solid #111', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
-                  fontSize: '13px'
-                }}
-                onClick={() => {
-                  setIsPreviewModalOpen(false);
-                  handleCheckSignature();
-                }}
-              >
-                ✅ 양식 작성 & 서명 완료 확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. 모두싸인 SECURE_LINK 서명 진행 안내 모달 */}
+      {/* 모두싸인 SECURE_LINK 서명 진행 안내 모달 */}
       {isSigningModalOpen && clmDoc && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -504,8 +676,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               📜 모두싸인 전자서명 진행
             </h3>
             <p style={{ fontSize: '13px', color: '#555', marginBottom: '20px', lineHeight: 1.5 }}>
-              <b>[{clmDoc.volunteerTitle}]</b> 서약서 생성이 완료되었습니다.<br/>
-              아래 버튼을 눌러 <b>모두싸인 서약창 팝업</b>에서 서약을 완료해 주세요.
+              <b>[{clmDoc.volunteerTitle}]</b> 약정서 생성이 완료되었습니다.<br/>
+              아래 버튼을 눌러 <b>모두싸인 전자서명 창</b>에서 약정서를 확인하고 서명을 완료해 주세요.
             </p>
 
             <div style={{ background: '#f8f9fa', border: '2px dashed #2ec4b6', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
@@ -529,7 +701,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   }
                 }}
               >
-                🚀 모두싸인 서약창 열기 (팝업)
+                모두싸인에서 약정서 확인하고 서명하기 →
               </button>
               <div style={{ marginTop: '12px', fontSize: '11px', color: '#888' }}>
                 문서 코드: {clmDoc.modusignDocumentId}
@@ -599,7 +771,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               📜 픽셀케어 전자서명 완료 약정 증서
             </h2>
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '24px' }}>
-              Modusign API v2 전자서명법 제3조에 의거 체결 및 보존된 완료 문서입니다.
+              모두싸인에서 체결된 완료 문서와 감사추적 자료를 픽셀케어 CLM에서 함께 보관합니다.
             </p>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
@@ -647,7 +819,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   {docFiles.map((file) => (
                     <a
                       key={file.id}
-                      href={`http://localhost:8080${file.downloadUrl}`}
+                      href={`${API_ORIGIN}${file.downloadUrl}`}
                       target="_blank"
                       rel="noreferrer"
                       style={{
@@ -677,10 +849,10 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               padding: '16px', textAlign: 'center', marginBottom: '24px'
             }}>
               <span style={{ fontSize: '12px', color: '#0077b6', display: 'block', marginBottom: '4px', fontWeight: 'bold' }}>
-                ✅ 모두싸인 전자서명 검증 완료 (SIGNED)
+                ✅ 모두싸인 전자서명 완료 상태 확인 (SIGNED)
               </span>
               <p style={{ margin: 0, fontSize: '12px', color: '#333' }}>
-                본 서약 문서는 위변조 방지 해시 검증을 마치고 픽셀케어 CLM 서버에 안전하게 보존되었습니다.
+                서명 완료 문서와 감사추적 자료의 SHA-256 체크섬을 기록해 보관 파일의 동일성을 확인할 수 있습니다.
               </p>
             </div>
 
