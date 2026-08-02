@@ -183,12 +183,27 @@ CREATE TABLE IF NOT EXISTS clm_documents (
     deleted_by VARCHAR(255) NULL
 );
 
+-- 컬럼 이름은 ClmDocumentFile 엔티티를 따른다.
 CREATE TABLE IF NOT EXISTS clm_document_files (
     id BIGSERIAL PRIMARY KEY,
-    document_id BIGINT NOT NULL,
-    file_path VARCHAR(500) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    clm_document_id BIGINT NOT NULL,
+    file_type VARCHAR(40) NOT NULL,
+    storage_key VARCHAR(500) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    size_bytes BIGINT NOT NULL,
+    sha256 VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL,
+    deleted_by VARCHAR(100) NULL
 );
+
+-- 이전 스키마가 남긴 컬럼은 엔티티가 채우지 않는다.
+-- NOT NULL로 남아 있으면 체결본 보관이 매번 실패한다.
+ALTER TABLE clm_document_files DROP COLUMN IF EXISTS document_id;
+ALTER TABLE clm_document_files DROP COLUMN IF EXISTS file_path;
 
 CREATE TABLE IF NOT EXISTS organization_applications (
     id BIGSERIAL PRIMARY KEY,
