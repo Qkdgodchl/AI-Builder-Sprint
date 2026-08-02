@@ -745,3 +745,65 @@ ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS signed_at TIMESTAMP;
 ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS last_event_type VARCHAR(100);
 ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS last_event_rank INT DEFAULT 0;
 
+
+-- =========================================================
+-- MySQL 스키마와 대조해 빠져 있던 컬럼 보정
+-- 코드가 읽는데 표에 없으면 "column does not exist"로 조회가 통째로 실패한다.
+-- 이미 있으면 넘어가므로 여러 번 실행해도 안전하다.
+-- =========================================================
+
+-- 신청: 동의 항목과 특별 조건
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS special_conditions TEXT;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS privacy_consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS third_party_consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS portrait_consent BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- 약정: AI가 정리한 의사 스냅샷
+ALTER TABLE commitments ADD COLUMN IF NOT EXISTS intent_snapshot TEXT;
+
+-- 프로그램: 신청 자격과 취소 규정
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS eligibility TEXT;
+ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS cancellation_policy TEXT;
+
+-- 기관: 홈페이지와 기부금 영수증 발급 가능 여부
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS homepage_url VARCHAR(500);
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS can_issue_donation_receipt BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- AI 상담: 외부 AI 사용 동의 기록
+ALTER TABLE ai_consultations ADD COLUMN IF NOT EXISTS external_ai_provider VARCHAR(50);
+ALTER TABLE ai_consultations ADD COLUMN IF NOT EXISTS external_ai_consent_at TIMESTAMP;
+
+-- 센터 관리자 신청
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS position VARCHAR(100);
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS contact VARCHAR(30);
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS organization_type VARCHAR(50);
+ALTER TABLE manager_applications ADD COLUMN IF NOT EXISTS planned_center_name VARCHAR(255);
+ALTER TABLE manager_application_files ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+ALTER TABLE manager_application_files ADD COLUMN IF NOT EXISTS document_type VARCHAR(50) NOT NULL DEFAULT 'EVIDENCE';
+ALTER TABLE manager_application_files ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+-- 공개 식별자 (URL에 노출되는 값이라 조회 조건으로 쓰인다)
+ALTER TABLE organization_applications ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+ALTER TABLE signature_requests ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+ALTER TABLE contract_documents ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+ALTER TABLE community_posts ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+
+-- 활동 다이어리
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS public_id VARCHAR(36);
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS author_type VARCHAR(20) NOT NULL DEFAULT 'USER';
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS author_user_id BIGINT;
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS activity_date DATE;
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+ALTER TABLE activity_notes ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE activity_note_files ADD COLUMN IF NOT EXISTS id BIGSERIAL;
+
+-- 유산·문화유산 후원 프로그램
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS project_code VARCHAR(100);
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS category VARCHAR(50);
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS heritage_name VARCHAR(255);
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS organizer_name VARCHAR(100);
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE heritage_projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;

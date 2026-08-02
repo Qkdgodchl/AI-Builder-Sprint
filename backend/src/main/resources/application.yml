@@ -26,6 +26,11 @@ spring:
     init:
       mode: always
       continue-on-error: true
+      # 이 값이 없으면 스프링은 schema-all.sql / schema.sql만 찾는다.
+      # schema-postgresql.sql이 있어도 파일명이 안 맞아 그대로 무시되고,
+      # JPA가 만드는 표만 생겨 user_roles 같은 표가 없다며 기동이 실패한다.
+      # 로컬 MySQL에서는 SPRING_SQL_PLATFORM=mysql로 두면 해당 파일이 없어 아무것도 실행되지 않는다.
+      platform: ${SPRING_SQL_PLATFORM:postgresql}
   flyway:
     enabled: false
     baseline-on-migrate: true

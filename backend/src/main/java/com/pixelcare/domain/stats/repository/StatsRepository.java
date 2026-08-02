@@ -5,6 +5,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 홈 화면 누적 현황을 실제 데이터에서 집계한다.
@@ -50,12 +55,13 @@ public class StatsRepository {
      * 승인·완료된 봉사 참여의 활동 시간 합계.
      * 봉사 시간을 따로 저장하는 컬럼이 없어 공고의 활동 시작·종료 시각에서 계산한다.
      * 활동 시각이 없는 상시 모집 공고는 집계에서 빠진다.
+     *
+     * 시간 차이는 SQL이 아니라 자바에서 더한다. TIMESTAMPDIFF는 MySQL에만 있어
+     * PostgreSQL에서는 홈 화면 통계 조회가 통째로 실패한다.
      */
     private long volunteerHours() {
-        return count("""
-                SELECT COALESCE(
-                           SUM(TIMESTAMPDIFF(MINUTE, o.activity_start_at, o.activity_end_at)) / 60,
-                           0)
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT o.activity_start_at AS started_at, o.activity_end_at AS ended_at
                 FROM applications a
                 JOIN opportunities o ON o.id = a.opportunity_id
                 WHERE o.opportunity_type = 'VOLUNTEER'
@@ -65,6 +71,21 @@ public class StatsRepository {
                   AND o.activity_end_at IS NOT NULL
                   AND o.activity_end_at > o.activity_start_at
                 """);
+
+        long minutes = 0;
+        for (Map<String, Object> row : rows) {
+            LocalDateTime startedAt = toDateTime(row.get("started_at"));
+            LocalDateTime endedAt = toDateTime(row.get("ended_at"));
+            if (startedAt == null || endedAt == null) continue;
+            minutes += Duration.between(startedAt, endedAt).toMinutes();
+        }
+        return minutes / 60;
+    }
+
+    private LocalDateTime toDateTime(Object value) {
+        if (value instanceof Timestamp timestamp) return timestamp.toLocalDateTime();
+        if (value instanceof LocalDateTime dateTime) return dateTime;
+        return null;
     }
 
     /** 모두싸인 전자서명까지 마쳐 증빙이 보관된 약정 건수. */
