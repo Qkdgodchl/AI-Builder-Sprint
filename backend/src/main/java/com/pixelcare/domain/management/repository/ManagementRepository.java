@@ -1,6 +1,7 @@
 package com.pixelcare.domain.management.repository;
 
 import com.pixelcare.domain.management.dto.*;
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -205,7 +206,7 @@ public class ManagementRepository {
                     SELECT id, ?, ?, ?, ?, ?, ?, ?, ?, 'VERIFIED', CURRENT_TIMESTAMP
                     FROM organization_applications
                     WHERE public_id = ?
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, application.name());
             statement.setString(2, application.organizationType());
             statement.setString(3, application.registrationNumber());
@@ -217,7 +218,7 @@ public class ManagementRepository {
             statement.setString(9, application.publicId());
             return statement;
         }, keyHolder);
-        Long organizationId = keyHolder.getKey().longValue();
+        Long organizationId = KeyExtractUtils.extractId(keyHolder);
         jdbcTemplate.update("""
                 INSERT INTO organization_managers (organization_id, user_id, manager_role)
                 VALUES (?, ?, 'OWNER')
@@ -252,14 +253,14 @@ public class ManagementRepository {
                         name, organization_type, registration_number, phone,
                         verification_status, created_at
                     ) VALUES (?, ?, ?, ?, 'VERIFIED', CURRENT_TIMESTAMP)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, centerName);
             statement.setString(2, application.organizationType());
             statement.setString(3, application.registrationNumber());
             statement.setString(4, application.contact());
             return statement;
         }, keyHolder);
-        Long organizationId = keyHolder.getKey().longValue();
+        Long organizationId = KeyExtractUtils.extractId(keyHolder);
         jdbcTemplate.update("""
                 INSERT INTO organization_managers (organization_id, user_id, manager_role)
                 VALUES (?, ?, 'OWNER')
@@ -361,12 +362,13 @@ public class ManagementRepository {
                 JOIN clm_documents d ON d.commitment_id = c.id AND d.is_deleted = FALSE
                 WHERE c.organization_id = ? AND d.status = 'SIGNED'
                 """, organizationId);
-        long renewalDueSoon = count("""
+        Long renewalDueCount = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*) FROM commitments
                 WHERE organization_id = ? AND commitment_status = 'ACTIVE'
                   AND renewal_due_at IS NOT NULL
-                  AND renewal_due_at <= DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY)
-                """, organizationId);
+                  AND renewal_due_at <= ?
+                """, Long.class, organizationId, java.sql.Date.valueOf(java.time.LocalDate.now().plusDays(30)));
+        long renewalDueSoon = renewalDueCount == null ? 0 : renewalDueCount;
         return new CenterDashboardResponse(
                 organizationId, published, closed, pending, participants,
                 totalCommitments, signedCommitments, awaitingSignature,

@@ -1,5 +1,6 @@
 package com.pixelcare.config;
 
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.CommandLineRunner;
@@ -14,8 +15,11 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -42,6 +46,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
         @Override
         @Transactional
         public void run(String... args) {
+                ensureSchemaTablesExist();
                 Long operatorId = ensureUser(
                                 "operator@pixelcare.local",
                                 "잇다 운영진",
@@ -127,57 +132,43 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 int offset = 0;
                 for (OpportunitySeed seed : EXTRA_OPPORTUNITIES) {
                         offset++;
-                        boolean volunteer = "VOLUNTEER".equals(seed.type());
-                        // 봉사 시간 집계가 활동 시각에서 나오므로 공고마다 4시간 일정을 부여한다.
-                        jdbcTemplate.update(
-                                        """
-                                                        INSERT INTO opportunities (
-                                                            organization_id, opportunity_type, category, title, summary, description,
-                                                            region, location, participation_mode, capacity, target_amount, current_amount,
-                                                            recruitment_end_at, activity_start_at, activity_end_at,
-                                                            status, created_by, published_at
-                                                        )
-                                                        SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'OFFLINE', ?, ?, ?,
-                                                               %s, %s, %s,
-                                                               'PUBLISHED', ?, CURRENT_TIMESTAMP
-                                                        FROM DUAL
-                                                        WHERE NOT EXISTS (SELECT 1 FROM opportunities o WHERE o.title = ?)
-                                                        """
-                                                        .formatted(
-                                                                        volunteer ? "DATE_ADD(CURRENT_DATE, INTERVAL ? DAY)"
-                                                                                        : "NULL",
-                                                                        volunteer
-                                                                                        ? "DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), INTERVAL 9 HOUR)"
-                                                                                        : "NULL",
-                                                                        volunteer
-                                                                                        ? "DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL ? DAY), INTERVAL 13 HOUR)"
-                                                                                        : "NULL"),
-                                        buildExtraOpportunityArgs(seed, managerId, organizationId, offset, volunteer));
-                }
-        }
+                        Integer count = jdbcTemplate.queryForObject(
+                                        "SELECT COUNT(*) FROM opportunities WHERE title = ?",
+                                        Integer.class, seed.title());
+                        if (count != null && count > 0) {
+                                continue;
+                        }
 
-        private Object[] buildExtraOpportunityArgs(
-                        OpportunitySeed seed, Long managerId, Long organizationId, int offset, boolean volunteer) {
-                List<Object> args = new java.util.ArrayList<>(List.of(
-                                organizationId,
-                                seed.type(),
-                                seed.category(),
-                                seed.title(),
-                                seed.organizer(),
-                                seed.title() + " 프로그램의 상세 안내입니다."));
-                args.add(seed.region());
-                args.add(seed.location());
-                args.add(seed.capacity());
-                args.add(seed.targetAmount());
-                args.add(seed.currentAmount() == null ? 0L : seed.currentAmount());
-                if (volunteer) {
-                        args.add(offset + 6);
-                        args.add(offset + 9);
-                        args.add(offset + 9);
+                        boolean volunteer = "VOLUNTEER".equals(seed.type());
+                        LocalDate today = LocalDate.now();
+                        Timestamp recruitmentEndAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 6).atStartOfDay()) : null;
+                        Timestamp activityStartAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 9).atTime(9, 0)) : null;
+                        Timestamp activityEndAt = volunteer ? Timestamp.valueOf(today.plusDays(offset + 9).atTime(13, 0)) : null;
+
+                        jdbcTemplate.update("""
+                                        INSERT INTO opportunities (
+                                            organization_id, opportunity_type, category, title, summary, description,
+                                            region, location, participation_mode, capacity, target_amount, current_amount,
+                                            recruitment_end_at, activity_start_at, activity_end_at,
+                                            status, created_by, published_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OFFLINE', ?, ?, ?, ?, ?, ?, 'PUBLISHED', ?, CURRENT_TIMESTAMP)
+                                        """,
+                                        organizationId,
+                                        seed.type(),
+                                        seed.category(),
+                                        seed.title(),
+                                        seed.organizer(),
+                                        seed.title() + " 프로그램의 상세 안내입니다.",
+                                        seed.region(),
+                                        seed.location(),
+                                        seed.capacity(),
+                                        seed.targetAmount(),
+                                        seed.currentAmount() == null ? 0L : seed.currentAmount(),
+                                        recruitmentEndAt,
+                                        activityStartAt,
+                                        activityEndAt,
+                                        managerId);
                 }
-                args.add(managerId);
-                args.add(seed.title());
-                return args.toArray();
         }
 
         /**
@@ -217,9 +208,9 @@ public class DevelopmentBootstrap implements CommandLineRunner {
         private void alignDemoFundingTargets() {
                 jdbcTemplate.update("""
                                 UPDATE opportunities
-                                SET target_amount = 300000 + (id %% 3) * 100000
+                                SET target_amount = 300000 + MOD(id, 3) * 100000
                                 WHERE target_amount IS NOT NULL AND target_amount > 0
-                                """.formatted());
+                                """);
         }
 
         /**
@@ -275,16 +266,23 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         return;
 
                 // 봉사 시간은 공고의 활동 시각에서 계산하므로 비어 있는 공고를 4시간 일정으로 채운다.
-                jdbcTemplate.update("""
-                                UPDATE opportunities
-                                SET recruitment_end_at = DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 5 DAY),
-                                    activity_start_at = DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 8 DAY),
-                                                                 INTERVAL 9 HOUR),
-                                    activity_end_at = DATE_ADD(DATE_ADD(CURRENT_DATE, INTERVAL (id % 20) + 8 DAY),
-                                                               INTERVAL 13 HOUR)
+                List<Long> volIds = jdbcTemplate.query("""
+                                SELECT id FROM opportunities
                                 WHERE organization_id = ? AND opportunity_type = 'VOLUNTEER'
                                   AND is_deleted = FALSE AND activity_start_at IS NULL
-                                """, organizationId);
+                                """, (rs, rowNum) -> rs.getLong("id"), organizationId);
+                LocalDate today = LocalDate.now();
+                for (Long id : volIds) {
+                        long daysOffset = id % 20;
+                        Timestamp recruitmentEndAt = Timestamp.valueOf(today.plusDays(daysOffset + 5).atStartOfDay());
+                        Timestamp activityStartAt = Timestamp.valueOf(today.plusDays(daysOffset + 8).atTime(9, 0));
+                        Timestamp activityEndAt = Timestamp.valueOf(today.plusDays(daysOffset + 8).atTime(13, 0));
+                        jdbcTemplate.update("""
+                                        UPDATE opportunities
+                                        SET recruitment_end_at = ?, activity_start_at = ?, activity_end_at = ?
+                                        WHERE id = ?
+                                        """, recruitmentEndAt, activityStartAt, activityEndAt, id);
+                }
 
                 List<Long> volunteerOpportunities = opportunityIds(organizationId, true);
                 List<Long> donationOpportunities = opportunityIds(organizationId, false);
@@ -338,14 +336,27 @@ public class DevelopmentBootstrap implements CommandLineRunner {
          * 초기 시드에는 이 값이 없어 캘린더가 비어 보이므로 활동 일정에서 채운다.
          */
         private void backfillParticipationDates() {
-                jdbcTemplate.update("""
-                                UPDATE applications a
+                List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                                SELECT a.id AS app_id, o.activity_start_at AS act_start
+                                FROM applications a
                                 JOIN opportunities o ON o.id = a.opportunity_id
-                                SET a.participation_date = COALESCE(
-                                        DATE(o.activity_start_at),
-                                        DATE_SUB(CURRENT_DATE, INTERVAL (a.id %% 28) DAY))
                                 WHERE a.participation_date IS NULL
-                                """.formatted());
+                                """);
+                for (Map<String, Object> row : rows) {
+                        Long appId = ((Number) row.get("app_id")).longValue();
+                        Object actStartObj = row.get("act_start");
+                        LocalDate participationDate;
+                        if (actStartObj instanceof Timestamp ts) {
+                                participationDate = ts.toLocalDateTime().toLocalDate();
+                        } else if (actStartObj instanceof LocalDateTime ldt) {
+                                participationDate = ldt.toLocalDate();
+                        } else if (actStartObj instanceof Date d) {
+                                participationDate = d.toLocalDate();
+                        } else {
+                                participationDate = LocalDate.now().minusDays(appId % 28);
+                        }
+                        jdbcTemplate.update("UPDATE applications SET participation_date = ? WHERE id = ?", Date.valueOf(participationDate), appId);
+                }
         }
 
         private boolean userExists(String email) {
@@ -380,14 +391,14 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             public_id, opportunity_id, applicant_user_id, status,
                                             submitted_at, updated_at
                                         ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, opportunityId);
                         statement.setLong(3, userId);
                         statement.setString(4, status);
                         return statement;
                 }, keyHolder);
-                return keyHolder.getKey().longValue();
+                return KeyExtractUtils.extractId(keyHolder);
         }
 
         private Long insertDonationCommitment(
@@ -402,7 +413,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             pledge_amount, pledge_frequency, effective_from, signed_at
                                         ) VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, 'DONATION', ?, 'ONE_TIME',
                                                   CURRENT_DATE, CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, applicationId);
                         statement.setLong(3, opportunityId);
@@ -412,8 +423,9 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         statement.setLong(7, amount);
                         return statement;
                 }, keyHolder);
-                Long commitmentId = keyHolder.getKey().longValue();
+                Long commitmentId = KeyExtractUtils.extractId(keyHolder);
 
+                jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = 1", commitmentId);
                 jdbcTemplate.update("""
                                 INSERT INTO commitment_versions (
                                     commitment_id, version_no, terms_json, rendered_content, change_summary, created_by
@@ -476,7 +488,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                                                     account_status, privacy_consent_at, created_at, updated_at, is_deleted, temperature
                                                                 ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE, 36.5)
                                                                 """,
-                                                Statement.RETURN_GENERATED_KEYS);
+                                                new String[]{"id"});
                                 statement.setString(1, email);
                                 statement.setString(2, passwordEncoder.encode(password));
                                 statement.setString(3, nickname);
@@ -484,17 +496,16 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 statement.setString(5, role);
                                 return statement;
                         }, keyHolder);
-                        userId = keyHolder.getKey().longValue();
+                        userId = KeyExtractUtils.extractId(keyHolder);
                 } else {
                         userId = existing.get(0);
                 }
-                jdbcTemplate.update("""
-                                INSERT INTO user_roles (user_id, role)
-                                SELECT ?, ?
-                                WHERE NOT EXISTS (
-                                    SELECT 1 FROM user_roles WHERE user_id = ? AND role = ?
-                                )
-                                """, userId, role, userId, role);
+                Integer roleCount = jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM user_roles WHERE user_id = ? AND role = ?",
+                                Integer.class, userId, role);
+                if (roleCount == null || roleCount == 0) {
+                        jdbcTemplate.update("INSERT INTO user_roles (user_id, role) VALUES (?, ?)", userId, role);
+                }
                 jdbcTemplate.update(
                                 "UPDATE users SET role = ?, password_hash = COALESCE(password_hash, ?) WHERE id = ?",
                                 role,
@@ -524,10 +535,10 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                             '데모 관리자', '051-000-0000', 'manager@pixelcare.demo',
                                             '부산광역시 금정구', '로컬 개발용 데모 센터입니다.', 'VERIFIED'
                                         )
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         return statement;
                 }, keyHolder);
-                Long organizationId = keyHolder.getKey().longValue();
+                Long organizationId = KeyExtractUtils.extractId(keyHolder);
                 jdbcTemplate.update("""
                                 INSERT INTO organization_managers (organization_id, user_id, manager_role)
                                 VALUES (?, ?, 'OWNER')
@@ -582,13 +593,13 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                         INSERT INTO applications (
                                             public_id, opportunity_id, applicant_user_id, status, submitted_at
                                         ) VALUES (?, ?, ?, 'APPROVED', CURRENT_TIMESTAMP)
-                                        """, Statement.RETURN_GENERATED_KEYS);
+                                        """, new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, opportunityId);
                         statement.setLong(3, donorId);
                         return statement;
                 }, applicationKey);
-                Long applicationId = applicationKey.getKey().longValue();
+                Long applicationId = KeyExtractUtils.extractId(applicationKey);
 
                 LocalDate effectiveFrom = "MONTHLY".equals(frequency)
                                 ? renewalDueAt.minusMonths(1)
@@ -605,7 +616,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                                             effective_from, signed_at
                                                         ) VALUES (?, ?, ?, ?, ?, 1, 'ACTIVE', ?, 'DONATION', ?, ?, ?, ?, CURRENT_TIMESTAMP)
                                                         """,
-                                        Statement.RETURN_GENERATED_KEYS);
+                                        new String[] { "id" });
                         statement.setString(1, UUID.randomUUID().toString());
                         statement.setLong(2, applicationId);
                         statement.setLong(3, opportunityId);
@@ -618,7 +629,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         statement.setDate(10, Date.valueOf(effectiveFrom));
                         return statement;
                 }, commitmentKey);
-                Long commitmentId = commitmentKey.getKey().longValue();
+                Long commitmentId = KeyExtractUtils.extractId(commitmentKey);
 
                 String rendered = """
                                 [정기 후원 약정서]
@@ -635,6 +646,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 "MONTHLY".equals(frequency) ? "매월 정기" : "매년 정기",
                                 effectiveFrom,
                                 renewalDueAt);
+                jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = 1", commitmentId);
                 jdbcTemplate.update("""
                                 INSERT INTO commitment_versions (
                                     commitment_id, version_no, terms_json, rendered_content,
@@ -707,5 +719,433 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                         AND d.document_code = 'PARTICIPATION_PLEDGE'
                                   )
                                 """);
+        }
+
+        private void ensureSchemaTablesExist() {
+                boolean isPostgres = false;
+                try (var conn = jdbcTemplate.getDataSource().getConnection()) {
+                        String dbName = conn.getMetaData().getDatabaseProductName();
+                        if (dbName != null && dbName.toLowerCase().contains("postgres")) {
+                                isPostgres = true;
+                        }
+                } catch (Exception ignored) {
+                }
+
+                String autoInc = isPostgres ? "BIGSERIAL PRIMARY KEY" : "BIGINT AUTO_INCREMENT PRIMARY KEY";
+                String dateTimeType = isPostgres ? "TIMESTAMP" : "DATETIME";
+
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS user_roles (
+                                    user_id BIGINT NOT NULL,
+                                    role VARCHAR(50) NOT NULL,
+                                    PRIMARY KEY (user_id, role)
+                                )
+                                """);
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS user_interests (
+                                    user_id BIGINT NOT NULL,
+                                    interest VARCHAR(100) NOT NULL
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS refresh_tokens (
+                                    id %s,
+                                    user_id BIGINT NOT NULL,
+                                    token_hash VARCHAR(255) NOT NULL,
+                                    expires_at %s NOT NULL
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS access_tokens (
+                                    id %s,
+                                    user_id BIGINT NOT NULL,
+                                    token_hash VARCHAR(255) NOT NULL,
+                                    expires_at %s NOT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    revoked_at %s NULL
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS stored_files (
+                                    id %s,
+                                    owner_user_id BIGINT NULL,
+                                    category VARCHAR(50) NULL,
+                                    original_filename VARCHAR(255) NULL,
+                                    stored_filename VARCHAR(255) NULL,
+                                    file_path VARCHAR(500) NULL,
+                                    file_size BIGINT NULL,
+                                    mime_type VARCHAR(100) NULL,
+                                    checksum_sha256 VARCHAR(64) NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS organizations (
+                                    id %s,
+                                    name VARCHAR(200) NOT NULL,
+                                    registration_number VARCHAR(50) NULL,
+                                    representative_name VARCHAR(100) NULL,
+                                    phone_number VARCHAR(50) NULL,
+                                    address VARCHAR(300) NULL,
+                                    organization_status VARCHAR(50) DEFAULT 'APPROVED',
+                                    organization_type VARCHAR(50) DEFAULT 'NONPROFIT',
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS organization_managers (
+                                    organization_id BIGINT NOT NULL,
+                                    user_id BIGINT NOT NULL,
+                                    manager_role VARCHAR(50) DEFAULT 'PRIMARY'
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS manager_applications (
+                                    id %s,
+                                    applicant_user_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    organization_name VARCHAR(200) NULL,
+                                    business_registration_number VARCHAR(50) NULL,
+                                    contact_number VARCHAR(50) NULL,
+                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    application_status VARCHAR(50) DEFAULT 'PENDING',
+                                    submitted_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    reviewed_at %s NULL,
+                                    reviewed_by BIGINT NULL,
+                                    rejection_reason TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS manager_application_files (
+                                    manager_application_id BIGINT NULL,
+                                    application_id BIGINT NULL,
+                                    file_id BIGINT NULL,
+                                    stored_file_id BIGINT NULL,
+                                    file_purpose VARCHAR(50) NULL
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS organization_applications (
+                                    id %s,
+                                    applicant_user_id BIGINT NULL,
+                                    name VARCHAR(200) NULL,
+                                    registration_number VARCHAR(50) NULL,
+                                    representative_name VARCHAR(100) NULL,
+                                    phone_number VARCHAR(50) NULL,
+                                    address VARCHAR(300) NULL,
+                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    submitted_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    reviewed_at %s NULL,
+                                    reviewed_by BIGINT NULL,
+                                    rejection_reason TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS contract_templates (
+                                    id %s,
+                                    title VARCHAR(255) NULL,
+                                    template_code VARCHAR(100) NULL,
+                                    description TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS contract_template_versions (
+                                    id %s,
+                                    template_id BIGINT NULL,
+                                    version_no INT DEFAULT 1,
+                                    content TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS opportunities (
+                                    id %s,
+                                    public_id VARCHAR(100) NULL,
+                                    organization_id BIGINT NULL,
+                                    template_id BIGINT NULL,
+                                    opportunity_type VARCHAR(50) NULL,
+                                    category VARCHAR(50) NULL,
+                                    title VARCHAR(255) NULL,
+                                    summary VARCHAR(1000) NULL,
+                                    description TEXT NULL,
+                                    region VARCHAR(50) NULL,
+                                    location VARCHAR(500) NULL,
+                                    participation_mode VARCHAR(50) DEFAULT 'OFFLINE',
+                                    recruitment_start_at %s NULL,
+                                    recruitment_end_at %s NULL,
+                                    activity_start_at %s NULL,
+                                    activity_end_at %s NULL,
+                                    capacity INT NULL,
+                                    target_amount BIGINT NULL,
+                                    current_amount BIGINT DEFAULT 0,
+                                    thumbnail_file_id BIGINT NULL,
+                                    external_url VARCHAR(1000) NULL,
+                                    status VARCHAR(30) DEFAULT 'PUBLISHED',
+                                    created_by BIGINT NULL,
+                                    published_at %s NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    is_deleted BOOLEAN DEFAULT FALSE,
+                                    deleted_at %s NULL,
+                                    deleted_by VARCHAR(255) NULL
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS opportunity_required_documents (
+                                    id %s,
+                                    opportunity_id BIGINT NULL,
+                                    document_code VARCHAR(50) NULL,
+                                    document_name VARCHAR(255) NULL,
+                                    description VARCHAR(1000) NULL,
+                                    is_required BOOLEAN DEFAULT TRUE,
+                                    display_order INT DEFAULT 0
+                                )
+                                """, autoInc));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS applications (
+                                    id %s,
+                                    public_id VARCHAR(100) NULL,
+                                    opportunity_id BIGINT NULL,
+                                    applicant_user_id BIGINT NULL,
+                                    applicant_id BIGINT NULL,
+                                    consultation_id BIGINT NULL,
+                                    answers_json TEXT NULL,
+                                    status VARCHAR(30) DEFAULT 'APPROVED',
+                                    application_status VARCHAR(30) DEFAULT 'APPROVED',
+                                    participation_date DATE NULL,
+                                    submitted_at %s NULL,
+                                    reviewed_by BIGINT NULL,
+                                    reviewed_at %s NULL,
+                                    rejection_reason TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS commitments (
+                                    id %s,
+                                    public_id VARCHAR(100) NULL,
+                                    application_id BIGINT NULL,
+                                    opportunity_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    organization_id BIGINT NULL,
+                                    current_version_no INT DEFAULT 1,
+                                    commitment_status VARCHAR(30) DEFAULT 'ACTIVE',
+                                    title VARCHAR(255) NULL,
+                                    effective_from DATE NULL,
+                                    effective_to DATE NULL,
+                                    signed_at %s NULL,
+                                    completed_at %s NULL,
+                                    cancelled_at %s NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType, dateTimeType, dateTimeType, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS commitment_versions (
+                                    id %s,
+                                    commitment_id BIGINT NULL,
+                                    version_no INT DEFAULT 1,
+                                    template_version_id BIGINT NULL,
+                                    terms_json TEXT NULL,
+                                    rendered_content TEXT NULL,
+                                    change_summary VARCHAR(1000) NULL,
+                                    created_by BIGINT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS consents (
+                                    id %s,
+                                    commitment_id BIGINT NULL,
+                                    commitment_version_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    consent_type VARCHAR(50) NULL,
+                                    is_consented BOOLEAN DEFAULT TRUE,
+                                    consented_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS contract_documents (
+                                    id %s,
+                                    commitment_id BIGINT NULL,
+                                    commitment_version_id BIGINT NULL,
+                                    file_path VARCHAR(500) NULL,
+                                    stored_file_id BIGINT NULL,
+                                    document_type VARCHAR(50) NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS signature_requests (
+                                    id %s,
+                                    commitment_id BIGINT NULL,
+                                    commitment_version_id BIGINT NULL,
+                                    requester_id BIGINT NULL,
+                                    signer_user_id BIGINT NULL,
+                                    external_tx_id VARCHAR(255) NULL,
+                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS signature_request_documents (
+                                    signature_request_id BIGINT NULL,
+                                    document_id BIGINT NULL
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS processed_webhook_events (
+                                    id %s,
+                                    event_id VARCHAR(255) NULL,
+                                    event_type VARCHAR(100) NULL,
+                                    processed_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS commitment_change_requests (
+                                    id %s,
+                                    commitment_id BIGINT NULL,
+                                    requester_user_id BIGINT NULL,
+                                    request_type VARCHAR(50) NULL,
+                                    reason TEXT NULL,
+                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS activity_records (
+                                    id %s,
+                                    application_id BIGINT NULL,
+                                    commitment_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    organization_id BIGINT NULL,
+                                    opportunity_id BIGINT NULL,
+                                    activity_date DATE NULL,
+                                    hours INT DEFAULT 0,
+                                    status VARCHAR(50) DEFAULT 'COMPLETED',
+                                    notes TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS community_posts (
+                                    id %s,
+                                    author_id BIGINT NULL,
+                                    title VARCHAR(255) NULL,
+                                    content TEXT NULL,
+                                    category VARCHAR(50) NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS community_post_images (
+                                    post_id BIGINT NULL,
+                                    file_id BIGINT NULL,
+                                    display_order INT DEFAULT 0
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS community_comments (
+                                    id %s,
+                                    post_id BIGINT NULL,
+                                    author_id BIGINT NULL,
+                                    content TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS post_reactions (
+                                    post_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    reaction_type VARCHAR(50) NULL
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS reports (
+                                    id %s,
+                                    reporter_user_id BIGINT NULL,
+                                    target_type VARCHAR(50) NULL,
+                                    target_id BIGINT NULL,
+                                    reason TEXT NULL,
+                                    status VARCHAR(50) DEFAULT 'PENDING',
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS admin_audit_logs (
+                                    id %s,
+                                    admin_user_id BIGINT NULL,
+                                    action_type VARCHAR(100) NULL,
+                                    target_type VARCHAR(100) NULL,
+                                    target_id BIGINT NULL,
+                                    details TEXT NULL,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS notifications (
+                                    id %s,
+                                    user_id BIGINT NULL,
+                                    title VARCHAR(255) NULL,
+                                    message TEXT NULL,
+                                    is_read BOOLEAN DEFAULT FALSE,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS ai_consultations (
+                                    id %s,
+                                    user_id BIGINT NULL,
+                                    title VARCHAR(255) NULL,
+                                    consultation_status VARCHAR(50) DEFAULT 'IN_PROGRESS',
+                                    started_at %s DEFAULT CURRENT_TIMESTAMP,
+                                    ended_at %s NULL,
+                                    extracted_preferences_json TEXT NULL
+                                )
+                                """, autoInc, dateTimeType, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS ai_messages (
+                                    id %s,
+                                    consultation_id BIGINT NULL,
+                                    sender_type VARCHAR(50) NULL,
+                                    content TEXT NULL,
+                                    metadata_json TEXT NULL,
+                                    sequence_no INT DEFAULT 1,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS activity_notes (
+                                    id %s,
+                                    application_id BIGINT NULL,
+                                    user_id BIGINT NULL,
+                                    note_text TEXT NULL,
+                                    visibility VARCHAR(50) DEFAULT 'PRIVATE',
+                                    is_private BOOLEAN DEFAULT FALSE,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
+                jdbcTemplate.execute("""
+                                CREATE TABLE IF NOT EXISTS activity_note_files (
+                                    activity_note_id BIGINT NULL,
+                                    stored_file_id BIGINT NULL,
+                                    display_order INT DEFAULT 0
+                                )
+                                """);
+                jdbcTemplate.execute(String.format("""
+                                CREATE TABLE IF NOT EXISTS heritage_projects (
+                                    id %s,
+                                    title VARCHAR(255) NULL,
+                                    description TEXT NULL,
+                                    target_amount BIGINT NULL,
+                                    current_amount BIGINT DEFAULT 0,
+                                    created_at %s DEFAULT CURRENT_TIMESTAMP
+                                )
+                                """, autoInc, dateTimeType));
         }
 }

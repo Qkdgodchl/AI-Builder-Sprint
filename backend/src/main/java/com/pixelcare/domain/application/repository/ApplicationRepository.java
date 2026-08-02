@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pixelcare.domain.application.dto.*;
 import com.pixelcare.domain.opportunity.dto.OpportunityResponse;
+import com.pixelcare.global.common.KeyExtractUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -85,7 +86,7 @@ public class ApplicationRepository {
                         privacy_consent, third_party_consent, portrait_consent,
                         status, submitted_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'APPLIED', CURRENT_TIMESTAMP)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, publicId);
             statement.setLong(2, opportunity.id());
             statement.setLong(3, userId);
@@ -100,7 +101,7 @@ public class ApplicationRepository {
             statement.setBoolean(10, request.portraitConsent());
             return statement;
         }, keyHolder);
-        Long applicationId = keyHolder.getKey().longValue();
+        Long applicationId = KeyExtractUtils.extractId(keyHolder);
         createCommitment(userId, applicationId, opportunity, request, intentJson);
         return publicId;
     }
@@ -136,7 +137,7 @@ public class ApplicationRepository {
                         commitment_status, title, commitment_type, pledge_amount, pledge_frequency,
                         renewal_due_at, intent_snapshot, effective_from, effective_to
                     ) VALUES (?, ?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, commitmentPublicId);
             statement.setLong(2, applicationId);
             statement.setLong(3, opportunity.id());
@@ -152,7 +153,7 @@ public class ApplicationRepository {
             statement.setDate(13, effectiveTo == null ? null : Date.valueOf(effectiveTo));
             return statement;
         }, keyHolder);
-        Long commitmentId = keyHolder.getKey().longValue();
+        Long commitmentId = KeyExtractUtils.extractId(keyHolder);
         insertCommitmentVersion(
                 commitmentId,
                 1,
@@ -475,14 +476,11 @@ public class ApplicationRepository {
                 thirdParty ? "동의" : "미동의",
                 portrait ? "동의" : "미동의"
         );
+        jdbcTemplate.update("DELETE FROM commitment_versions WHERE commitment_id = ? AND version_no = ?", commitmentId, version);
         jdbcTemplate.update("""
                 INSERT INTO commitment_versions (
                     commitment_id, version_no, terms_json, rendered_content, created_by
                 ) VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    terms_json = VALUES(terms_json),
-                    rendered_content = VALUES(rendered_content),
-                    created_by = VALUES(created_by)
                 """, commitmentId, version, json(terms), rendered, userId);
     }
 

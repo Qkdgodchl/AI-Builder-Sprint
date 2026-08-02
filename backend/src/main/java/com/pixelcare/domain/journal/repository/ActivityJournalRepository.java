@@ -1,6 +1,7 @@
 package com.pixelcare.domain.journal.repository;
 
 import com.pixelcare.domain.journal.dto.ActivityNoteDtos;
+import com.pixelcare.global.common.KeyExtractUtils;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -70,7 +71,7 @@ public class ActivityJournalRepository {
                         public_id, application_id, author_type, author_user_id,
                         visibility, activity_date, content
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, Statement.RETURN_GENERATED_KEYS);
+                    """, new String[] { "id" });
             statement.setString(1, publicId);
             statement.setLong(2, applicationId);
             statement.setString(3, authorType);
@@ -80,7 +81,7 @@ public class ActivityJournalRepository {
             statement.setString(7, content);
             return statement;
         }, keyHolder);
-        Long noteId = keyHolder.getKey().longValue();
+        Long noteId = KeyExtractUtils.extractId(keyHolder);
 
         if (fileIds != null) {
             int order = 0;
