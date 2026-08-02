@@ -163,7 +163,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="text"
                   value={nickname}
                   onChange={(event) => setNickname(event.target.value)}
-                  placeholder="픽셀 닉네임"
+                  placeholder="잇다에서 쓸 닉네임"
                   required
                 />
               </label>

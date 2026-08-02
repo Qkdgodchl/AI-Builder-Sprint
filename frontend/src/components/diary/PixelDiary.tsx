@@ -212,7 +212,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
         setPosts((prev) => [created, ...prev]);
       }
       onAddDiary(0.5);
-      showToast(`📝 픽셀 커뮤니티 글이 등록되었습니다! 온기 +0.5°C 상승!`);
+      showToast('📝 잇다 커뮤니티 글이 등록되었습니다! (온기 +0.3°C)');
       playBeep(587, 0.15);
 
       setPhoto(null);
@@ -305,7 +305,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
   const getBadgeColor = (badge: string) => {
     switch (badge) {
       case 'LV5_GUARDIAN': return { bg: '#9d4edd', name: '👑 LV5 온기 수호자' };
-      case 'LV4_HERO': return { bg: '#ffb703', name: '⭐ LV4 픽셀 영웅' };
+      case 'LV4_HERO': return { bg: '#ffb703', name: '⭐ LV4 나눔 영웅' };
       case 'LV3_PIONEER': return { bg: '#2ec4b6', name: '⚡ LV3 선행 개척자' };
       case 'LV2_WARMTH': return { bg: '#ff70a6', name: '💖 LV2 온기 전파자' };
       default: return { bg: '#70e000', name: '🌱 LV1 싹틔움 용사' };

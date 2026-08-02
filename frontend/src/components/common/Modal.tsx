@@ -43,7 +43,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, title, type, onClose, onSu
               type="text"
               className="pixel-input"
               style={{ width: '100%' }}
-              placeholder="예: 부산 픽셀 영웅"
+              placeholder="예: 부산 나눔 영웅"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />

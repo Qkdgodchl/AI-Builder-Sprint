@@ -257,7 +257,7 @@ public class AiConsultationService {
         StringBuilder sb = new StringBuilder();
         String type = intent.pledgeType() != null ? intent.pledgeType() : "DONATION";
         String beneficiary = (intent.beneficiary() != null && !intent.beneficiary().isBlank())
-                ? intent.beneficiary() : "픽셀케어 지정 후원처";
+                ? intent.beneficiary() : "잇다 지정 후원처";
         List<String> missing = intent.missingFields() != null ? intent.missingFields() : List.of();
 
         // 1. 지역이나 수혜대상이 미정일 경우

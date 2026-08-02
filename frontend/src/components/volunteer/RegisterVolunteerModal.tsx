@@ -62,7 +62,7 @@ export const RegisterVolunteerModal: React.FC<RegisterVolunteerModalProps> = ({
     <div className="modal-overlay active" onClick={onClose}>
       <div className="pixel-box modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', width: '90%' }}>
         <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#1a1a24', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>🤝</span> 픽셀 봉사 미션 API 신규 등록
+          <span>🤝</span> 봉사 미션 신규 등록
         </div>
         <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
           서비스에 신규 봉사 프로그램을 직접 등록합니다.

@@ -5,6 +5,7 @@ import { sendAiMessage, fetchAiHistory, clearAiHistory } from '../../services/ai
 import { startConsultation, confirmConsultation, type ConsultationResponse } from '../../services/consultationApi';
 import { requestSignFromConversation, refreshClmSecureLink, type ClmDocumentDto } from '../../services/clmApi';
 import { createApplication } from '../../services/applicationApi';
+import { Logo } from '../common/Logo';
 
 interface PixelAiMateProps {
   onOpenModal: (title: string, type: 'volunteer' | 'donate') => void;
@@ -35,7 +36,7 @@ const INITIAL_MESSAGES: AiChatMessage[] = [
   {
     id: 'init-1',
     sender: 'AI',
-    text: '안녕! 나는 픽셀 케어 AI 메이트야 🤖✨\n부산 지역 봉사활동이나 기부처를 물어봐줘!\n우리 DB에 등록된 실제 활동만 정확하게 추천해드려요.\n\n예: "금정구 봉사 추천해줘" / "매월 3만원 기부 약정하고 싶어" / "유기견 봉사 알려줘"',
+    text: '안녕하세요! 저는 잇다 AI 메이트예요\n부산 지역 봉사활동이나 기부처를 물어봐 주세요.\n\n예: "금정구 봉사 추천해줘" / "매월 3만원 기부 약정하고 싶어" / "유기견 봉사 알려줘"',
     recommendedCards: [],
     createdAt: new Date().toLocaleTimeString(),
   },
@@ -79,22 +80,27 @@ function renderMessageText(text: string) {
         .replace(/\s*\|\s*/g, ' · '),
     );
 
-  return lines.map((rawLine, lineIndex) => {
-    const line = rawLine.replace(/^\s*[-*]\s+/, '· ');
-    const segments = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
-    return (
-      <React.Fragment key={lineIndex}>
-        {segments.map((segment, index) =>
-          segment.startsWith('**') && segment.endsWith('**') ? (
-            <strong key={index}>{segment.slice(2, -2)}</strong>
-          ) : (
-            <React.Fragment key={index}>{segment}</React.Fragment>
-          ),
-        )}
-        {lineIndex < lines.length - 1 && <br />}
-      </React.Fragment>
-    );
-  });
+  // 줄바꿈만으로 이어 붙이면 문장이 빽빽하게 붙어 읽히지 않는다.
+  // 한 줄을 한 문단으로 세워 사이를 띄우고, 목록 항목끼리는 더 가깝게 둔다.
+  return lines
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((rawLine, lineIndex) => {
+      const isBullet = /^\s*[-*·]\s+/.test(rawLine);
+      const line = rawLine.replace(/^\s*[-*]\s+/, '· ');
+      const segments = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+      return (
+        <p key={lineIndex} className={`chat-line${isBullet ? ' is-bullet' : ''}`}>
+          {segments.map((segment, index) =>
+            segment.startsWith('**') && segment.endsWith('**') ? (
+              <strong key={index}>{segment.slice(2, -2)}</strong>
+            ) : (
+              <React.Fragment key={index}>{segment}</React.Fragment>
+            ),
+          )}
+        </p>
+      );
+    });
 }
 
 export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenModal }) => {
@@ -104,10 +110,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
   const [isTyping, setIsTyping] = useState(false);
   const [thinkingStep, setThinkingStep] = useState<number>(0);
 
-  // 모두싸인 (Modusign) 서명 진행 모달 상태
-  const [activeSigningDoc, setActiveSigningDoc] = useState<ClmDocumentDto | null>(null);
-  const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
-  const [signingLoading, setSigningLoading] = useState(false);
   const chatEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -192,10 +194,9 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
 
     try {
       const startTime = Date.now();
-      const [aiResult, consultationResult] = await Promise.all([
-        sendAiMessage(textToSend),
-        startConsultation(textToSend, true).catch(() => null),
-      ]);
+      // 약정 파싱은 신청 화면에서 다시 하므로 여기서 부르지 않는다.
+      // 화면에 쓰지도 않으면서 응답을 기다리고 상담 기록만 쌓였다.
+      const aiResult = await sendAiMessage(textToSend);
       const elapsedTime = Date.now() - startTime;
 
       // 최소 1.8초 동안은 사고 과정 UI를 시각적으로 보여줌
@@ -217,7 +218,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
         sender: 'AI',
         text: aiResult.reply,
         recommendedCards: cards,
-        consultation: consultationResult || undefined,
         createdAt: new Date().toLocaleTimeString(),
       };
 
@@ -238,46 +238,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
       clearTimeout(stepTimer2);
       setIsTyping(false);
       setThinkingStep(0);
-    }
-  };
-
-  /** Solar LLM 대화 결과로부터 모두싸인 API 전자서명 요청 */
-  const handleStartModusignFromAi = async (consultation: ConsultationResponse, msgId: string) => {
-    setSigningLoading(true);
-    try {
-      // 1. 약정 의사 확정
-      const confirmed = await confirmConsultation(consultation.id);
-      // 2. 약정 신청 레코드 생성
-      const app = await createApplication(1, {
-        consultationId: confirmed.id,
-        privacyConsent: true,
-        thirdPartyConsent: true,
-        portraitConsent: true,
-      });
-
-      if (!app.commitment?.publicId) {
-        throw new Error('약정 레코드(Commitment) 생성 실패');
-      }
-
-      // 3. 모두싸인 서명 요청 API 호출 (Solar LLM 대화 기반 iText 8 PDF 생성)
-      const doc = await requestSignFromConversation({
-        consultationId: confirmed.id,
-        commitmentPublicId: app.commitment.publicId,
-      });
-
-      setActiveSigningDoc(doc);
-      setIsSigningModalOpen(true);
-
-      // 메시지 목록에 서명 진행 상태 업데이트
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === msgId ? { ...msg, signedDoc: doc } : msg))
-      );
-      playBeep(660, 0.2);
-    } catch (error) {
-      console.error('모두싸인 서명 생성 오류:', error);
-      alert(error instanceof Error ? error.message : '전자서명 요청 중 오류가 발생했습니다.');
-    } finally {
-      setSigningLoading(false);
     }
   };
 
@@ -313,7 +273,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
       <div className="ai-chat-body">
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-bubble-row ${msg.sender === 'USER' ? 'user-row' : 'ai-row'}`}>
-            {msg.sender === 'AI' && <div className="chat-avatar">AI</div>}
+            {msg.sender === 'AI' && <Logo variant="mark" className="chat-avatar" />}
 
             <div className="chat-content">
               <div className={`chat-bubble ${msg.sender === 'USER' ? 'user-bubble' : 'ai-bubble'}`}>
@@ -362,61 +322,11 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
                 </div>
               )}
 
-              {/* Upstage Solar LLM 약정 의향 파싱 및 모두싸인 전자서명 카드 */}
-              {msg.consultation && msg.consultation.summary && (
-                <div style={{
-                  marginTop: '10px', background: '#fff', border: '2px solid #ff70a6',
-                  borderRadius: '12px', padding: '14px', boxShadow: '0 4px 12px rgba(255, 112, 166, 0.15)',
-                  textAlign: 'left'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', background: '#ff70a6', color: '#fff', padding: '3px 8px', borderRadius: '4px' }}>
-                      📜 Solar LLM 약정서 파싱 (Information Extraction)
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#888' }}>
-                      {msg.consultation.source === 'UPSTAGE_SOLAR' ? 'Upstage Solar LLM' : '규칙 폴백'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', marginBottom: '6px' }}>
-                    📌 파싱 결과: {msg.consultation.summary}
-                  </div>
-                  {msg.consultation.intent && (
-                    <div style={{ fontSize: '12px', color: '#555', lineHeight: 1.5, background: '#faf0ca', padding: '8px 12px', borderRadius: '6px', marginBottom: '10px', border: '1px solid #111' }}>
-                      <div>• <b>기부/봉사 대상:</b> {msg.consultation.intent.beneficiary || '픽셀케어 지정 후원처'}</div>
-                      <div>• <b>금액:</b> {msg.consultation.intent.amount ? `${msg.consultation.intent.amount.toLocaleString()}원` : '30,000원'}</div>
-                      <div>• <b>주기:</b> {msg.consultation.intent.frequency === 'MONTHLY' ? '매월 정기' : msg.consultation.intent.frequency === 'ONE_TIME' ? '일시' : '매월'}</div>
-                      <div>• <b>필수 동의:</b> 개인정보·주관기관 동의 완료</div>
-                    </div>
-                  )}
-                  {!msg.signedDoc ? (
-                    <button
-                      type="button"
-                      className="pixel-button primary"
-                      disabled={signingLoading}
-                      style={{ width: '100%', padding: '10px', fontSize: '13px', background: '#ff3b30', borderColor: '#111', color: '#fff' }}
-                      onClick={() => handleStartModusignFromAi(msg.consultation!, msg.id)}
-                    >
-                      {signingLoading ? '⏳ 약정서 생성 중...' : '✍️ 모두싸인 API 전자서명 체결하기 →'}
-                    </button>
-                  ) : (
-                    <div style={{ textAlign: 'center', background: '#e6fffa', padding: '10px', borderRadius: '8px', border: '1px solid #2ec4b6' }}>
-                      <span style={{ color: '#2ec4b6', fontWeight: 'bold', fontSize: '12px', display: 'block' }}>
-                        🎉 모두싸인 전자서명 완료! (문서 ID: {msg.signedDoc.modusignDocumentId || 'MODU-2026'})
-                      </span>
-                      <button
-                        type="button"
-                        style={{ marginTop: '6px', padding: '6px 14px', background: '#2ec4b6', color: '#fff', border: '1.5px solid #111', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
-                        onClick={() => {
-                          setActiveSigningDoc(msg.signedDoc!);
-                          setIsSigningModalOpen(true);
-                        }}
-                      >
-                        📄 체결된 약정서 증서 열람하기
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/*
+                약정 파싱 결과와 서명 버튼은 여기에 두지 않는다.
+                서명은 프로그램을 고른 뒤 신청 화면에서 단계를 밟아 진행하는 흐름이고,
+                도크에서 곧바로 체결 버튼이 뜨면 무엇에 서명하는지 알 수 없다.
+              */}
 
               <span className="chat-timestamp">{msg.createdAt}</span>
             </div>
@@ -425,7 +335,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
 
         {isTyping && (
           <div className="chat-bubble-row ai-row">
-            <div className="chat-avatar">🤖</div>
+            <Logo variant="mark" className="chat-avatar" />
             <div className="chat-bubble ai-bubble typing-box" style={{ background: 'rgba(255, 255, 255, 0.95)', border: '2px solid #5d4037', borderRadius: '12px', padding: '14px 18px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#ff3b30', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span className="spinning-pixel">⚙️</span>
@@ -510,78 +420,6 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
         </button>
       </form>
 
-      {/* 모두싸인 (Modusign) 서명 진행 모달 팝업 */}
-      {isSigningModalOpen && activeSigningDoc && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex',
-          justifyContent: 'center', alignItems: 'center', padding: '20px'
-        }}>
-          <div style={{
-            background: '#fff', width: '100%', maxWidth: '720px', height: '90vh',
-            borderRadius: '16px', border: '3px solid #ff3b30', display: 'flex',
-            flexDirection: 'column', overflow: 'hidden', boxShadow: '0 12px 36px rgba(0,0,0,0.5)'
-          }}>
-            <div style={{ background: '#ff3b30', color: '#fff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>✍️ 모두싸인 (Modusign) 전자서명</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '11px', opacity: 0.9 }}>
-                  Solar LLM 파싱 약정서 · 법적 효력이 있는 서명 체결
-                </p>
-              </div>
-              <button
-                type="button"
-                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
-                onClick={() => setIsSigningModalOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ flex: 1, position: 'relative', background: '#f8f9fa' }}>
-              {activeSigningDoc.signingUrl ? (
-                <iframe
-                  src={activeSigningDoc.signingUrl}
-                  title="Modusign E-Signature"
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                />
-              ) : (
-                <div style={{ padding: '40px', textAlign: 'center' }}>
-                  <h4>모두싸인 전자서명 준비 완료</h4>
-                  <p>보안 서명 링크가 성공적으로 발급되었습니다.</p>
-                </div>
-              )}
-            </div>
-
-            <div style={{ padding: '14px 20px', background: '#fff', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <button
-                type="button"
-                style={{ padding: '8px 16px', background: '#2ec4b6', color: '#fff', border: '1.5px solid #111', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
-                onClick={async () => {
-                  try {
-                    const updated = await refreshClmSecureLink(activeSigningDoc.id);
-                    setActiveSigningDoc(updated);
-                    alert('전자서명이 체결되었으며 CLM에 법적 원본 PDF 및 감사추적인증서가 안전하게 보관되었습니다!');
-                    setIsSigningModalOpen(false);
-                  } catch (e) {
-                    alert('서명 완료 확인됨! (CLM 증빙 보관 완료)');
-                    setIsSigningModalOpen(false);
-                  }
-                }}
-              >
-                ✅ 서명 완료 및 증빙 보관 완료 처리
-              </button>
-              <button
-                type="button"
-                style={{ padding: '8px 16px', background: '#eee', color: '#333', border: '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
-                onClick={() => setIsSigningModalOpen(false)}
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 };

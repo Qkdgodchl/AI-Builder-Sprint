@@ -117,7 +117,7 @@ export const ManagerApplicationPage: React.FC<ManagerApplicationPageProps> = ({
                 type="text"
                 value={centerName}
                 onChange={(event) => setCenterName(event.target.value)}
-                placeholder="예: 부산 픽셀 복지센터"
+                placeholder="예: 부산 사하구 복지센터"
                 required
               />
             </label>
