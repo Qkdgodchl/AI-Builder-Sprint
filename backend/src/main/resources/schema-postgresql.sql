@@ -145,13 +145,19 @@ CREATE TABLE IF NOT EXISTS post_likes (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 온기 상승분 컬럼 이름은 delta다. WarmthEvent 엔티티와 WarmthService가 함께 쓴다.
 CREATE TABLE IF NOT EXISTS warmth_events (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    amount DOUBLE PRECISION NOT NULL,
-    reason VARCHAR(255) NULL,
+    delta NUMERIC(4,2) NOT NULL,
+    reason VARCHAR(40) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 이전 스키마로 만들어진 데이터베이스에는 쓰지 않는 amount 컬럼이 NOT NULL로 남아 있다.
+-- 그대로 두면 온기 적립 INSERT가 매번 실패하고, PostgreSQL은 실패한 트랜잭션의
+-- 나머지 명령을 모두 거부해 댓글·응원·요청 등록까지 함께 무너진다.
+ALTER TABLE warmth_events DROP COLUMN IF EXISTS amount;
 
 CREATE TABLE IF NOT EXISTS clm_documents (
     id BIGSERIAL PRIMARY KEY,

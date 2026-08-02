@@ -23,7 +23,9 @@ spring:
     # 드라이버가 고정이면 로컬에서 주소만 바꿔도 뜨지 않으므로 덮을 수 있게 둔다.
     driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
     hikari:
-      maximum-pool-size: 5
+      # 온기 적립이 별도 트랜잭션(REQUIRES_NEW)으로 돌아 한 요청이 커넥션을 둘 잡는다.
+      # 5로 두면 동시 요청 몇 건만으로 서로 커넥션을 기다리며 멈춘다.
+      maximum-pool-size: 10
       connection-timeout: 30000
       minimum-idle: 1
   sql:

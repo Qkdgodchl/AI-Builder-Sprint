@@ -498,19 +498,14 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 </p>
               </div>
 
-              <div className="clm-consent-list clm-ai-consent">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={externalAiConsent}
-                    onChange={(e) => setExternalAiConsent(e.target.checked)}
-                  />
-                  <span>
-                    <b className="is-optional">선택</b> 입력하신 문장을 Upstage Solar에 보내 약정 내용을 정리하는 데 동의합니다.
-                    동의하지 않으셔도 대화는 그대로 진행되며, 외부 전송 없이 정리됩니다.
-                  </span>
-                </label>
-              </div>
+              <label className="clm-ai-consent">
+                <input
+                  type="checkbox"
+                  checked={externalAiConsent}
+                  onChange={(e) => setExternalAiConsent(e.target.checked)}
+                />
+                <span>입력 문장을 Upstage Solar에 보내 약정 내용을 정리합니다. (선택)</span>
+              </label>
 
               {/* 채팅창 컨테이너 */}
               <div className="clm-chat">

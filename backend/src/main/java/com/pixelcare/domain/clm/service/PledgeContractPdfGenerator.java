@@ -181,7 +181,9 @@ public class PledgeContractPdfGenerator {
                             .setFontSize(8.5f)
                             .setFontColor(isUser ? COLOR_PRIMARY : ColorConstants.DARK_GRAY)
                             .setMarginBottom(3)
-                            .add(new Text((isUser ? "[약정자] " : "[Pixel AI 마스코트] ") + content)));
+                            // 대화에는 이모지가 섞인다. 그대로 넣으면 폰트가 BMP 밖 문자를
+                            // 담지 못해 약정서 생성 자체가 실패한다.
+                            .add(new Text((isUser ? "[약정자] " : "[잇다 AI 상담] ") + sanitizeText(content))));
                 }
                 doc.add(chatBox);
             }

@@ -82,11 +82,16 @@ public class GoodNewsService {
         restoreSnapshots();
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(3_000);
-        factory.setReadTimeout(5_000);
+        // 배포 서버에서 구글 뉴스 응답이 100KB를 넘고 국내에서 받을 때보다 느리다.
+        // 3초·5초로는 정상 응답도 중간에 끊겨 지역 소식이 매번 비어 보인다.
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(15_000);
         this.restClient = RestClient.builder()
                 .requestFactory(factory)
-                .defaultHeader("User-Agent", "PixelCare/1.0 (+regional-good-news-reader)")
+                .defaultHeader("User-Agent",
+                        "Mozilla/5.0 (compatible; ItdaBot/1.0; +https://itdafront.vercel.app)")
+                .defaultHeader("Accept", "application/rss+xml, application/xml;q=0.9, */*;q=0.8")
+                .defaultHeader("Accept-Language", "ko-KR,ko;q=0.9")
                 .build();
     }
 

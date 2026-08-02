@@ -1030,10 +1030,10 @@ body.theme-ai {
   font: inherit;
 }
 
-.clm-ai-intent-section .clm-ai-consent {
+.clm-ai-consent {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   margin-top: 12px;
   border: 1px solid #deded8;

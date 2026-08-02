@@ -1,7 +1,9 @@
 package com.pixelcare.domain.user.service;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -45,16 +47,22 @@ public class WarmthService {
     }
 
     private final JdbcTemplate jdbcTemplate;
+    /**
+     * 프록시를 거쳐야 REQUIRES_NEW가 걸린다.
+     * 같은 객체의 메서드를 그냥 부르면 트랜잭션 설정이 무시된다.
+     */
+    private final WarmthService self;
 
-    public WarmthService(JdbcTemplate jdbcTemplate) {
+    public WarmthService(JdbcTemplate jdbcTemplate, @Lazy WarmthService self) {
         this.jdbcTemplate = jdbcTemplate;
+        this.self = self;
     }
 
     /**
      * 활동 하나에 대한 온기를 올리고 실제로 오른 값을 돌려준다.
      * 하루 상한이나 최고 온도에 걸리면 남은 만큼만 오르고, 여유가 없으면 0이다.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public BigDecimal award(Long userId, Reason reason) {
         if (userId == null) return BigDecimal.ZERO;
 
@@ -87,10 +95,16 @@ public class WarmthService {
         return granted;
     }
 
-    /** 온기를 올리다 실패해도 원래 하려던 활동까지 막지는 않는다. */
+    /**
+     * 온기를 올리다 실패해도 원래 하려던 활동까지 막지는 않는다.
+     *
+     * 적립은 별도 트랜잭션에서 돈다. 같은 트랜잭션에서 돌리면 적립 쿼리 하나가 실패했을 때
+     * PostgreSQL이 그 트랜잭션의 남은 명령을 전부 거부해, 예외를 여기서 삼켜도
+     * 정작 댓글이나 응원을 남기는 본 작업이 통째로 되돌아간다.
+     */
     public BigDecimal awardQuietly(Long userId, Reason reason) {
         try {
-            return award(userId, reason);
+            return self.award(userId, reason);
         } catch (RuntimeException error) {
             System.err.println("온기 적립 실패 (" + reason + "): " + error.getMessage());
             return BigDecimal.ZERO;
