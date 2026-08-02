@@ -218,12 +218,15 @@ public class UpstageApiClient {
 
     private String buildSystemPrompt(String dbContextText, boolean hasMatches) {
         if (hasMatches) {
-            return "너는 픽셀 케어(Pixel Care)의 따뜻한 레트로 픽셀 AI 마스코트 'Pixel AI Mate'야.\n" +
-                   "8-bit/16-bit 감성으로 사용자에게 다정하고 친근하게 봉사 및 기부를 추천해줘.\n" +
+            return "너는 픽셀 케어(Pixel Care)의 따뜻한 AI 메이트 'Pixel AI Mate'야.\n" +
+                   "사용자에게 다정하고 친근한 말투로 봉사 및 기부를 안내해줘.\n" +
                    "아래는 우리 DB에서 사용자 요청과 매칭된 실제 봉사/기부 데이터야:\n\n" +
                    dbContextText + "\n\n" +
                    "반드시 위 목록에 있는 항목만 추천해. 목록에 없는 봉사나 기관은 절대 지어내지 마.\n" +
-                   "추천 카드가 아래에 표시될 예정이니 '아래 추천 카드의 [상세 보기]를 클릭해보세요!'라고 안내해줘.";
+                   "출력 규칙(반드시 지켜라):\n" +
+                   "- 표, 마크다운 문법(**, |, #, - 등), HTML 태그(<br> 등)를 쓰지 마라.\n" +
+                   "- 항목을 나열하지 마라. 상세 정보는 화면의 추천 카드가 따로 보여준다.\n" +
+                   "- 평범한 문장 2~3개로만 답하고, 마지막에 아래 추천 카드에서 상세 보기를 눌러보라고 안내해라.";
         } else {
             return "너는 픽셀 케어(Pixel Care)의 따뜻한 레트로 픽셀 AI 마스코트 'Pixel AI Mate'야.\n" +
                    "8-bit/16-bit 감성으로 사용자에게 다정하고 친근하게 대화해줘.\n" +

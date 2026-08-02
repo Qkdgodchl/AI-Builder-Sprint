@@ -1,12 +1,10 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { SessionUser } from '../../types';
+import type { PlatformStats } from '../../services/statsApi';
 
 interface HeaderProps {
-  temperature: number;
-  totalDonation: number;
-  totalHours: number;
-  totalMembers: number;
+  stats: PlatformStats | null;
   currentUser: SessionUser | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -19,10 +17,7 @@ interface NavigationItem {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  temperature,
-  totalDonation,
-  totalHours,
-  totalMembers,
+  stats,
   currentUser,
   onLogin,
   onLogout,
@@ -30,6 +25,36 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 집계를 아직 못 받았으면 자리만 지키고 값은 비워 둔다. 임의의 숫자를 보여주지 않는다.
+  const placeholder = '—';
+  const statItems = [
+    {
+      label: 'WARMTH',
+      value: stats ? `${stats.averageWarmth.toFixed(1)}°C` : placeholder,
+      accent: true,
+    },
+    {
+      label: 'DONATION',
+      value: stats ? `₩${stats.pledgedDonation.toLocaleString()}` : placeholder,
+      accent: false,
+    },
+    {
+      label: 'VOLUNTEER',
+      value: stats ? `${stats.volunteerHours.toLocaleString()} HOURS` : placeholder,
+      accent: false,
+    },
+    {
+      label: 'SIGNED',
+      value: stats ? `${stats.signedCommitments.toLocaleString()} DOCS` : placeholder,
+      accent: false,
+    },
+    {
+      label: 'MEMBERS',
+      value: stats ? `${stats.activeMembers}` : placeholder,
+      accent: false,
+    },
+  ];
 
   const navigation: NavigationItem[] = [
     { label: 'HOME', path: '/' },
@@ -109,21 +134,22 @@ export const Header: React.FC<HeaderProps> = ({
       </h1>
 
       <div className="magazine-stats" aria-label="픽셀 케어 누적 현황">
-        <div className="magazine-stat">
-          <span className="magazine-stat-label">WARMTH</span>
-          <strong className="magazine-stat-value accent">{temperature.toFixed(1)}°C</strong>
-        </div>
-        <div className="magazine-stat">
-          <span className="magazine-stat-label">DONATION</span>
-          <strong className="magazine-stat-value">₩{totalDonation.toLocaleString()}</strong>
-        </div>
-        <div className="magazine-stat">
-          <span className="magazine-stat-label">VOLUNTEER</span>
-          <strong className="magazine-stat-value">{totalHours} HOURS</strong>
-        </div>
-        <div className="magazine-stat">
-          <span className="magazine-stat-label">MEMBERS</span>
-          <strong className="magazine-stat-value">{totalMembers}</strong>
+        {/* 같은 항목을 세 벌 이어 붙이고 한 벌만큼 밀어 끊김 없이 순환시킨다.
+            두 벌만 두면 넓은 화면에서 순환 지점에 빈 공간이 보인다.
+            복제본은 화면에만 필요하므로 보조기기에서는 숨긴다. */}
+        <div className="magazine-stats-track">
+          {[0, 1, 2].map((copy) => (
+            <div className="magazine-stats-set" key={copy} aria-hidden={copy !== 0}>
+              {statItems.map((item) => (
+                <div className="magazine-stat" key={item.label}>
+                  <span className="magazine-stat-label">{item.label}</span>
+                  <strong className={`magazine-stat-value${item.accent ? ' accent' : ''}`}>
+                    {item.value}
+                  </strong>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </header>

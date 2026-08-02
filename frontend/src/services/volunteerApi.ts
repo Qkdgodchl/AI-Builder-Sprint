@@ -10,22 +10,49 @@ interface OpportunityItem {
   category?: string;
   title: string;
   summary?: string;
+  description?: string;
   region?: string;
   location?: string;
   targetAmount?: number;
   currentAmount?: number;
+  recruitmentCapacity?: number;
+  applicantCount?: number;
+  recruitmentEndDateTime?: string;
+  activityStartDateTime?: string;
+  activityEndDateTime?: string;
+  requiredDocuments?: Array<{ code: string; name: string; description?: string; required: boolean }>;
   status: string;
   createdByUserId?: number;
 }
 
+const PAGE_SIZE = 100;
+
 /**
- * Fetch list of volunteers directly from Spring Boot REST API
+ * Fetch list of volunteers directly from Spring Boot REST API.
+ * 목록 화면이 지역·구분별 건수를 클라이언트에서 세므로 모든 페이지를 받아온다.
+ * 한 페이지만 받으면 서버 기본값(20건)을 넘는 공고가 목록과 필터 숫자에서 빠진다.
  */
 export const fetchVolunteers = async (category?: string): Promise<VolunteerItem[]> => {
   try {
-    const url = category ? `${API_BASE_URL}?type=${encodeURIComponent(category)}` : API_BASE_URL;
-    const page = await apiRequest<{ items: OpportunityItem[] }>(url);
-    return page.items.map((item) => ({
+    const items: OpportunityItem[] = [];
+    let pageNumber = 0;
+    let totalPages = 1;
+
+    do {
+      const params = new URLSearchParams({
+        page: String(pageNumber),
+        size: String(PAGE_SIZE),
+      });
+      if (category) params.set('type', category);
+      const page = await apiRequest<{ items: OpportunityItem[]; totalPages: number }>(
+        `${API_BASE_URL}?${params.toString()}`,
+      );
+      items.push(...page.items);
+      totalPages = page.totalPages || 1;
+      pageNumber += 1;
+    } while (pageNumber < totalPages);
+
+    return items.map((item) => ({
       id: item.id,
       title: item.title,
       category: mapCategory(item),
@@ -35,6 +62,15 @@ export const fetchVolunteers = async (category?: string): Promise<VolunteerItem[
       currentAmount: item.currentAmount,
       tags: [categoryLabel(item), item.region || '전국'],
       createdByUserId: item.createdByUserId,
+      summary: item.summary,
+      description: item.description,
+      region: item.region,
+      recruitmentCapacity: item.recruitmentCapacity,
+      applicantCount: item.applicantCount,
+      recruitmentEndDateTime: item.recruitmentEndDateTime,
+      activityStartDateTime: item.activityStartDateTime,
+      activityEndDateTime: item.activityEndDateTime,
+      requiredDocuments: item.requiredDocuments,
     }));
   } catch (error) {
     console.error('Failed to fetch from Volunteer API:', error);

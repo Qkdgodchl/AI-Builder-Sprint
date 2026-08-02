@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { SessionUser, VolunteerItem } from '../../types';
 import { deleteOpportunity, fetchVolunteers } from '../../services/volunteerApi';
 import { OpportunityDetail } from './OpportunityDetail';
@@ -100,9 +100,14 @@ const removeLeadingSymbol = (title: string) => title.replace(/^[^가-힣A-Za-z0-
 interface VolunteerCatalogProps {
   currentUser: SessionUser | null;
   showToast: (message: string) => void;
+  onRequireLogin: (message: string) => void;
 }
 
-export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser, showToast }) => {
+export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({
+  currentUser,
+  showToast,
+  onRequireLogin,
+}) => {
   const [items, setItems] = useState<VolunteerItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [primaryFilter, setPrimaryFilter] = useState<PrimaryFilter>(null);
@@ -110,6 +115,25 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
   const [regionFilter, setRegionFilter] = useState('ALL');
   const navigate = useNavigate();
   const route = useParams()['*'] ?? '';
+  const [searchParams] = useSearchParams();
+
+  // 홈의 구분 타일에서 넘어오면 상위 탭과 기부 하위 탭까지 맞춰 연다.
+  const requestedType = searchParams.get('type');
+  const requestedSub = searchParams.get('sub');
+  useEffect(() => {
+    if (requestedType === 'VOLUNTEER' || requestedType === 'DONATION' || requestedType === 'HOMETOWN') {
+      setPrimaryFilter(requestedType);
+    }
+    if (
+      requestedType === 'DONATION' &&
+      (requestedSub === 'GENERAL' ||
+        requestedSub === 'LEGACY' ||
+        requestedSub === 'UNESCO' ||
+        requestedSub === 'HERITAGE')
+    ) {
+      setDonationFilter(requestedSub);
+    }
+  }, [requestedType, requestedSub]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -243,9 +267,24 @@ export const VolunteerCatalog: React.FC<VolunteerCatalogProps> = ({ currentUser,
       <OpportunityDetail
         item={selectedItem}
         onBack={() => navigate('/volunteer')}
-        onApply={() => navigate(`/volunteer/${selectedItem.id}/apply`)}
+        onApply={() => {
+          // 신청은 계정에 남는 약정 절차라 로그인 없이는 진행할 수 없다.
+          if (!currentUser) {
+            onRequireLogin('로그인이 필요합니다. 신청은 로그인 후 이용할 수 있어요.');
+            return;
+          }
+          navigate(`/volunteer/${selectedItem.id}/apply`);
+        }}
         canDelete={canDelete}
         onDelete={() => void handleDeleteItem(selectedItem)}
+        related={catalogItems
+          .filter(
+            (candidate) =>
+              candidate.programType === selectedItem.programType &&
+              candidate.id !== selectedItem.id,
+          )
+          .slice(0, 3)}
+        onSelectRelated={(id) => navigate(`/volunteer/${id}`)}
       />
     );
   }

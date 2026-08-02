@@ -9,9 +9,23 @@ interface PixelDiaryProps {
   onAddDiary: (tempIncrease: number) => void;
   showToast: (message: string) => void;
   currentUser: SessionUser | null;
+  onRequireLogin: (message: string) => void;
 }
 
-export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, currentUser }) => {
+export const PixelDiary: React.FC<PixelDiaryProps> = ({
+  onAddDiary,
+  showToast,
+  currentUser,
+  onRequireLogin,
+}) => {
+  // 글쓰기는 계정에 남는 기록이라 로그인한 사용자에게만 연다.
+  const openComposer = () => {
+    if (!currentUser) {
+      onRequireLogin('로그인이 필요합니다. 이야기 작성은 로그인 후 이용할 수 있어요.');
+      return;
+    }
+    setIsWriteOpen((open) => !open);
+  };
   const navigate = useNavigate();
   const { id: urlPostId } = useParams<{ id?: string }>();
 
@@ -466,7 +480,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
             봉사 경험과 유용한 팁을 기록하고, 같은 마음을 가진 이웃을 만나보세요.
           </span>
         </div>
-        <button type="button" onClick={() => setIsWriteOpen((open) => !open)}>
+        <button type="button" onClick={openComposer}>
           {isWriteOpen ? '작성 닫기' : '이야기 작성'} <span aria-hidden="true">＋</span>
         </button>
       </header>
@@ -570,7 +584,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
           <div className="community-empty-state">
             <strong>아직 등록된 이야기가 없습니다.</strong>
             <span>첫 번째 경험을 나누고 새로운 연결을 만들어보세요.</span>
-            <button type="button" onClick={() => setIsWriteOpen(true)}>첫 이야기 작성하기</button>
+            <button type="button" onClick={openComposer}>첫 이야기 작성하기</button>
           </div>
         ) : (
           <div className="community-topic-list">

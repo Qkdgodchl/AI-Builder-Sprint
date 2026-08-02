@@ -10,6 +10,16 @@ export interface VolunteerItem {
   currentAmount?: number;
   tags: string[];
   createdByUserId?: number;
+  /** 상세 화면에서 일정·모집 현황·제출 서류를 보여주기 위한 원본 값. */
+  summary?: string;
+  description?: string;
+  region?: string;
+  recruitmentCapacity?: number;
+  applicantCount?: number;
+  recruitmentEndDateTime?: string;
+  activityStartDateTime?: string;
+  activityEndDateTime?: string;
+  requiredDocuments?: Array<{ code: string; name: string; description?: string; required: boolean }>;
 }
 
 export interface PixelDiaryItem {
