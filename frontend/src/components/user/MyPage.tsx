@@ -60,6 +60,10 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState('');
   const [previewPdfTitle, setPreviewPdfTitle] = useState('');
   const [renewingCommitmentId, setRenewingCommitmentId] = useState('');
+  // 조건 변경 갱신 입력. 열었을 때 현재 약정값으로 채운다.
+  const [isChangingTerms, setIsChangingTerms] = useState(false);
+  const [termAmount, setTermAmount] = useState('');
+  const [termFrequency, setTermFrequency] = useState('MONTHLY');
   const [nickname, setNickname] = useState(currentUser.nickname);
   const [phone, setPhone] = useState('');
   const [region, setRegion] = useState('');
@@ -81,9 +85,20 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       });
   }, []);
 
+  /*
+   * 보던 화면이 통째로 바뀔 때만 맨 위로 올린다.
+   * 신청 내역 ↔ 작성한 글은 같은 자리에서 목록만 갈아 끼우는 탭인데,
+   * 라우트로 구현돼 있어 예전에는 누를 때마다 화면이 위로 튀었다.
+   */
+  const scrollAnchor = entityId
+    ? `detail:${entityId}`
+    : isProfileEditing
+      ? 'profile'
+      : 'activity';
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [route]);
+  }, [scrollAnchor]);
 
   const selectedApplication = useMemo(
     () => applications.find((application) => application.publicId === entityId) ?? null,
@@ -129,10 +144,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     };
   }, [selectedClmDocumentId]);
 
-  const renewPledge = async (commitmentPublicId: string) => {
+  const renewPledge = async (
+    commitmentPublicId: string,
+    changes?: { pledgeAmount?: number; pledgeFrequency?: string },
+  ) => {
     setRenewingCommitmentId(commitmentPublicId);
     try {
-      const renewed = await renewCommitment(commitmentPublicId);
+      const renewed = await renewCommitment(commitmentPublicId, changes);
       setApplications((previous) =>
         previous.map((application) =>
           application.commitment?.publicId === commitmentPublicId
@@ -140,7 +158,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
             : application,
         ),
       );
-      setNotice(`정기 약정을 갱신했습니다. 다음 갱신일은 ${renewed.renewalDueAt || '-'}입니다.`);
+      setIsChangingTerms(false);
+      // 조건이 바뀐 갱신은 서버가 재서명 대기 상태로 돌려준다.
+      setNotice(
+        renewed.status === 'SIGNING'
+          ? `조건이 바뀐 갱신이라 약정서에 다시 서명해야 합니다. 다음 갱신일은 ${renewed.renewalDueAt || '-'}입니다.`
+          : `정기 약정을 갱신했습니다. 다음 갱신일은 ${renewed.renewalDueAt || '-'}입니다.`,
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '약정 갱신에 실패했습니다.');
     } finally {
@@ -365,25 +389,94 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 </span>
                 <strong>다음 갱신일 {selectedApplication.commitment.renewalDueAt}</strong>
                 <p>
-                  {selectedApplication.commitment.renewalStatus === 'DUE'
-                    ? '갱신일이 지났습니다. 지금 갱신하면 다음 주기까지 약정이 이어집니다.'
-                    : '갱신일이 되면 버튼 한 번으로 다음 주기까지 약정을 이어갈 수 있습니다.'}
+                  {selectedApplication.commitment.status === 'SIGNING'
+                    ? '조건이 바뀐 갱신이라 약정서에 다시 서명해야 합니다. 신청 화면에서 전자서명을 진행해 주세요.'
+                    : selectedApplication.commitment.renewalStatus === 'DUE'
+                      ? '갱신일이 지났습니다. 같은 조건으로 갱신하면 별도 서류 없이 다음 주기까지 이어집니다.'
+                      : '갱신일이 되면 같은 조건으로 다음 주기까지 이어갈 수 있습니다. 금액이나 주기를 바꾸면 다시 서명이 필요합니다.'}
                 </p>
               </div>
+              {selectedApplication.commitment.status === 'SIGNING' && (
+                <div className="user-renewal-actions">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/volunteer/${selectedApplication.opportunityId}/apply`)}
+                  >
+                    재서명하러 가기
+                  </button>
+                </div>
+              )}
               {selectedApplication.commitment.status === 'ACTIVE' &&
                 ['MONTHLY', 'ANNUAL'].includes(
                   selectedApplication.commitment.pledgeFrequency || '',
                 ) && (
-                  <button
-                    type="button"
-                    disabled={renewingCommitmentId === selectedApplication.commitment.publicId}
-                    onClick={() => renewPledge(selectedApplication.commitment!.publicId)}
-                  >
-                    {renewingCommitmentId === selectedApplication.commitment.publicId
-                      ? '갱신하는 중…'
-                      : '지금 갱신하기'}
-                  </button>
+                  <div className="user-renewal-actions">
+                    <button
+                      type="button"
+                      disabled={renewingCommitmentId === selectedApplication.commitment.publicId}
+                      onClick={() => renewPledge(selectedApplication.commitment!.publicId)}
+                    >
+                      {renewingCommitmentId === selectedApplication.commitment.publicId
+                        ? '갱신하는 중…'
+                        : '같은 조건으로 갱신'}
+                    </button>
+                    <button
+                      type="button"
+                      className="user-renewal-secondary"
+                      onClick={() => {
+                        setTermAmount(String(selectedApplication.commitment?.pledgeAmount ?? ''));
+                        setTermFrequency(selectedApplication.commitment?.pledgeFrequency || 'MONTHLY');
+                        setIsChangingTerms((previous) => !previous);
+                      }}
+                    >
+                      {isChangingTerms ? '조건 변경 취소' : '조건 바꿔서 갱신'}
+                    </button>
+                  </div>
                 )}
+              {isChangingTerms && selectedApplication.commitment.status === 'ACTIVE' && (
+                <form
+                  className="user-renewal-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const amount = Number(termAmount);
+                    if (!Number.isFinite(amount) || amount <= 0) {
+                      setNotice('약정 금액은 0보다 큰 숫자로 입력해 주세요.');
+                      return;
+                    }
+                    renewPledge(selectedApplication.commitment!.publicId, {
+                      pledgeAmount: amount,
+                      pledgeFrequency: termFrequency,
+                    });
+                  }}
+                >
+                  <label>
+                    약정 금액 (원)
+                    <input
+                      type="number"
+                      min="1"
+                      value={termAmount}
+                      onChange={(event) => setTermAmount(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    납부 주기
+                    <select
+                      value={termFrequency}
+                      onChange={(event) => setTermFrequency(event.target.value)}
+                    >
+                      <option value="MONTHLY">매월</option>
+                      <option value="ANNUAL">매년</option>
+                    </select>
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={renewingCommitmentId === selectedApplication.commitment.publicId}
+                  >
+                    변경 내용으로 갱신
+                  </button>
+                  <small>금액이나 주기를 바꾸면 약정 내용이 달라지므로 전자서명을 다시 받습니다.</small>
+                </form>
+              )}
             </section>
           )}
           <div className="user-document-list">

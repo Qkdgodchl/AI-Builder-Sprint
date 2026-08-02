@@ -20,15 +20,18 @@ public class ApplicationService {
     private final ApplicationRepository repository;
     private final OpportunityService opportunityService;
     private final ManagementService managementService;
+    private final com.pixelcare.domain.user.service.WarmthService warmthService;
 
     public ApplicationService(
             ApplicationRepository repository,
             OpportunityService opportunityService,
-            ManagementService managementService
+            ManagementService managementService,
+            com.pixelcare.domain.user.service.WarmthService warmthService
     ) {
         this.repository = repository;
         this.opportunityService = opportunityService;
         this.managementService = managementService;
+        this.warmthService = warmthService;
     }
 
     @Transactional
@@ -180,6 +183,8 @@ public class ApplicationService {
             throw conflict("이미 제출했거나 제출할 수 없는 약정서입니다.");
         }
         repository.submitCommitment(commitmentPublicId);
+        warmthService.awardQuietly(userId,
+                com.pixelcare.domain.user.service.WarmthService.Reason.APPLICATION_SUBMITTED);
         return repository.findCommitment(commitmentPublicId).orElseThrow();
     }
 
@@ -194,8 +199,39 @@ public class ApplicationService {
         if (!Set.of("MONTHLY", "ANNUAL").contains(current.pledgeFrequency())) {
             throw conflict("월간 또는 연간 약정만 갱신할 수 있습니다.");
         }
-        repository.renewCommitment(commitmentPublicId, userId, request);
+        validateRequestedTerms(request);
+        repository.renewCommitment(commitmentPublicId, userId, request, hasTermChange(current, request));
+        warmthService.awardQuietly(userId,
+                com.pixelcare.domain.user.service.WarmthService.Reason.COMMITMENT_RENEWED);
         return repository.findCommitment(commitmentPublicId).orElseThrow();
+    }
+
+    private void validateRequestedTerms(CommitmentRenewalRequest request) {
+        if (request == null) return;
+        if (request.pledgeAmount() != null
+                && request.pledgeAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw conflict("변경할 약정 금액은 0보다 커야 합니다.");
+        }
+        if (request.pledgeFrequency() != null
+                && !Set.of("MONTHLY", "ANNUAL").contains(request.pledgeFrequency())) {
+            throw conflict("정기 약정 주기는 매월 또는 매년만 선택할 수 있습니다.");
+        }
+    }
+
+    /**
+     * 금액이나 주기가 실제로 달라졌는지 본다.
+     * 같은 값을 그대로 보내온 경우는 조건 변경으로 치지 않는다.
+     */
+    private boolean hasTermChange(
+            ApplicationResponse.CommitmentSummary current, CommitmentRenewalRequest request
+    ) {
+        if (request == null) return false;
+        boolean amountChanged = request.pledgeAmount() != null
+                && (current.pledgeAmount() == null
+                    || current.pledgeAmount().compareTo(request.pledgeAmount()) != 0);
+        boolean frequencyChanged = request.pledgeFrequency() != null
+                && !request.pledgeFrequency().equals(current.pledgeFrequency());
+        return amountChanged || frequencyChanged;
     }
 
     private ApiException conflict(String message) {

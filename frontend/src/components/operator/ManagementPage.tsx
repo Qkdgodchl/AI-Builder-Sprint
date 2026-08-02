@@ -61,9 +61,11 @@ export function ManagementPage() {
     }
   }, [location.pathname, navigate]);
 
+  // 승인/문서는 같은 자리에서 목록만 바뀌는 탭이라 누를 때마다 위로 올릴 이유가 없다.
+  // 다른 화면에서 들어올 때만 위에서 시작하도록 처음 한 번만 올린다.
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [location.pathname]);
+  }, []);
 
   useEffect(() => {
     if (!notice) return;

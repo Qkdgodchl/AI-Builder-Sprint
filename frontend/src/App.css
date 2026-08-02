@@ -775,6 +775,58 @@
   cursor: progress;
 }
 
+.user-renewal-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 조건 변경은 재서명이 따라오는 무거운 동작이라 보조 버튼으로 둔다. */
+.user-renewal-card .user-renewal-secondary {
+  background: #ffffff;
+  color: #1f1f1d;
+}
+
+.user-renewal-form {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  border-top: 1px solid var(--user-line);
+  padding-top: 18px;
+}
+
+.user-renewal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #6f6f6a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+}
+
+.user-renewal-form input,
+.user-renewal-form select {
+  height: 40px;
+  min-width: 160px;
+  border: 1px solid var(--user-line);
+  background: #ffffff;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.user-renewal-form small {
+  flex-basis: 100%;
+  color: #92938e;
+  font-size: 10.5px;
+  line-height: 1.6;
+}
+
 .user-renewal-badge {
   display: inline-block;
   border-radius: 999px;

@@ -363,13 +363,17 @@ public class ApplicationRepository {
                 """, publicId);
     }
 
-    public void renewCommitment(String publicId, Long userId, CommitmentRenewalRequest request) {
+    public void renewCommitment(
+            String publicId, Long userId, CommitmentRenewalRequest request, boolean termsChanged
+    ) {
         Map<String, Object> current = jdbcTemplate.queryForMap("""
-                SELECT id, current_version_no, pledge_frequency, renewal_due_at, effective_to
+                SELECT id, current_version_no, pledge_amount, pledge_frequency, renewal_due_at, effective_to
                 FROM commitments WHERE public_id = ? AND user_id = ? AND commitment_status = 'ACTIVE'
                 """, publicId, userId);
         Long commitmentId = ((Number) current.get("id")).longValue();
-        String frequency = string(current.get("pledge_frequency"));
+        // 조건이 바뀌면 바뀐 주기를 기준으로 다음 갱신일을 잡아야 한다.
+        String frequency = request != null && request.pledgeFrequency() != null
+                ? request.pledgeFrequency() : string(current.get("pledge_frequency"));
         LocalDate base = current.get("renewal_due_at") instanceof Date date
                 ? date.toLocalDate() : LocalDate.now();
         LocalDate nextDue = switch (frequency) {
@@ -383,12 +387,30 @@ public class ApplicationRepository {
         LocalDate effectiveTo = request == null || request.effectiveTo() == null
                 ? (current.get("effective_to") instanceof Date date ? date.toLocalDate() : nextDue)
                 : request.effectiveTo();
+
+        java.math.BigDecimal nextAmount = request != null && request.pledgeAmount() != null
+                ? request.pledgeAmount()
+                : (current.get("pledge_amount") instanceof java.math.BigDecimal amount ? amount : null);
+
+        /*
+         * 같은 조건이면 기간만 늘리고 바로 유효한 약정으로 둔다.
+         * 금액이나 주기가 바뀌면 내용이 달라진 약정이므로 다시 서명을 받아야 한다.
+         * SIGNING으로 두면 기존 전자서명 흐름이 그대로 이어받아 서명 후 ACTIVE로 되돌린다.
+         */
+        String nextStatus = termsChanged ? "SIGNING" : "ACTIVE";
+        String changeSummary = termsChanged
+                ? "조건 변경 갱신: 금액 %s, 주기 %s, 다음 갱신일 %s (재서명 필요)"
+                        .formatted(nextAmount, frequency, nextDue)
+                : "정기 약정 갱신: 다음 갱신일 " + nextDue;
+
         jdbcTemplate.update("""
                 UPDATE commitments
                 SET renewal_due_at = ?, effective_to = ?, current_version_no = ?,
-                    commitment_status = 'ACTIVE', updated_at = CURRENT_TIMESTAMP
+                    pledge_amount = ?, pledge_frequency = ?,
+                    commitment_status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-                """, Date.valueOf(nextDue), Date.valueOf(effectiveTo), nextVersion, commitmentId);
+                """, Date.valueOf(nextDue), Date.valueOf(effectiveTo), nextVersion,
+                nextAmount, frequency, nextStatus, commitmentId);
         jdbcTemplate.update("""
                 INSERT INTO commitment_versions (
                     commitment_id, version_no, template_version_id, terms_json,
@@ -398,14 +420,28 @@ public class ApplicationRepository {
                        rendered_content, ?, ?
                 FROM commitment_versions
                 WHERE commitment_id = ? AND version_no = ?
-                """, nextVersion, "정기 약정 갱신: 다음 갱신일 " + nextDue, userId,
-                commitmentId, nextVersion - 1);
+                """, nextVersion, changeSummary, userId, commitmentId, nextVersion - 1);
+
+        Map<String, Object> changes = new java.util.LinkedHashMap<>();
+        changes.put("renewalDueAt", nextDue.toString());
+        if (termsChanged) {
+            changes.put("pledgeAmount", nextAmount == null ? null : nextAmount.toPlainString());
+            changes.put("pledgeFrequency", frequency);
+            changes.put("resignatureRequired", true);
+        }
         jdbcTemplate.update("""
                 INSERT INTO commitment_change_requests (
                     commitment_id, requested_by, request_type, requested_changes_json,
                     reason, status, reviewed_by, reviewed_at
-                ) VALUES (?, ?, 'RENEWAL', ?, '사용자 정기 약정 갱신', 'APPROVED', ?, CURRENT_TIMESTAMP)
-                """, commitmentId, userId, json(Map.of("renewalDueAt", nextDue.toString())), userId);
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                """,
+                commitmentId, userId,
+                termsChanged ? "AMENDMENT" : "RENEWAL",
+                json(changes),
+                termsChanged ? "사용자 조건 변경 갱신" : "사용자 정기 약정 갱신",
+                // 조건이 바뀐 건은 재서명이 끝나야 확정되므로 승인으로 닫지 않는다.
+                termsChanged ? "PENDING" : "APPROVED",
+                termsChanged ? null : userId);
     }
 
     private void insertCommitmentVersion(

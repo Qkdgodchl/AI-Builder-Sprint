@@ -71,10 +71,22 @@ export const submitCommitment = (publicId: string) =>
 export type CommitmentSummary = NonNullable<ApplicationResponse['commitment']>;
 
 /** 월간·연간 정기 약정의 다음 갱신 주기를 연장한다. */
-export const renewCommitment = (publicId: string, effectiveTo?: string) =>
+/**
+ * 정기 약정 갱신.
+ * 금액·주기를 비워 보내면 같은 조건으로 기간만 연장하고,
+ * 값을 담아 보내면 조건이 바뀐 갱신이라 서버가 재서명 대기(SIGNING)로 돌린다.
+ */
+export const renewCommitment = (
+  publicId: string,
+  changes?: { effectiveTo?: string; pledgeAmount?: number; pledgeFrequency?: string },
+) =>
   apiRequest<CommitmentSummary>(`/api/v1/commitments/${publicId}/renew`, {
     method: 'POST',
-    body: JSON.stringify({ effectiveTo: effectiveTo ?? null }),
+    body: JSON.stringify({
+      effectiveTo: changes?.effectiveTo ?? null,
+      pledgeAmount: changes?.pledgeAmount ?? null,
+      pledgeFrequency: changes?.pledgeFrequency ?? null,
+    }),
   });
 
 export const fetchOpportunityApplications = (opportunityId: number) =>
