@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { playBeep } from '../../services/soundFx';
 import { sendAiMessage, fetchAiHistory, clearAiHistory } from '../../services/aiApi';
 import { startConsultation, confirmConsultation, type ConsultationResponse } from '../../services/consultationApi';
-import { requestClmSign, refreshClmSecureLink, type ClmDocumentDto } from '../../services/clmApi';
+import { requestSignFromConversation, refreshClmSecureLink, type ClmDocumentDto } from '../../services/clmApi';
 import { createApplication } from '../../services/applicationApi';
 
 interface PixelAiMateProps {
@@ -72,6 +72,15 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
   const [activeSigningDoc, setActiveSigningDoc] = useState<ClmDocumentDto | null>(null);
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
   const [signingLoading, setSigningLoading] = useState(false);
+  const chatEndRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping, thinkingStep]);
 
   // 대화 히스토리 불러오기
   useEffect(() => {
@@ -214,8 +223,11 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
         throw new Error('약정 레코드(Commitment) 생성 실패');
       }
 
-      // 3. 모두싸인 서명 요청 API 호출
-      const doc = await requestClmSign({ commitmentPublicId: app.commitment.publicId });
+      // 3. 모두싸인 서명 요청 API 호출 (Solar LLM 대화 기반 iText 8 PDF 생성)
+      const doc = await requestSignFromConversation({
+        consultationId: confirmed.id,
+        commitmentPublicId: app.commitment.publicId,
+      });
 
       setActiveSigningDoc(doc);
       setIsSigningModalOpen(true);
@@ -414,6 +426,46 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
             </div>
           </div>
         )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Quick Prompt Suggestion Chips */}
+      <div style={{
+        padding: '8px 16px', display: 'flex', gap: '8px', overflowX: 'auto',
+        background: '#faf8f5', borderTop: '1px dashed #d8c3b0', whiteSpace: 'nowrap'
+      }}>
+        <button
+          type="button"
+          className="pixel-button"
+          style={{ fontSize: '11px', padding: '4px 10px', background: '#e6f4ff', color: '#0958d9', borderColor: '#91caff', cursor: 'pointer', flexShrink: 0 }}
+          onClick={() => handleSend('부산 고향사랑기부 매월 3만원 약정하고 싶어. 동백전 답례품으로 원해.')}
+        >
+          🏠 부산 고향사랑기부 (동백전 답례품)
+        </button>
+        <button
+          type="button"
+          className="pixel-button"
+          style={{ fontSize: '11px', padding: '4px 10px', background: '#f6ffed', color: '#389e0d', borderColor: '#b7eb8f', cursor: 'pointer', flexShrink: 0 }}
+          onClick={() => handleSend('범어사 삼층석탑 보존을 위해 유산기부를 상담하고 싶어.')}
+        >
+          🏛️ 범어사 삼층석탑 유산기부 약정
+        </button>
+        <button
+          type="button"
+          className="pixel-button"
+          style={{ fontSize: '11px', padding: '4px 10px', background: '#fff7e6', color: '#d46b08', borderColor: '#ffd591', cursor: 'pointer', flexShrink: 0 }}
+          onClick={() => handleSend('금정구 독거어르신 도시락 봉사 활동에 참여하고 싶어.')}
+        >
+          🍱 금정구 도시락 봉사 약정
+        </button>
+        <button
+          type="button"
+          className="pixel-button"
+          style={{ fontSize: '11px', padding: '4px 10px', background: '#fff0f6', color: '#c41d7f', borderColor: '#ffadd2', cursor: 'pointer', flexShrink: 0 }}
+          onClick={() => handleSend('매월 3만원 정기후원 신청 시 세액공제 혜택과 절차가 어떻게 되나요?')}
+        >
+          💝 정기후원 세액공제 문의
+        </button>
       </div>
 
       {/* Input Form */}
@@ -427,7 +479,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
         <input
           type="text"
           className="pixel-input"
-          placeholder="예: '부산대 근처 봉사' / '매월 3만원 기부 약정하고 싶어' / '금정구 유기견 봉사'"
+          placeholder="예: '부산대 근처 봉사' / '매월 3만원 기부 약정하고 싶어' / '고향사랑기부 답례품'"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
         />

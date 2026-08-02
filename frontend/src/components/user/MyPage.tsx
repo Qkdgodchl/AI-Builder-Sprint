@@ -116,7 +116,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       const url = await loadClmDocumentFile(documentId, file.id);
       if (previewPdfUrl) URL.revokeObjectURL(previewPdfUrl);
       setPreviewPdfUrl(url);
-      setPreviewPdfTitle(file.fileType === 'SIGNED_DOCUMENT' ? '서명 완료 약정서' : '감사추적인증서');
+      setPreviewPdfTitle(
+        file.fileType === 'PLEDGE_DRAFT_PDF'
+          ? 'AI 맞춤 약정서 PDF'
+          : file.fileType === 'SIGNED_DOCUMENT'
+          ? '모두싸인 최종 서명 완료 약정서'
+          : '모두싸인 감사추적 인증서'
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : '전자서명 파일을 열지 못했습니다.');
     }
@@ -277,7 +283,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
               >
                 <span>{String(index + 1).padStart(2, '0')}</span>
                 <div>
-                  <strong>📜 {file.fileType === 'SIGNED_DOCUMENT' ? '모두싸인 서명 완료 약정서 (PDF)' : '감사추적 인증서 (Audit Trail)'}</strong>
+                  <strong>
+                    {file.fileType === 'PLEDGE_DRAFT_PDF'
+                      ? '🤖 Upstage AI 작성 맞춤 약정서 (PDF)'
+                      : file.fileType === 'SIGNED_DOCUMENT'
+                      ? '✍️ 모두싸인 최종 서명 완료 약정서 (PDF)'
+                      : '🛡️ 모두싸인 감사추적 인증서 (Audit Trail)'}
+                  </strong>
                   <p>{file.originalName} · {(file.sizeBytes / 1024).toFixed(1)}KB · 법적효력 검증완료 (SIGNED)</p>
                 </div>
                 <em style={{ color: '#ff3b30', fontWeight: 'bold' }}>PDF 열람 📥</em>

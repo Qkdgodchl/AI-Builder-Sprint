@@ -24,7 +24,8 @@ public class UpstageApiClient {
 
     private static final Set<String> PLEDGE_TYPES = Set.of(
             "DONATION", "HOMETOWN_DONATION", "VOLUNTEER", "LEGACY_DONATION", "CULTURAL_HERITAGE_DONATION");
-    private static final Set<String> FREQUENCIES = Set.of("ONE_TIME", "MONTHLY", "ANNUAL", "NOT_APPLICABLE");
+    private static final Set<String> FREQUENCIES = Set.of(
+            "ONE_TIME", "WEEKLY", "BIWEEKLY", "MONTHLY", "QUARTERLY", "BIANNUAL", "ANNUAL", "FLEXIBLE", "NOT_APPLICABLE");
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -62,7 +63,7 @@ public class UpstageApiClient {
                     이전 구조화 결과가 있으면 유지하되 현재 사용자 문장으로 명시적으로 수정된 값만 갱신하라.
                     모르는 값은 null로 두고 missingFields에는 필수 누락 필드명을 넣어라.
                     pledgeType: DONATION|HOMETOWN_DONATION|VOLUNTEER|LEGACY_DONATION|CULTURAL_HERITAGE_DONATION
-                    frequency: ONE_TIME|MONTHLY|ANNUAL|NOT_APPLICABLE
+                    frequency: ONE_TIME|WEEKLY|BIWEEKLY|MONTHLY|QUARTERLY|BIANNUAL|ANNUAL|FLEXIBLE|NOT_APPLICABLE
                     startDate: YYYY-MM-DD, amount: 원 단위 양수 숫자
                     필드: pledgeType, beneficiary, amount, frequency, startDate, region, rewardPreference,
                     taxDeductionConsent, privacyConsent, specialConditions, missingFields

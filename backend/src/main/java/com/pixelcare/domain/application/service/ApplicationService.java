@@ -42,14 +42,17 @@ public class ApplicationService {
                 && opportunity.recruitmentEndDateTime().isBefore(java.time.LocalDateTime.now())) {
             throw conflict("모집이 종료된 프로그램입니다.");
         }
-        if (repository.exists(opportunityId, userId)) {
-            List<ApplicationResponse> existingList = repository.findByUser(userId);
-            java.util.Optional<ApplicationResponse> match = existingList.stream()
-                    .filter(app -> app.opportunityId().equals(opportunityId))
-                    .findFirst();
-            if (match.isPresent()) {
-                return match.get();
+        List<ApplicationResponse> existingList = repository.findByUser(userId);
+        java.util.Optional<ApplicationResponse> match = existingList.stream()
+                .filter(app -> app.opportunityId().equals(opportunityId))
+                .findFirst();
+        if (match.isPresent()) {
+            ApplicationResponse existing = match.get();
+            if (existing.commitment() != null && existing.commitment().publicId() != null) {
+                return existing;
             }
+            repository.ensureCommitmentExists(userId, existing.publicId(), opportunity, request);
+            return repository.findByPublicId(existing.publicId()).orElse(existing);
         }
         if (opportunity.recruitmentCapacity() != null
                 && repository.activeApplicationCount(opportunityId) >= opportunity.recruitmentCapacity()) {
@@ -170,6 +173,9 @@ public class ApplicationService {
             String commitmentPublicId
     ) {
         ApplicationResponse.CommitmentSummary current = commitment(userId, commitmentPublicId);
+        if ("SUBMITTED".equals(current.status()) || "SIGNING".equals(current.status()) || "ACTIVE".equals(current.status())) {
+            return current;
+        }
         if (!Set.of("DRAFT", "REVISION_REQUESTED").contains(current.status())) {
             throw conflict("이미 제출했거나 제출할 수 없는 약정서입니다.");
         }

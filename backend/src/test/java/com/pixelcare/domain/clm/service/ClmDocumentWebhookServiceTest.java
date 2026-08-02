@@ -1,5 +1,7 @@
 package com.pixelcare.domain.clm.service;
 
+import com.pixelcare.domain.ai.repository.AiConsultationRepository;
+import com.pixelcare.domain.ai.service.AiConsultationService;
 import com.pixelcare.domain.clm.entity.ClmDocument;
 import com.pixelcare.domain.clm.repository.ClmCommitmentRepository;
 import com.pixelcare.domain.clm.repository.ClmDocumentRepository;
@@ -27,6 +29,9 @@ class ClmDocumentWebhookServiceTest {
     @Mock ClmDocumentArchiveService archiveService;
     @Mock ClmDocumentAccessService accessService;
     @Mock ClmDocumentAccessRepository accessRepository;
+    @Mock AiConsultationRepository consultationRepository;
+    @Mock AiConsultationService consultationService;
+    @Mock PledgeContractPdfGenerator pdfGenerator;
 
     private ClmDocumentService service;
 
@@ -34,7 +39,8 @@ class ClmDocumentWebhookServiceTest {
     void setUp() {
         service = new ClmDocumentService(documentRepository, commitmentRepository,
                 webhookEventRepository, modusignApiClient, archiveService,
-                accessService, accessRepository);
+                accessService, accessRepository, consultationRepository,
+                consultationService, pdfGenerator);
     }
 
     @Test

@@ -86,4 +86,19 @@ public class AiConsultationRepository {
     private ApiException notFound() {
         return new ApiException(HttpStatus.NOT_FOUND, "CONSULTATION_NOT_FOUND", "AI 약정 상담을 찾을 수 없습니다.");
     }
+
+    /**
+     * 특정 상담의 메시지 이력을 순서대로 반환합니다.
+     * 반환 형식: List of [senderType, content]
+     */
+    public java.util.List<String[]> findMessages(Long consultationId) {
+        return jdbcTemplate.query("""
+                SELECT sender_type, content FROM ai_messages
+                WHERE consultation_id = ?
+                ORDER BY sequence_no ASC
+                """,
+                (rs, rowNum) -> new String[]{ rs.getString("sender_type"), rs.getString("content") },
+                consultationId
+        );
+    }
 }

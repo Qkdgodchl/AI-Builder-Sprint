@@ -90,4 +90,32 @@ public class ClmDocumentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.filename() + "\"")
                 .body(file.resource());
     }
+
+    /**
+     * LLM 대화 기반 약정서 자동 생성 + 모두싸인 전자서명 요청
+     * 1. AI 상담 세션(consultationId)에서 대화 내역 + PledgeIntent 조회
+     * 2. Upstage Solar 추출 결과로 iText PDF 약정서 생성
+     * 3. 모두싸인에 PDF 업로드 → 서명 요청
+     */
+    @PostMapping("/request-sign-from-conversation")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<ClmDocumentResponseDto> requestSignFromConversation(
+            @RequestBody ConversationSignRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        CurrentUser currentUser = authGuard.requireUser(httpRequest);
+        ClmDocumentResponseDto response = clmDocumentService.requestSignFromConversation(
+                request.consultationId(),
+                request.commitmentPublicId(),
+                request.applicantPhone(),
+                currentUser
+        );
+        return ApiResponse.success(response, "LLM 대화 기반 약정서 PDF가 생성되어 모두싸인 전자서명 요청이 완료되었습니다.");
+    }
+
+    public record ConversationSignRequest(
+            Long consultationId,
+            String commitmentPublicId,
+            String applicantPhone
+    ) {}
 }

@@ -34,6 +34,10 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
 
+    // iText 7 – PDF 약정서 생성 (AGPL-3.0)
+    implementation 'com.itextpdf:itext-core:8.0.5'
+    implementation 'com.itextpdf:layout:8.0.5'
+
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'com.h2database:h2'

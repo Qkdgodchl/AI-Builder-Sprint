@@ -23,7 +23,7 @@ export interface ClmSignRequestPayload {
 
 export interface ClmDocumentFileDto {
   id: number;
-  fileType: 'SIGNED_DOCUMENT' | 'AUDIT_TRAIL';
+  fileType: 'SIGNED_DOCUMENT' | 'AUDIT_TRAIL' | 'PLEDGE_DRAFT_PDF';
   originalName: string;
   contentType: string;
   sizeBytes: number;
@@ -85,3 +85,18 @@ export const fetchManagerApplicationClmDocuments = (
   apiRequest<ClmDocumentDto[]>(
     `/api/v1/manager/applications/${applicationPublicId}/clm-documents`,
   );
+
+/**
+ * LLM 대화 기반 약정서 PDF 자동 생성 + 모두싸인 전자서명 요청
+ * - consultationId: AI 상담 세션 ID
+ * - commitmentPublicId: 약정 레코드 공개 식별자
+ */
+export const requestSignFromConversation = (payload: {
+  consultationId: number;
+  commitmentPublicId: string;
+  applicantPhone?: string;
+}): Promise<ClmDocumentDto> =>
+  apiRequest<ClmDocumentDto>(`${API_BASE}/request-sign-from-conversation`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });

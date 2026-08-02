@@ -11,6 +11,11 @@ export interface PledgeIntent {
   taxDeductionConsent: boolean | null;
   privacyConsent: boolean | null;
   specialConditions: string | null;
+  giftItem?: string | null;
+  localGovCode?: string | null;
+  taxCreditAmount?: number | null;
+  heritageTarget?: string | null;
+  bequestType?: string | null;
   missingFields: string[];
 }
 
@@ -39,3 +44,10 @@ export const updateConsultationIntent = (id: number, intent: PledgeIntent) =>
 
 export const confirmConsultation = (id: number) =>
   apiRequest<ConsultationResponse>(`${BASE}/${id}/confirm`, { method: 'POST' });
+
+/** 이미 시작된 상담 세션에 멀티턴 메시지 추가 */
+export const sendConsultationMessage = (id: number, message: string, externalAiConsent: boolean) =>
+  apiRequest<ConsultationResponse>(`${BASE}/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ message, externalAiConsent }),
+  });

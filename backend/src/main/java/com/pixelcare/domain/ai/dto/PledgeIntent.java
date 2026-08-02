@@ -15,6 +15,11 @@ public record PledgeIntent(
         Boolean taxDeductionConsent,
         Boolean privacyConsent,
         String specialConditions,
+        String giftItem,
+        String localGovCode,
+        BigDecimal taxCreditAmount,
+        String heritageTarget,
+        String bequestType,
         List<String> missingFields
 ) {
     public PledgeIntent {

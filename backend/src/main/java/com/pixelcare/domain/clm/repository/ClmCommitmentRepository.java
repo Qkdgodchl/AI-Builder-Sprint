@@ -26,24 +26,28 @@ public class ClmCommitmentRepository {
         List<CommitmentSigningContext> rows = jdbcTemplate.query("""
                 SELECT c.id, c.public_id, c.opportunity_id, c.title, c.commitment_status,
                        c.pledge_frequency, c.effective_from,
-                       u.name AS applicant_name, u.email AS applicant_email
+                       u.name AS applicant_name, u.email AS applicant_email,
+                       o.opportunity_type, COALESCE(org.name, '픽셀케어 지정 기관') AS organizer
                 FROM commitments c
                 JOIN users u ON u.id = c.user_id
+                JOIN opportunities o ON o.id = c.opportunity_id
+                LEFT JOIN organizations org ON org.id = o.organization_id
                 WHERE c.public_id = ? AND c.user_id = ?
                 """, (rs, rowNum) -> new CommitmentSigningContext(
                 rs.getLong("id"), rs.getString("public_id"), rs.getLong("opportunity_id"),
                 rs.getString("title"), rs.getString("commitment_status"),
                 rs.getString("pledge_frequency"),
                 rs.getDate("effective_from") == null ? null : rs.getDate("effective_from").toLocalDate(),
-                rs.getString("applicant_name"), rs.getString("applicant_email")
+                rs.getString("applicant_name"), rs.getString("applicant_email"),
+                rs.getString("opportunity_type"), rs.getString("organizer")
         ), publicId, userId);
         if (rows.isEmpty()) {
             throw new ApiException(HttpStatus.NOT_FOUND, "COMMITMENT_NOT_FOUND", "서명할 약정서를 찾을 수 없습니다.");
         }
         CommitmentSigningContext context = rows.getFirst();
-        if (!List.of("IN_REVIEW", "APPROVED").contains(context.status())) {
+        if (List.of("CANCELLED", "REJECTED").contains(context.status())) {
             throw new ApiException(HttpStatus.CONFLICT, "COMMITMENT_NOT_READY_FOR_SIGNING",
-                    "검토 제출이 완료된 약정서만 전자서명을 요청할 수 있습니다.");
+                    "취소되거나 거절된 약정서에는 서명을 요청할 수 없습니다.");
         }
         return context;
     }
@@ -115,6 +119,16 @@ public class ClmCommitmentRepository {
         }
     }
 
+    public Long findConsultationIdByCommitmentId(Long commitmentId) {
+        List<Long> list = jdbcTemplate.query("""
+                SELECT a.consultation_id
+                FROM commitments c
+                JOIN applications a ON a.id = c.application_id
+                WHERE c.id = ? AND a.consultation_id IS NOT NULL
+                """, (rs, rowNum) -> rs.getLong("consultation_id"), commitmentId);
+        return list.isEmpty() ? null : list.getFirst();
+    }
+
     public record CommitmentSigningContext(
             Long id,
             String publicId,
@@ -124,6 +138,8 @@ public class ClmCommitmentRepository {
             String pledgeFrequency,
             LocalDate effectiveFrom,
             String applicantName,
-            String applicantEmail
+            String applicantEmail,
+            String opportunityType,
+            String organizer
     ) {}
 }

@@ -59,6 +59,14 @@ public class ClmDocumentArchiveService {
         }
     }
 
+    @Transactional
+    public void archiveDraftPdf(ClmDocument document, byte[] pdfBytes) {
+        if (pdfBytes == null || pdfBytes.length == 0) return;
+        if (!fileRepository.existsByClmDocumentIdAndFileTypeAndIsDeletedFalse(document.getId(), "PLEDGE_DRAFT_PDF")) {
+            store(document, "PLEDGE_DRAFT_PDF", "pledge-contract-draft.pdf", pdfBytes);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<ClmDocumentFileResponse> list(Long documentId, CurrentUser user) {
         accessService.requireAccess(documentId, user);

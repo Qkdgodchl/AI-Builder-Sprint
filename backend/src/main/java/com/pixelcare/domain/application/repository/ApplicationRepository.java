@@ -173,6 +173,23 @@ public class ApplicationRepository {
         );
     }
 
+    public void ensureCommitmentExists(
+            Long userId,
+            String applicationPublicId,
+            OpportunityResponse opportunity,
+            ApplicationCreateRequest request
+    ) {
+        Long applicationId = jdbcTemplate.queryForObject(
+                "SELECT id FROM applications WHERE public_id = ?", Long.class, applicationPublicId);
+        if (applicationId == null) return;
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM commitments WHERE application_id = ?", Integer.class, applicationId);
+        if (count == null || count == 0) {
+            String intentJson = json(Map.of());
+            createCommitment(userId, applicationId, opportunity, request, intentJson);
+        }
+    }
+
     public List<ApplicationResponse> findByUser(Long userId) {
         return jdbcTemplate.query(
                 SELECT + " WHERE a.applicant_user_id = ? ORDER BY a.created_at DESC",
@@ -426,6 +443,10 @@ public class ApplicationRepository {
                 INSERT INTO commitment_versions (
                     commitment_id, version_no, terms_json, rendered_content, created_by
                 ) VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    terms_json = VALUES(terms_json),
+                    rendered_content = VALUES(rendered_content),
+                    created_by = VALUES(created_by)
                 """, commitmentId, version, json(terms), rendered, userId);
     }
 

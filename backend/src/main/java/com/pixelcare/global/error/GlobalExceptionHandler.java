@@ -29,8 +29,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<ApiResponse<Void>> handleDuplicateKeyException(DuplicateKeyException e) {
+        System.err.println("=== DuplicateKeyException 상세 원인 ===");
+        e.printStackTrace();
+        String rootCause = e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage();
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error("이미 등록된 데이터입니다."));
+                .body(ApiResponse.error("이미 등록된 데이터입니다 (" + rootCause + ")"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

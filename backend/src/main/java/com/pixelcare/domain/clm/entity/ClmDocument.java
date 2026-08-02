@@ -157,6 +157,21 @@ public class ClmDocument extends BaseTimeEntity {
         };
     }
 
+    public void updateSigningSession(
+            Long signatureRequestId,
+            String modusignDocumentId,
+            String modusignParticipantId,
+            String signingUrl,
+            LocalDateTime signingUrlExpiresAt
+    ) {
+        this.signatureRequestId = signatureRequestId;
+        this.modusignDocumentId = modusignDocumentId;
+        this.modusignParticipantId = modusignParticipantId;
+        this.signingUrl = signingUrl;
+        this.signingUrlExpiresAt = signingUrlExpiresAt;
+        this.status = "PENDING_SIGNATURE";
+    }
+
     public void updateSecureLink(String signingUrl, LocalDateTime expiresAt) {
         this.signingUrl = signingUrl;
         this.signingUrlExpiresAt = expiresAt;

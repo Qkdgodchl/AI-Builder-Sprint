@@ -56,7 +56,8 @@ class AiConsultationServiceConsentTest {
     void recordsConsentBeforeCallingUpstage() {
         PledgeIntent intent = new PledgeIntent(
                 "DONATION", "부산 지역 아동", BigDecimal.valueOf(30_000), "MONTHLY",
-                LocalDate.of(2026, 8, 1), "부산", null, null, null, null, List.of());
+                LocalDate.of(2026, 8, 1), "부산", null, null, null, null,
+                null, null, null, null, null, List.of());
         when(upstageApiClient.structurePledgeIntent("매월 3만원을 기부하고 싶어요", null))
                 .thenReturn(Optional.of(new UpstageApiClient.StructuredIntent(intent, "UPSTAGE_SOLAR")));
 
@@ -70,7 +71,8 @@ class AiConsultationServiceConsentTest {
     private Map<String, Object> storedRow() {
         PledgeIntent stored = new PledgeIntent(
                 "DONATION", "부산 지역 아동", BigDecimal.valueOf(30_000), "MONTHLY",
-                LocalDate.of(2026, 8, 1), "부산", null, null, null, null, List.of());
+                LocalDate.of(2026, 8, 1), "부산", null, null, null, null,
+                null, null, null, null, null, List.of());
         Map<String, Object> row = new HashMap<>();
         row.put("id", 41L);
         row.put("consultation_status", "IN_PROGRESS");
