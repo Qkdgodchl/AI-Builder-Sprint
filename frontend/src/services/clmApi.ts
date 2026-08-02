@@ -102,3 +102,33 @@ export const requestSignFromConversation = (payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+/** 약정서에서 되읽은 항목 하나와 우리가 보관한 값의 대조 결과. */
+export interface ClmVerificationCheck {
+  label: string;
+  expected: string | null;
+  found: string | null;
+  matched: boolean;
+}
+
+export interface ClmVerificationDto {
+  id: number;
+  documentId: number;
+  /** MATCHED | MISMATCHED | UNREADABLE */
+  status: string;
+  checkedCount: number;
+  matchedCount: number;
+  checks: ClmVerificationCheck[];
+  parsedExcerpt: string | null;
+  sourceFileType: string | null;
+  provider: string | null;
+  verifiedAt: string;
+}
+
+/** Upstage 문서 AI로 체결본을 되읽어 약정 원본과 대조한다. */
+export const verifyClmDocument = (documentId: number): Promise<ClmVerificationDto> =>
+  apiRequest<ClmVerificationDto>(`${API_BASE}/${documentId}/verification`, { method: 'POST' });
+
+/** 마지막 검증 결과. 아직 검증한 적이 없으면 null이다. */
+export const fetchClmVerification = (documentId: number): Promise<ClmVerificationDto | null> =>
+  apiRequest<ClmVerificationDto | null>(`${API_BASE}/${documentId}/verification`);

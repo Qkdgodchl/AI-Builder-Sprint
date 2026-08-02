@@ -4,7 +4,9 @@ import com.pixelcare.domain.clm.dto.ClmDocumentResponseDto;
 import com.pixelcare.domain.clm.dto.ClmSignRequestDto;
 import com.pixelcare.domain.clm.service.ClmDocumentService;
 import com.pixelcare.domain.clm.service.ClmDocumentArchiveService;
+import com.pixelcare.domain.clm.service.ClmDocumentVerificationService;
 import com.pixelcare.domain.clm.dto.ClmDocumentFileResponse;
+import com.pixelcare.domain.clm.dto.ClmVerificationResponse;
 import com.pixelcare.global.auth.AuthGuard;
 import com.pixelcare.global.auth.CurrentUser;
 import com.pixelcare.global.common.ApiResponse;
@@ -26,12 +28,35 @@ public class ClmDocumentController {
     private final ClmDocumentService clmDocumentService;
     private final AuthGuard authGuard;
     private final ClmDocumentArchiveService archiveService;
+    private final ClmDocumentVerificationService verificationService;
 
     public ClmDocumentController(ClmDocumentService clmDocumentService, AuthGuard authGuard,
-                                 ClmDocumentArchiveService archiveService) {
+                                 ClmDocumentArchiveService archiveService,
+                                 ClmDocumentVerificationService verificationService) {
         this.clmDocumentService = clmDocumentService;
         this.authGuard = authGuard;
         this.archiveService = archiveService;
+        this.verificationService = verificationService;
+    }
+
+    /** 보관된 약정서를 Upstage 문서 AI로 되읽어 약정 원본과 맞춰 본다. */
+    @PostMapping("/{id}/verification")
+    public ApiResponse<ClmVerificationResponse> verify(
+            @PathVariable Long id,
+            HttpServletRequest httpRequest
+    ) {
+        CurrentUser currentUser = authGuard.requireUser(httpRequest);
+        return ApiResponse.success(verificationService.verify(id, currentUser), "약정서 검증을 마쳤습니다.");
+    }
+
+    /** 마지막 검증 결과. 아직 검증한 적이 없으면 data가 비어 있다. */
+    @GetMapping("/{id}/verification")
+    public ApiResponse<ClmVerificationResponse> latestVerification(
+            @PathVariable Long id,
+            HttpServletRequest httpRequest
+    ) {
+        CurrentUser currentUser = authGuard.requireUser(httpRequest);
+        return ApiResponse.success(verificationService.findLatest(id, currentUser).orElse(null));
     }
 
     @PostMapping("/request-sign")

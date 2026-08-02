@@ -205,6 +205,24 @@ CREATE TABLE IF NOT EXISTS clm_document_files (
 ALTER TABLE clm_document_files DROP COLUMN IF EXISTS document_id;
 ALTER TABLE clm_document_files DROP COLUMN IF EXISTS file_path;
 
+-- 서명본을 되읽어 약정 원본과 맞춰 본 결과.
+CREATE TABLE IF NOT EXISTS clm_document_verifications (
+    id BIGSERIAL PRIMARY KEY,
+    clm_document_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    checked_count INTEGER NOT NULL DEFAULT 0,
+    matched_count INTEGER NOT NULL DEFAULT 0,
+    detail_json TEXT NULL,
+    parsed_excerpt TEXT NULL,
+    source_file_type VARCHAR(40) NULL,
+    provider VARCHAR(40) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL,
+    deleted_by VARCHAR(100) NULL
+);
+
 CREATE TABLE IF NOT EXISTS organization_applications (
     id BIGSERIAL PRIMARY KEY,
     applicant_user_id BIGINT NULL,

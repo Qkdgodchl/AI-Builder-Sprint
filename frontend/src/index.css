@@ -10198,3 +10198,113 @@ strong, small, em, span, label, button, a {
     padding: 9px 18px;
   }
 }
+
+/* ── 약정서 대조 확인 (Upstage 문서 AI) ── */
+.clm-verify {
+  margin-top: 18px;
+  border: 1px solid #deded8;
+  border-radius: 10px;
+  padding: 16px 18px;
+  background: #fafaf8;
+}
+
+.clm-verify-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.clm-verify-head strong {
+  display: block;
+  font-size: 13px;
+  color: var(--pc-dark);
+}
+
+.clm-verify-head p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--pc-muted);
+}
+
+.clm-verify-run {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 18px;
+  background: var(--pc-dark);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clm-verify-run:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.clm-verify-result {
+  margin-top: 14px;
+  border-top: 1px solid #e6e6e0;
+  padding-top: 14px;
+}
+
+.clm-verify-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--pc-muted);
+}
+
+.clm-verify-badge {
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: #e8e8e2;
+  color: var(--pc-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.clm-verify-result.is-matched .clm-verify-badge {
+  background: #1f7a4d;
+  color: #fff;
+}
+
+.clm-verify-result.is-mismatched .clm-verify-badge {
+  background: #c0392b;
+  color: #fff;
+}
+
+.clm-verify-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.clm-verify-table th,
+.clm-verify-table td {
+  border-bottom: 1px solid #ececE6;
+  padding: 8px 6px;
+  text-align: left;
+}
+
+.clm-verify-table th {
+  color: var(--pc-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.clm-verify-table tr.is-diff td {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.clm-verify-meta {
+  margin: 10px 0 0;
+  font-size: 10.5px;
+  color: var(--pc-muted);
+}

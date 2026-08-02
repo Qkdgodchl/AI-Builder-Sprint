@@ -20,8 +20,11 @@ import {
   fetchClmDocumentFiles,
   loadClmDocumentFile,
   requestClmSign,
+  verifyClmDocument,
+  fetchClmVerification,
   type ClmDocumentDto,
   type ClmDocumentFileDto,
+  type ClmVerificationDto,
 } from '../../services/clmApi';
 
 interface MyPageProps {
@@ -61,6 +64,8 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [clmFiles, setClmFiles] = useState<ClmDocumentFileDto[]>([]);
   const [previewPdfUrl, setPreviewPdfUrl] = useState('');
   const [previewPdfTitle, setPreviewPdfTitle] = useState('');
+  const [verification, setVerification] = useState<ClmVerificationDto | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [renewingCommitmentId, setRenewingCommitmentId] = useState('');
   // 조건 변경 갱신 입력. 열었을 때 현재 약정값으로 채운다.
   const [isChangingTerms, setIsChangingTerms] = useState(false);
@@ -146,6 +151,36 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       cancelled = true;
     };
   }, [selectedClmDocumentId]);
+
+  // 약정을 바꿔 고르면 이전 대조 결과가 남지 않도록 지우고, 지난 결과가 있으면 불러온다.
+  useEffect(() => {
+    setVerification(null);
+    if (!selectedClmDocumentId) return;
+    let cancelled = false;
+    fetchClmVerification(selectedClmDocumentId)
+      .then((found) => {
+        if (!cancelled) setVerification(found);
+      })
+      .catch(() => {
+        // 지난 결과가 없어도 화면은 그대로 두고 버튼으로 새로 대조하면 된다.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClmDocumentId]);
+
+  /** 보관된 약정서를 다시 읽어 신청 내용과 맞춰 본다. */
+  const runVerification = async (documentId: number) => {
+    setVerifying(true);
+    setNotice('');
+    try {
+      setVerification(await verifyClmDocument(documentId));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '약정서를 대조하지 못했습니다.');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   /*
    * 조건이 바뀐 갱신은 다시 서명을 받아야 한다.
@@ -569,6 +604,79 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
               <p className="user-application-empty">제출된 서류가 없습니다.</p>
             )}
           </div>
+
+          {clmFiles.length > 0 && selectedClmDocument && (
+            <div className="clm-verify">
+              <div className="clm-verify-head">
+                <div>
+                  <strong>약정서 대조 확인</strong>
+                  <p>
+                    보관된 약정서를 Upstage 문서 AI로 다시 읽어, 신청하실 때 정하신 내용과
+                    같은지 항목별로 맞춰 봅니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="clm-verify-run"
+                  onClick={() => runVerification(selectedClmDocument.id)}
+                  disabled={verifying}
+                >
+                  {verifying ? '대조하는 중…' : '대조 확인'}
+                </button>
+              </div>
+
+              {verification && (
+                <div className={`clm-verify-result is-${verification.status.toLowerCase()}`}>
+                  <div className="clm-verify-summary">
+                    <span className="clm-verify-badge">
+                      {verification.status === 'MATCHED'
+                        ? '전부 일치'
+                        : verification.status === 'MISMATCHED'
+                        ? '다른 항목 있음'
+                        : '읽지 못함'}
+                    </span>
+                    {verification.status === 'UNREADABLE' ? (
+                      <span>약정서에서 항목을 읽어내지 못했습니다. 잠시 후 다시 시도해 주세요.</span>
+                    ) : (
+                      <span>
+                        {verification.checkedCount}개 항목 중 {verification.matchedCount}개 일치
+                      </span>
+                    )}
+                  </div>
+
+                  {verification.checks.length > 0 && (
+                    <table className="clm-verify-table">
+                      <thead>
+                        <tr>
+                          <th>항목</th>
+                          <th>신청하신 내용</th>
+                          <th>약정서에 적힌 내용</th>
+                          <th>결과</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {verification.checks.map((check) => (
+                          <tr key={check.label} className={check.matched ? '' : 'is-diff'}>
+                            <td>{check.label}</td>
+                            <td>{check.expected || '-'}</td>
+                            <td>{check.found || '읽지 못함'}</td>
+                            <td>{check.matched ? '일치' : '다름'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  <p className="clm-verify-meta">
+                    Upstage Document Parse로 글자를 뽑고 Information Extract로 항목을 구조화했습니다
+                    {verification.sourceFileType === 'SIGNED_DOCUMENT'
+                      ? ' · 서명 완료본 기준'
+                      : ' · 서명 전 약정서 기준'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       ) : (
         <>

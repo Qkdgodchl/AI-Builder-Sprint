@@ -19,6 +19,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -88,6 +89,30 @@ public class ClmDocumentArchiveService {
         }
         return new DownloadedFile(new PathResource(target), file.getOriginalName(), file.getContentType());
     }
+
+    /**
+     * 보관된 약정서 파일을 읽어 온다.
+     * 서명이 끝난 체결본을 먼저 찾고, 아직 없으면 서명 전 초안을 돌려준다.
+     */
+    @Transactional(readOnly = true)
+    public Optional<ArchivedPdf> readForVerification(Long documentId) {
+        List<ClmDocumentFile> files = fileRepository.findByClmDocumentIdAndIsDeletedFalseOrderByIdAsc(documentId);
+        return java.util.stream.Stream.of(SIGNED_DOCUMENT, "PLEDGE_DRAFT_PDF")
+                .flatMap(type -> files.stream().filter(f -> type.equals(f.getFileType())))
+                .findFirst()
+                .flatMap(file -> {
+                    Path target = archivePath.resolve(file.getStorageKey()).normalize();
+                    if (!target.startsWith(archivePath) || !Files.isRegularFile(target)) return Optional.empty();
+                    try {
+                        return Optional.of(new ArchivedPdf(
+                                Files.readAllBytes(target), file.getOriginalName(), file.getFileType()));
+                    } catch (Exception e) {
+                        return Optional.empty();
+                    }
+                });
+    }
+
+    public record ArchivedPdf(byte[] bytes, String filename, String fileType) {}
 
     private void store(ClmDocument document, String type, String suffix, byte[] bytes) {
         String key = document.getId() + "-" + UUID.randomUUID() + ".pdf";
