@@ -59,31 +59,7 @@
 
 ---
 
-## 🏗️ 4. 시스템 아키텍처 및 기술 스택 (Architecture & Tech Stack)
-
-### 📐 System Architecture
-
-```text
-[ Client: React 18 + TypeScript + Vite (Editorial Bento Grid System) ]
-                            │
-               ┌────────────┼────────────┐
-               ▼                         ▼
-   [ REST API Controller ]      [ Upstage Solar LLM API ]
-               │                         │
-               ▼                         ▼
-   [ Service & Domain Logic ]   [ Smart Failover Engine ]
-   (CONNECT, User, Center, CLM)          │
-               │                         ▼
-               │                [ PDF & SHA-256 Archive ]
-               ▼
-   [ Spring Data JPA / JdbcTemplate ]
-               │
-               ▼
-   [ Database: PostgreSQL (Render Production) / MySQL 8.4 (Local Docker) ]
-   (Spring Boot Native SQL Initialization: schema-postgresql.sql)
-```
-
-### 🛠️ Tech Stack
+## 🛠️ 4. 기술 스택 (Tech Stack)
 
 | 구분 | 사용 기술 명세 |
 | :--- | :--- |
@@ -102,7 +78,8 @@
 | 이름 | 역할 (R&R) | 담당 업무 |
 | :---: | :---: | :--- |
 | **전동훈** | **Backend & Infra Lead** | • Spring Boot 백엔드 아키텍처 설계 및 PostgreSQL Native Initialization 구축<br>• Upstage Solar LLM 연동, CLM 전자서명 및 모두싸인 Webhook 파이프라인 개발<br>• 3단계 권한 승인 워크플로우, 소프트 삭제 및 감사 로그 시스템 완비 |
-| **팀원** | **Frontend & UI/UX** | • React + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구현<br>• 역할별 하단 가변 탭 라우팅 (`USER`, `CENTER_MANAGER`, `OPERATOR`) 구현<br>• CONNECT 역제안 페이지, 온기 온도계 UI 및 뱃지 도감 개발 |
+| **권윤재** | **Frontend & UI/UX Lead** | • React 18 + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구축<br>• 3단계 계정 역할별 가변 하단 탭 내비게이션 라우팅 시스템 개발<br>• CONNECT(온기 잇다) 역제안 UI 및 선행 인증 커뮤니티 컴포넌트 구현 |
+| **이영민** | **Full Stack & AI Specialist** | • Upstage Solar LLM 프롬프트 페르소나 설계 및 JSON 의향 파싱 엔진 구축<br>• 로컬 Smart Failover Engine 개발 및 외부 AI 전송 동의(Opt-in) 제어<br>• 센터 관리자 대시보드 및 실시간 플랫폼 통계 기능 구현 |
 
 ---
 
