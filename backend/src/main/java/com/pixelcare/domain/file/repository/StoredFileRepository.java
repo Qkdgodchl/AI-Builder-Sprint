@@ -57,4 +57,19 @@ public class StoredFileRepository {
                 rs.getTimestamp("created_at").toLocalDateTime()
         ), id);
     }
+
+    public record StoredFileLocation(String storageKey, String originalName,
+                                     String contentType, String purpose) {}
+
+    public java.util.Optional<StoredFileLocation> findLocation(Long id) {
+        return jdbcTemplate.query("""
+                SELECT storage_key, original_name, content_type, file_purpose
+                FROM stored_files WHERE id = ? AND deleted_at IS NULL
+                """, (rs, rowNum) -> new StoredFileLocation(
+                rs.getString("storage_key"),
+                rs.getString("original_name"),
+                rs.getString("content_type"),
+                rs.getString("file_purpose")
+        ), id).stream().findFirst();
+    }
 }
