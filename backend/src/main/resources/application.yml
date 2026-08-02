@@ -1,5 +1,6 @@
 server:
-  port: 8080
+  # Render는 PORT를 주입한다. 8080으로 고정하면 배포에서 포트를 못 잡는다.
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -58,6 +59,9 @@ upstage:
     model: ${UPSTAGE_MODEL:solar-pro3}
 
 app:
+  cors:
+    # 배포에서는 프론트 주소를 넣는다. 예) https://itda.vercel.app,https://*.vercel.app
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173}
   storage:
     path: ${APP_STORAGE_PATH:storage}
   bootstrap:

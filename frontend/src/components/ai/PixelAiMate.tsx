@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { playBeep } from '../../services/soundFx';
 import { sendAiMessage, fetchAiHistory, clearAiHistory } from '../../services/aiApi';
-import { startConsultation, confirmConsultation, type ConsultationResponse } from '../../services/consultationApi';
-import { requestSignFromConversation, refreshClmSecureLink, type ClmDocumentDto } from '../../services/clmApi';
-import { createApplication } from '../../services/applicationApi';
+import type { ConsultationResponse } from '../../services/consultationApi';
+import type { ClmDocumentDto } from '../../services/clmApi';
 import { Logo } from '../common/Logo';
 
 interface PixelAiMateProps {

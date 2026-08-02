@@ -20,6 +20,8 @@ upstage:
     base-url: https://api.upstage.ai/v1/solar
 
 app:
+  cors:
+    allowed-origins: http://localhost:5173
   bootstrap:
     enabled: false
 
