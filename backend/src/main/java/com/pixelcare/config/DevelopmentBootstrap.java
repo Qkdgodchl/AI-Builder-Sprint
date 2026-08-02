@@ -487,7 +487,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                                                     account_status, privacy_consent_at, created_at, updated_at, is_deleted, temperature
                                                                 ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, FALSE, 36.5)
                                                                 """,
-                                                Statement.RETURN_GENERATED_KEYS);
+                                                new String[]{"id"});
                                 statement.setString(1, email);
                                 statement.setString(2, passwordEncoder.encode(password));
                                 statement.setString(3, nickname);
@@ -495,7 +495,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 statement.setString(5, role);
                                 return statement;
                         }, keyHolder);
-                        userId = keyHolder.getKey().longValue();
+                        userId = KeyExtractUtils.extractId(keyHolder);
                 } else {
                         userId = existing.get(0);
                 }
