@@ -1,4 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=DungGeunMo&display=swap');
+/*
+ * Pretendard 하나로 한글과 라틴을 함께 쓴다.
+ * 이전에는 Inter + DungGeunMo를 불렀는데, Inter에 한글 글리프가 없고
+ * DungGeunMo는 구글 폰트에 없는 이름이라 한글이 전부 OS 기본 폰트로 떨어졌다.
+ * 그래서 맥에서는 애플 SD 산돌고딕, 윈도우에서는 맑은 고딕으로 제각각 보였다.
+ * dynamic-subset은 화면에 실제로 쓰인 글자만 내려받아 첫 로딩이 가볍다.
+ */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
 
 :root {
   /* Master Synthesized Color Tokens */
@@ -41,7 +48,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Inter', 'DungGeunMo', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
 }
 
 html {
@@ -837,20 +844,25 @@ body.theme-ai {
 
 .clm-back-nav button {
   border: 0;
-  padding: 12px 0;
+  padding: 14px 0;
   background: transparent;
-  color: var(--pc-muted);
+  color: #555555;
   font: inherit;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  transition: color 0.15s;
+}
+
+.clm-back-nav button:hover {
+  color: var(--pc-dark);
 }
 
 .clm-back-nav > span {
-  color: var(--pc-muted);
-  font-size: 8px;
+  color: #8a8a84;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
 .clm-header {
@@ -859,10 +871,11 @@ body.theme-ai {
 }
 
 .clm-header > p {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: var(--magazine-accent);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
 }
 
 .clm-header h2 {
@@ -876,10 +889,10 @@ body.theme-ai {
 .clm-header > span {
   display: block;
   max-width: 700px;
-  margin-top: 17px;
+  margin-top: 18px;
   color: #555555;
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 13px;
+  line-height: 1.75;
 }
 
 .clm-steps {
@@ -894,22 +907,42 @@ body.theme-ai {
   min-width: 0;
   align-items: center;
   gap: 9px;
-  padding: 16px 14px;
-  color: #aaaaaa;
+  padding: 18px 18px;
+  color: #9a9a94;
+}
+
+.clm-steps--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .clm-steps li + li {
   border-left: 1px solid #d5d5d5;
 }
 
+/* 단계를 눌러 오갈 수 있으므로 누를 수 있다는 것이 보여야 한다. */
+.clm-steps li {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.clm-steps li:hover:not(.current) {
+  background: #f1f1ed;
+  color: var(--pc-dark);
+}
+
 .clm-steps span {
-  font-size: 8px;
-  font-weight: 900;
+  font-size: 10.5px;
+  font-weight: 800;
+  opacity: 0.75;
 }
 
 .clm-steps strong {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
 }
 
 .clm-steps .complete {
@@ -921,9 +954,10 @@ body.theme-ai {
   color: #ffffff;
 }
 
+/* 우측 요약 사이드바가 빠진 뒤로는 본문 한 단으로 쓴다. */
 .clm-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 30px;
   align-items: start;
   padding-top: 30px;
@@ -1706,6 +1740,856 @@ body.theme-ai {
   color: #888888;
   font-size: 8px;
   line-height: 1.5;
+}
+
+/* ── 신청 단계 화면 (AI 약정 → 답례품 → 동의 → 전자서명) ───────────────
+   흑백 에디토리얼에 코랄 액센트 하나. 카드는 각지고 선은 얇게 간다. */
+.clm-program-summary {
+  margin-bottom: 18px;
+  padding: 18px 20px;
+}
+
+.clm-program-summary > div > span {
+  color: var(--magazine-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+}
+
+.clm-program-summary > div > strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--pc-dark);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
+}
+
+.clm-program-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 14px;
+  border-top: 1px solid #e6e6e1;
+  padding-top: 12px;
+}
+
+.clm-program-meta > div {
+  padding: 0 18px;
+  border-left: 1px solid #e6e6e1;
+}
+
+.clm-program-meta > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.clm-program-meta dt {
+  color: #8a8a84;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.clm-program-meta dd {
+  margin-top: 3px;
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.clm-document-section {
+  padding: 26px;
+}
+
+/* 위쪽의 다른 DOM 구조용 flex 규칙을 덮어, 배지 → 제목 → 설명을 세로로 쌓는다. */
+.clm-document-section > .clm-section-heading {
+  display: block;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--pc-dark);
+  padding-bottom: 16px;
+}
+
+.clm-step-badge {
+  display: inline-block;
+  background: var(--pc-dark);
+  padding: 4px 9px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.clm-document-section > .clm-section-heading h3 {
+  margin: 12px 0 6px;
+  color: var(--pc-dark);
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+}
+
+.clm-document-section > .clm-section-heading p {
+  margin: 0;
+  max-width: 620px;
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+/* 대화창 */
+.clm-chat {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid var(--pc-dark);
+  background: #ffffff;
+}
+
+.clm-chat-bar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-bottom: 1px solid var(--pc-dark);
+  background: var(--pc-dark);
+  padding: 13px 16px;
+}
+
+/*
+ * 검정 바 위에 얹히므로 왼쪽 고리를 흰색으로 돌린다(오른쪽 고리는 코랄 유지).
+ * .itda-logo가 뒤에서 color를 다시 지정하므로 선택자를 하나 더 붙여 이긴다.
+ */
+.clm-chat-bar .clm-chat-avatar {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.clm-chat-bar .clm-chat-avatar .itda-logo-mark {
+  width: 26px;
+  height: auto;
+}
+
+.clm-chat-bar strong {
+  display: block;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.clm-chat-bar span {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+/* 대화가 짧을 때 빈 공간이 크게 남지 않도록 내용만큼 자라다 멈춘다. */
+.clm-chat-log {
+  display: flex;
+  min-height: 150px;
+  max-height: 380px;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  background: #f9f9f8;
+  padding: 18px 16px;
+}
+
+.clm-chat-row {
+  display: flex;
+}
+
+.clm-chat-row.is-user {
+  justify-content: flex-end;
+}
+
+.clm-chat-row .chat-bubble {
+  max-width: 82%;
+  font-size: 13px;
+}
+
+.clm-chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid #e6e6e1;
+  padding: 12px 16px;
+}
+
+.clm-chat-chips button {
+  border: 1px solid #d5d5d0;
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 6px 13px;
+  color: #555555;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.clm-chat-chips button:hover:not(:disabled) {
+  border-color: var(--pc-dark);
+  color: var(--pc-dark);
+}
+
+.clm-chat-chips button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.clm-chat-input {
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid #e6e6e1;
+  padding: 14px 16px;
+}
+
+.clm-chat-input textarea {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 12px 14px;
+  color: var(--pc-dark);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+}
+
+.clm-chat-input textarea:focus {
+  border-color: var(--pc-dark);
+}
+
+.clm-chat-send {
+  width: 44px;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--pc-dark);
+  color: #ffffff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.clm-chat-send:disabled {
+  background: #c9c9c4;
+  cursor: not-allowed;
+}
+
+/* AI가 정리한 약정 내역 */
+.clm-intent-card {
+  margin-bottom: 18px;
+  border: 1px solid var(--pc-dark);
+  border-top-width: 4px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.clm-intent-title {
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e6e6e1;
+  padding-bottom: 14px;
+  color: var(--pc-dark);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.clm-intent-title span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--magazine-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+}
+
+.clm-intent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 16px;
+}
+
+.clm-intent-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #555555;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.clm-intent-grid select,
+.clm-intent-grid input {
+  height: 44px;
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 0 13px;
+  color: var(--pc-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.clm-intent-grid select:focus,
+.clm-intent-grid input:focus {
+  border-color: var(--pc-dark);
+  outline: none;
+}
+
+/* 입력을 다 채운 뒤 누르는 버튼이라 폼과 확실히 떼어 놓는다. */
+.clm-intent-card > .clm-primary-action {
+  margin-top: 24px;
+}
+
+.clm-inline-error {
+  margin-top: 10px;
+  color: var(--magazine-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* 답례품 */
+.clm-point-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--pc-dark);
+  background: #f1f1ed;
+  padding: 16px 18px;
+}
+
+.clm-point-bar strong {
+  display: block;
+  color: var(--pc-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.clm-point-bar span {
+  display: block;
+  margin-top: 4px;
+  color: #666666;
+  font-size: 11px;
+}
+
+.clm-point-bar em {
+  flex-shrink: 0;
+  background: var(--pc-dark);
+  padding: 8px 16px;
+  color: #ffffff;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.clm-gift-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.clm-gift-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 15px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.clm-gift-card:hover {
+  border-color: var(--pc-dark);
+}
+
+.clm-gift-card.is-selected {
+  border-color: var(--pc-dark);
+  border-width: 2px;
+  background: #f1f1ed;
+  padding: 14px;
+}
+
+.clm-gift-card strong {
+  color: var(--pc-dark);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.clm-gift-desc {
+  color: #777777;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.clm-gift-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.clm-gift-foot em {
+  color: #237a57;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.clm-gift-foot b {
+  color: var(--magazine-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+}
+
+/* 동의 */
+.clm-consent-panel {
+  margin-bottom: 22px;
+  border: 1px solid #d5d5d0;
+  background: #f9f9f8;
+  padding: 18px;
+}
+
+.clm-tax-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.clm-tax-field select {
+  border: 1px solid var(--pc-dark);
+  background: #ffffff;
+  padding: 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clm-consent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.clm-consent-list label {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-top: 1px solid #e6e6e1;
+  padding: 12px 2px;
+  color: #333333;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.clm-consent-list label:first-child {
+  border-top: 0;
+}
+
+.clm-consent-list input {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  accent-color: #111111;
+}
+
+.clm-consent-list b {
+  margin-right: 6px;
+  background: var(--pc-dark);
+  padding: 2px 6px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.clm-consent-list b.is-optional {
+  background: #8a8a84;
+}
+
+/* 전자서명 */
+.clm-sign-panel {
+  margin-bottom: 22px;
+  border: 1px solid #d5d5d0;
+  background: #f9f9f8;
+  padding: 20px;
+}
+
+.clm-sign-title {
+  display: block;
+  color: var(--pc-dark);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.clm-sign-meta {
+  display: block;
+  margin: 7px 0 16px;
+  color: #777777;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.clm-sign-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.clm-sign-status {
+  border-left: 3px solid #8a8a84;
+  background: #ffffff;
+  padding: 13px 15px;
+  color: #555555;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.clm-sign-status.is-done {
+  border-left-color: #237a57;
+  color: #237a57;
+}
+
+.clm-sign-note {
+  margin: 0;
+  color: #777777;
+  font-size: 11px;
+}
+
+.clm-sign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clm-sign-actions > * {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* 단계 이동 버튼 */
+.clm-step-nav {
+  display: flex;
+  gap: 8px;
+}
+
+/*
+ * 기본은 제 폭을 다 쓰는 블록 버튼이다.
+ * flex를 기본값으로 두면 블록 부모 안에서는 폭을 못 받아 글자만큼 쪼그라든다.
+ */
+.clm-primary-action {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--pc-dark);
+  background: var(--pc-dark);
+  padding: 16px 20px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+/* 나란히 놓이는 자리에서만 남는 폭을 나눠 갖는다. */
+.clm-step-nav .clm-primary-action,
+.clm-sign-actions .clm-primary-action {
+  width: auto;
+  flex: 1;
+}
+
+.clm-primary-action:hover:not(:disabled) {
+  background: #333333;
+}
+
+.clm-primary-action:disabled {
+  border-color: #c9c9c4;
+  background: #c9c9c4;
+  cursor: not-allowed;
+}
+
+.clm-primary-action.is-complete {
+  border-color: #237a57;
+  background: #237a57;
+}
+
+.clm-back-action,
+.clm-ghost-action {
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 15px 20px;
+  color: #555555;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.clm-back-action:hover:not(:disabled),
+.clm-ghost-action:hover:not(:disabled) {
+  border-color: var(--pc-dark);
+  color: var(--pc-dark);
+}
+
+.clm-ghost-action {
+  border-color: var(--pc-dark);
+  color: var(--pc-dark);
+}
+
+.clm-back-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 모달 */
+.clm-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 17, 17, 0.82);
+  padding: 20px;
+}
+
+.clm-modal {
+  width: 100%;
+  border: 1px solid var(--pc-dark);
+  background: #ffffff;
+}
+
+.clm-modal--sign {
+  display: flex;
+  max-width: 560px;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 서명창을 새 탭으로 여는 안내 패널 */
+.clm-sign-launch {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 26px;
+}
+
+.clm-sign-launch > strong {
+  color: var(--pc-dark);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.clm-sign-launch > p {
+  margin: 0;
+  color: #666666;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.clm-sign-launch > a.clm-primary-action {
+  margin-top: 4px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.clm-sign-launch > small {
+  color: #8a8a84;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.clm-modal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--pc-dark);
+  padding: 14px 20px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+}
+
+.clm-modal-bar button {
+  border: 0;
+  background: none;
+  color: #ffffff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.clm-modal-empty {
+  padding: 40px;
+  color: #777777;
+  font-size: 13px;
+  text-align: center;
+}
+
+.clm-modal--cert {
+  max-width: 720px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+.clm-cert-eyebrow {
+  color: var(--magazine-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.clm-cert-title {
+  margin: 8px 0 22px;
+  color: var(--pc-dark);
+  font-size: 25px;
+  font-weight: 900;
+  letter-spacing: -1.2px;
+  text-align: center;
+}
+
+.clm-cert-table {
+  width: 100%;
+  margin-bottom: 20px;
+  border-collapse: collapse;
+  border-top: 2px solid var(--pc-dark);
+  font-size: 12.5px;
+}
+
+.clm-cert-table th,
+.clm-cert-table td {
+  border-bottom: 1px solid #e6e6e1;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.clm-cert-table th {
+  width: 32%;
+  background: #f9f9f8;
+  color: #666666;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.clm-cert-table td {
+  color: var(--pc-dark);
+  font-weight: 700;
+}
+
+.clm-cert-table td.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+}
+
+.clm-cert-table td.is-signed {
+  color: #237a57;
+  font-weight: 900;
+}
+
+.clm-cert-files {
+  margin-bottom: 20px;
+  border: 1px solid #d5d5d0;
+  padding: 16px;
+}
+
+.clm-cert-files strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--pc-dark);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
+.clm-cert-files a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  border: 1px solid #e6e6e1;
+  padding: 11px 13px;
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.clm-cert-files a:hover {
+  border-color: var(--pc-dark);
+}
+
+.clm-cert-files em {
+  flex-shrink: 0;
+  background: var(--pc-dark);
+  padding: 4px 10px;
+  color: #ffffff;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.clm-cert-empty {
+  margin-bottom: 20px;
+  border: 1px solid #e6e6e1;
+  background: #f9f9f8;
+  padding: 16px;
+  color: #777777;
+  font-size: 11.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.clm-cert-close {
+  text-align: center;
+}
+
+.clm-cert-close .clm-primary-action {
+  display: inline-block;
+  width: auto;
+  padding: 14px 38px;
+}
+
+@media (max-width: 720px) {
+  .clm-intent-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clm-step-nav {
+    flex-direction: column;
+  }
+
+  .clm-point-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Shared application modal */
@@ -4418,8 +5302,21 @@ body.theme-ai {
   padding: 14px 18px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre-line;
+}
+
+/* AI 답변은 한 줄을 한 문단으로 세워 문장 덩어리가 눈에 들어오게 한다. */
+.chat-bubble .chat-line {
+  margin: 0;
+}
+
+.chat-bubble .chat-line + .chat-line {
+  margin-top: 11px;
+}
+
+.chat-bubble .chat-line.is-bullet + .chat-line.is-bullet {
+  margin-top: 4px;
 }
 
 .user-bubble {
@@ -8706,6 +9603,27 @@ strong, small, em, span, label, button, a {
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.5px;
+}
+
+/*
+ * 아바타 자리에 잇다 심볼을 넣는다.
+ * .itda-logo가 뒤에서 배경과 테두리를 지우므로 선택자를 하나 더 붙여 되돌린다.
+ */
+.chat-bubble-row .chat-avatar {
+  display: flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d5d5d0;
+  border-radius: 999px;
+  background: #ececE8;
+}
+
+.chat-bubble-row .chat-avatar .itda-logo-mark {
+  width: 21px;
+  height: auto;
 }
 
 .ai-header .ai-avatar {

@@ -4,7 +4,7 @@ import {
   createApplication,
   submitCommitment,
 } from '../../services/applicationApi';
-import { requestClmSign, requestSignFromConversation, fetchClmDocument, fetchClmDocumentFiles } from '../../services/clmApi';
+import { requestClmSign, requestSignFromConversation, fetchClmDocument, fetchClmDocumentFiles, refreshClmSecureLink } from '../../services/clmApi';
 import type { ClmDocumentDto, ClmDocumentFileDto } from '../../services/clmApi';
 import {
   confirmConsultation,
@@ -14,12 +14,25 @@ import {
 } from '../../services/consultationApi';
 import type { ConsultationResponse, PledgeIntent } from '../../services/consultationApi';
 import { fetchMyProfile } from '../../services/authApi';
+import { Logo } from '../common/Logo';
 
 interface ChatMessage {
   role: 'ai' | 'user';
   content: string;
   timestamp?: Date;
 }
+
+/** 서명 링크 발급이 막히면 서버가 로컬 대체 주소를 내려주므로, 진짜 서명창인지 가린다. */
+const isModusignUrl = (url: string) => /(^|\.)modusign\.co\.kr/.test(new URL(url, window.location.origin).hostname);
+
+/**
+ * Solar 응답과 안내 문구에 **강조** 표기가 섞여 온다.
+ * 말풍선에 별표가 그대로 보이지 않도록 굵은 글씨로 바꿔 준다.
+ */
+const renderChatText = (text: string) =>
+  text.split(/\*\*(.+?)\*\*/g).map((part, index) =>
+    index % 2 === 1 ? <strong key={index}>{part}</strong> : part,
+  );
 
 interface ApplicationItem extends VolunteerItem {
   programType: string;
@@ -42,7 +55,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const isVolunteer = item.category === 'VOLUNTEER';
   const isHometown = item.programType === 'HOMETOWN' || item.category === 'HOMETOWN';
   const isLegacy = item.programType === 'LEGACY' || item.category === 'LEGACY';
-  const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-PC-01호)' : '후원 및 기부 약정서 (제2026-PC-02호)';
+  const documentName = isVolunteer ? '봉사 참여 약정서 (제2026-ITDA-01호)' : '후원 및 기부 약정서 (제2026-ITDA-02호)';
 
   const [specialConditions, setSpecialConditions] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -104,12 +117,12 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   // 컴포넌트 마운트 시 AI 첫 인사 메시지
   useEffect(() => {
     const greeting = isVolunteer
-      ? `안녕하세요! 저는 픽셀케어 AI 상담 매니저예요 🙌\n\n**[${item.title}]** (${item.location} / 주관: ${item.organizer}) 봉사 프로그램 신청을 도와드릴게요.\n\n어떤 주기로 봉사에 참여하고 싶으신가요? (예: 주말 매주, 격주, 하루 일시 참여 등) 😊`
+      ? `안녕하세요! 저는 잇다 AI 상담 매니저예요 🙌\n\n**[${item.title}]** (${item.location} / 주관: ${item.organizer}) 봉사 프로그램 신청을 도와드릴게요.\n\n어떤 주기로 봉사에 참여하고 싶으신가요? (예: 주말 매주, 격주, 하루 일시 참여 등) 😊`
       : isHometown
-      ? `안녕하세요! 저는 픽셀케어 AI 기부 상담사예요 🏡\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 고향사랑기부에 관심 가져주셔서 감사해요!\n\n10만원 이하 기부 시 100% 전액 세액공제 환급과 30% 답례품(지역 화폐/특산품) 혜택이 지원돼요. 기부 납부 주기는 어떻게 생각하고 계신가요? (예: 일시 기부, 매월 정기 후원 등) 🌟`
+      ? `안녕하세요! 저는 잇다 AI 기부 상담사예요 🏡\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 고향사랑기부에 관심 가져주셔서 감사해요!\n\n10만원 이하 기부 시 100% 전액 세액공제 환급과 30% 답례품(지역 화폐/특산품) 혜택이 지원돼요. 기부 납부 주기는 어떻게 생각하고 계신가요? (예: 일시 기부, 매월 정기 후원 등) 🌟`
       : isLegacy
-      ? `안녕하세요! 저는 픽셀케어 AI 유산기부 상담사예요 📜\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 유산기부 약정 안내를 도와드릴게요.\n\n약정 주기나 절차 중 궁금하신 점이나 희망하시는 방식이 있으신가요? 🤝`
-      : `안녕하세요! 저는 픽셀케어 AI 기부 상담사예요 💝\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 기부 신청을 선택해 주셨네요!\n\n기부 납부 주기는 어떻게 생각하고 계신가요? (예: 일시 기부, 매월 정기 후원, 분기별 후원 등)`;
+      ? `안녕하세요! 저는 잇다 AI 유산기부 상담사예요 📜\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 유산기부 약정 안내를 도와드릴게요.\n\n약정 주기나 절차 중 궁금하신 점이나 희망하시는 방식이 있으신가요? 🤝`
+      : `안녕하세요! 저는 잇다 AI 기부 상담사예요 💝\n\n**[${item.title}]** (${item.location} / ${item.organizer}) 기부 신청을 선택해 주셨네요!\n\n기부 납부 주기는 어떻게 생각하고 계신가요? (예: 일시 기부, 매월 정기 후원, 분기별 후원 등)`;
     setChatMessages([{ role: 'ai', content: greeting, timestamp: new Date() }]);
   }, []);
 
@@ -244,6 +257,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
             commitmentPublicId: activeCommitmentId,
           });
 
+      // 방금 발급된 링크이므로 그대로 연다.
+      // 여기서 또 재발급하면 서명 한 번에 발급 요청이 두 번 나가 레이트 리밋에 걸린다.
       setClmDoc(doc);
       setSignatureStatusMessage('');
       setIsSigningModalOpen(true);
@@ -254,6 +269,103 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       setRequestingSign(false);
     }
   };
+
+  /**
+   * 서명이 끝나도 모두싸인 쪽에서 우리 화면으로 되돌려 보내주지 못한다.
+   * 되돌아오려면 공개 https 주소가 필요한데 개발 환경은 localhost라서다.
+   * 그래서 우리가 연 창을 직접 들고 있다가 서명이 확인되면 닫아 준다.
+   */
+  const signingWindowRef = useRef<Window | null>(null);
+
+  const launchSigningWindow = () => {
+    if (!clmDoc?.signingUrl) return;
+    signingWindowRef.current = window.open(clmDoc.signingUrl, 'modusign-signing');
+  };
+
+  const closeSigningWindow = () => {
+    try {
+      signingWindowRef.current?.close();
+    } catch (_) {
+      // 사용자가 이미 닫았거나 브라우저가 막으면 그대로 둔다.
+    }
+    signingWindowRef.current = null;
+  };
+
+  /** 서명 링크는 10분이면 만료되므로 다시 열 때는 새로 발급받는다. */
+  const openSigningWindow = async () => {
+    if (!clmDoc) return;
+    setSignatureStatusMessage('');
+    try {
+      const fresh = await refreshClmSecureLink(clmDoc.id);
+      setClmDoc(fresh);
+    } catch (err) {
+      console.error(err);
+      setSignatureStatusMessage('서명 링크를 새로 발급하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    setIsSigningModalOpen(true);
+  };
+
+  // 서명창이 열려 있는 동안만 완료 여부를 확인한다.
+  const signingDocId = isSigningModalOpen && !isSigned ? clmDoc?.id ?? null : null;
+  const lastCheckedAtRef = useRef(0);
+
+  useEffect(() => {
+    if (!signingDocId) return;
+    const startedAt = Date.now();
+    let stopped = false;
+
+    // 모두싸인 API에 호출 제한이 있어 최소 간격을 둔다.
+    const checkSigned = async () => {
+      if (stopped || Date.now() - lastCheckedAtRef.current < 2500) return;
+      lastCheckedAtRef.current = Date.now();
+      try {
+        const fresh = await fetchClmDocument(signingDocId);
+        if (stopped || fresh.status !== 'SIGNED') return;
+        stopped = true;
+        setClmDoc(fresh);
+        setIsSigned(true);
+        setCompleted(true);
+        setIsSigningModalOpen(false);
+        closeSigningWindow();
+        setSignatureStatusMessage('전자서명이 완료되어 약정서가 안전하게 보관되었습니다.');
+      } catch (_) {
+        // 한 번 실패해도 다음 신호에 다시 확인한다.
+      }
+    };
+
+    /*
+     * 주기적 확인만 두면 서명을 마쳐도 다음 차례까지 기다려야 한다.
+     * 서명을 끝낸 사람은 창을 닫거나 이 화면으로 돌아오므로,
+     * 그 두 순간을 신호로 삼아 바로 확인한다. 창이 닫혔는지 보는 건 통신이 아니라 공짜다.
+     */
+    const watchWindow = window.setInterval(() => {
+      if (signingWindowRef.current?.closed) {
+        signingWindowRef.current = null;
+        void checkSigned();
+      }
+    }, 700);
+
+    const onFocus = () => void checkSigned();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+
+    // 아무 신호가 없어도 놓치지 않도록 받쳐 주는 주기 확인. 3분이면 멈춘다.
+    const poll = window.setInterval(() => {
+      if (Date.now() - startedAt > 3 * 60 * 1000) {
+        window.clearInterval(poll);
+        return;
+      }
+      void checkSigned();
+    }, 6000);
+
+    return () => {
+      stopped = true;
+      window.clearInterval(watchWindow);
+      window.clearInterval(poll);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [signingDocId]);
 
   const handleCheckSignature = async () => {
     if (!clmDoc) return;
@@ -266,6 +378,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
         setIsSigned(true);
         setCompleted(true);
         setIsSigningModalOpen(false);
+        closeSigningWindow();
         alert('모두싸인 전자서명 완료가 확인되었습니다.');
       } else {
         setSignatureStatusMessage('아직 서명이 완료되지 않았습니다. 서명을 마친 뒤 다시 확인해 주세요.');
@@ -292,10 +405,10 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           {isHometown
             ? '부산 고향사랑기부(busanlove.kr) 연계 기부 약정 시스템'
             : isVolunteer
-            ? '픽셀케어 봉사 활동 참여 및 약정 시스템'
+            ? '잇다 봉사 활동 참여 및 약정 시스템'
             : isLegacy
-            ? '픽셀케어 유산 및 지정 기부 약정 시스템'
-            : '픽셀케어 후원 및 기부 약정 시스템'}
+            ? '잇다 유산 및 지정 기부 약정 시스템'
+            : '잇다 후원 및 기부 약정 시스템'}
         </p>
         <h2>신청 서류 작성 & 전자서명</h2>
         <span>
@@ -304,14 +417,10 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       </header>
 
       {/* 프로그램 유형별 동적 스테퍼 헤더 */}
-      <ol className="clm-steps" aria-label="신청 진행 단계" style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${isHometown ? 4 : 3}, 1fr)`,
-        gap: '8px',
-        marginBottom: '24px',
-        listStyle: 'none',
-        padding: 0
-      }}>
+      <ol
+        className={`clm-steps${isHometown ? '' : ' clm-steps--three'}`}
+        aria-label="신청 진행 단계"
+      >
         {(isHometown
           ? [
               { step: 1, title: '01. 기부 약정', sub: 'AI 대화 정리' },
@@ -336,21 +445,11 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           return (
             <li
               key={s.step}
+              className={isActive ? 'current' : isDone ? 'complete' : ''}
               onClick={() => setActiveStep(s.step as 1 | 2 | 3 | 4)}
-              style={{
-                background: isActive ? 'linear-gradient(135deg, #0077b6, #2ec4b6)' : isDone ? 'rgba(46,196,182,0.15)' : '#f8fafc',
-                border: isActive ? '2px solid #0077b6' : isDone ? '1px solid #2ec4b6' : '1px solid #e2e8f0',
-                color: isActive ? '#fff' : isDone ? '#0077b6' : '#64748b',
-                borderRadius: '12px',
-                padding: '12px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: isActive ? '0 4px 14px rgba(0,119,182,0.3)' : 'none',
-              }}
             >
-              <strong style={{ display: 'block', fontSize: '13px', fontWeight: 800 }}>{s.title}</strong>
-              <span style={{ fontSize: '11px', opacity: isActive ? 0.9 : 0.7 }}>{s.sub}</span>
+              <strong>{s.title}</strong>
+              <span>{s.sub}</span>
             </li>
           );
         })}
@@ -359,67 +458,45 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
       <div className="clm-layout">
         <div className="clm-main">
           {/* 프로그램 요약 정보 */}
-          <section className="clm-program-summary" style={{ marginBottom: '16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px' }}>
+          <section className="clm-program-summary">
             <div>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>신청 프로그램</span>
-              <strong style={{ display: 'block', fontSize: '15px', color: '#0f172a', fontWeight: 800 }}>{item.title}</strong>
+              <span>신청 프로그램</span>
+              <strong>{item.title}</strong>
             </div>
-            <dl style={{ display: 'flex', gap: '20px', marginTop: '8px', fontSize: '12px', color: '#475569' }}>
-              <div><dt style={{ display: 'inline', fontWeight: 700 }}>구분: </dt><dd style={{ display: 'inline' }}>{typeLabel}</dd></div>
-              <div><dt style={{ display: 'inline', fontWeight: 700 }}>주관기관: </dt><dd style={{ display: 'inline' }}>{item.organizer}</dd></div>
-              <div><dt style={{ display: 'inline', fontWeight: 700 }}>지역: </dt><dd style={{ display: 'inline' }}>{item.location}</dd></div>
+            <dl className="clm-program-meta">
+              <div><dt>구분</dt><dd>{typeLabel}</dd></div>
+              <div><dt>주관기관</dt><dd>{item.organizer}</dd></div>
+              <div><dt>지역</dt><dd>{item.location}</dd></div>
             </dl>
           </section>
 
           {/* ================= STEP 01: 기부 약정 (AI 상담 & 의사 정리) ================= */}
           {activeStep === 1 && (
-            <section className="clm-document-section" style={{ background: '#fff', border: '2px solid #2ec4b6', borderRadius: '16px', padding: '24px' }}>
-              <div className="clm-section-heading" style={{ marginBottom: '16px' }}>
-                <span style={{ background: '#0077b6', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px' }}>STEP 01</span>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '6px 0 2px', color: '#0f172a' }}>💬 기부 약정 정리 (Upstage Solar AI 대화)</h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>AI 마스코트와 대화를 나눠 기부금액, 약정 주기 및 기부 목적을 정리해 주세요.</p>
+            <section className="clm-document-section">
+              <div className="clm-section-heading">
+                <span className="clm-step-badge">STEP 01</span>
+                <h3>기부 약정 정리</h3>
+                <p>AI와 대화를 나눠 기부금액, 약정 주기 및 기부 목적을 정리해 주세요.</p>
               </div>
 
               {/* 채팅창 컨테이너 */}
-              <div style={{
-                background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%)',
-                border: '2px solid #2ec4b6',
-                borderRadius: '16px',
-                overflow: 'hidden',
-                boxShadow: '0 8px 32px rgba(46,196,182,0.15)',
-                marginBottom: '16px',
-              }}>
-                <div style={{
-                  background: 'linear-gradient(90deg, #2ec4b6, #0077b6)',
-                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px',
-                }}>
-                  <div style={{
-                    width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
-                    border: '2px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
-                  }}>🤖</div>
+              <div className="clm-chat">
+                <div className="clm-chat-bar">
+                  <Logo variant="mark" className="clm-chat-avatar" />
                   <div>
-                    <div style={{ color: '#fff', fontWeight: 800, fontSize: '13px' }}>Pixel AI 약정 매니저</div>
-                    <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '11px' }}>
-                      {chatSending ? '생각 중...' : 'Upstage Solar LLM · 실시간 의사 분석'}
-                    </div>
+                    <strong>잇다 AI 약정 매니저</strong>
+                    <span>{chatSending ? '생각하는 중…' : 'UPSTAGE SOLAR LLM · 실시간 의사 분석'}</span>
                   </div>
                 </div>
 
-                <div style={{
-                  height: '300px', overflowY: 'auto', padding: '16px',
-                  display: 'flex', flexDirection: 'column', gap: '12px',
-                }}>
+                <div className="clm-chat-log">
                   {chatMessages.map((msg, idx) => (
-                    <div key={idx} style={{
-                      display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: '8px',
-                    }}>
-                      <div style={{
-                        maxWidth: '80%', padding: '10px 14px', borderRadius: '14px', fontSize: '13px', lineHeight: 1.5,
-                        background: msg.role === 'user' ? 'linear-gradient(135deg, #2ec4b6, #0077b6)' : 'rgba(255,255,255,0.08)',
-                        color: '#fff', border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.12)',
-                        whiteSpace: 'pre-wrap',
-                      }}>
-                        {msg.content}
+                    <div
+                      key={idx}
+                      className={`clm-chat-row${msg.role === 'user' ? ' is-user' : ''}`}
+                    >
+                      <div className={`chat-bubble ${msg.role === 'user' ? 'user-bubble' : 'ai-bubble'}`}>
+                        {renderChatText(msg.content)}
                       </div>
                     </div>
                   ))}
@@ -428,70 +505,71 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
                 {/* 퀵 칩 입력 혜택 */}
                 {!aiConfirmed && (
-                  <div style={{ padding: '8px 16px', display: 'flex', flexWrap: 'wrap', gap: '6px', borderTop: '1px solid rgba(46,196,182,0.2)', background: 'rgba(0,0,0,0.2)' }}>
+                  <div className="clm-chat-chips">
                     {(isVolunteer
                       ? ['주말 매주 참여해요', '격주 봉사 원해요', '하루 일시 참여']
                       : ['매월 3만원 기부할게요', '일시 10만원 기부할게요', '매년 100만원 기부', '답례품 미수령']
                     ).map((chip) => (
-                      <button key={chip} type="button" disabled={chatSending} onClick={() => handleChatSend(chip)} style={{ background: 'rgba(46,196,182,0.15)', border: '1px solid rgba(46,196,182,0.4)', borderRadius: '20px', color: '#2ec4b6', fontSize: '11px', fontWeight: 600, padding: '4px 10px', cursor: 'pointer' }}>{chip}</button>
+                      <button key={chip} type="button" disabled={chatSending} onClick={() => handleChatSend(chip)}>{chip}</button>
                     ))}
                   </div>
                 )}
 
                 {!aiConfirmed && (
-                  <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(46,196,182,0.2)', display: 'flex', gap: '10px' }}>
+                  <div className="clm-chat-input">
                     <textarea
                       ref={chatInputRef}
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleChatSend(); } }}
-                      placeholder="약정 관련 답변을 입력하세요... (예: 매월 3만원 부산 영도구 기부할게요)"
+                      placeholder="약정 관련 답변을 입력하세요 (예: 매월 3만원 부산 영도구 기부할게요)"
                       rows={1}
                       disabled={chatSending}
-                      style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(46,196,182,0.4)', borderRadius: '12px', padding: '10px 14px', color: '#fff', fontSize: '13px', outline: 'none', resize: 'none' }}
                     />
                     <button
                       type="button"
+                      className="clm-chat-send"
                       onClick={() => handleChatSend()}
                       disabled={!chatInput.trim() || chatSending}
-                      style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'linear-gradient(135deg, #2ec4b6, #0077b6)', border: 'none', color: '#fff', cursor: 'pointer' }}
-                    >➤</button>
+                      aria-label="보내기"
+                    >→</button>
                   </div>
                 )}
               </div>
 
               {/* AI 정리 의향 카드 */}
               {intent && (
-                <div style={{ background: '#f8fafc', border: '1.5px solid #2ec4b6', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '13px', color: '#0077b6', marginBottom: '12px' }}>
-                    📋 AI 정리 약정 내역 (수정 가능)
+                <div className="clm-intent-card">
+                  <div className="clm-intent-title">
+                    <span>AI SUMMARY</span>
+                    AI가 정리한 약정 내역 · 직접 고칠 수 있어요
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                  <div className="clm-intent-grid">
+                    <label>
                       약정 유형
-                      <select value={intent.pledgeType || ''} onChange={(e) => setIntent({ ...intent, pledgeType: e.target.value })} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                      <select value={intent.pledgeType || ''} onChange={(e) => setIntent({ ...intent, pledgeType: e.target.value })}>
                         <option value="DONATION">일반 기부</option>
                         <option value="HOMETOWN_DONATION">고향사랑기부</option>
                         <option value="VOLUNTEER">봉사 참여</option>
                         <option value="LEGACY_DONATION">유산 기부</option>
                       </select>
                     </label>
-                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                    <label>
                       주기 (납부/참여)
-                      <select value={intent.frequency || ''} onChange={(e) => setIntent({ ...intent, frequency: e.target.value })} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                      <select value={intent.frequency || ''} onChange={(e) => setIntent({ ...intent, frequency: e.target.value })}>
                         <option value="ONE_TIME">일시 (1회성)</option>
                         <option value="WEEKLY">매주 (주간)</option>
                         <option value="MONTHLY">매월 (월간)</option>
                         <option value="ANNUAL">매년 (연간)</option>
                       </select>
                     </label>
-                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                    <label>
                       수혜 대상·기관
-                      <input value={intent.beneficiary || ''} onChange={(e) => setIntent({ ...intent, beneficiary: e.target.value })} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                      <input value={intent.beneficiary || ''} onChange={(e) => setIntent({ ...intent, beneficiary: e.target.value })} />
                     </label>
-                    <label style={{ fontSize: '12px', fontWeight: 700 }}>
+                    <label>
                       지역
-                      <input value={intent.region || ''} onChange={(e) => setIntent({ ...intent, region: e.target.value })} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                      <input value={intent.region || ''} onChange={(e) => setIntent({ ...intent, region: e.target.value })} />
                     </label>
                   </div>
                   <button
@@ -501,45 +579,38 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                       await handleConfirmIntent();
                       setActiveStep(isHometown ? 2 : 3);
                     }}
-                    style={{
-                      width: '100%', marginTop: '16px', padding: '14px', background: 'linear-gradient(135deg, #0077b6, #2ec4b6)',
-                      color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 800, fontSize: '14px', cursor: 'pointer',
-                    }}
+                    className="clm-primary-action"
                   >
                     {isHometown
-                      ? '약정 의사 확정 완료 → STEP 02. 답례품 선택하기 ➔'
-                      : '약정 의사 확정 완료 → STEP 02. 필수 동의 진행하기 ➔'}
+                      ? '약정 의사 확정 → STEP 02. 답례품 선택하기'
+                      : '약정 의사 확정 → STEP 02. 필수 동의 진행하기'}
                   </button>
                 </div>
               )}
-              {aiFeedback && <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>{aiFeedback}</div>}
+              {aiFeedback && <div className="clm-inline-error">{aiFeedback}</div>}
             </section>
           )}
 
           {/* ================= STEP 02: 답례품 선택 (isHometown 전용) ================= */}
           {activeStep === 2 && isHometown && (
-            <section className="clm-document-section" style={{ background: '#fff', border: '2px solid #2ec4b6', borderRadius: '16px', padding: '24px' }}>
-              <div className="clm-section-heading" style={{ marginBottom: '16px' }}>
-                <span style={{ background: '#0077b6', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px' }}>STEP 02</span>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '6px 0 2px', color: '#0f172a' }}>🎁 답례품 선택 (부산 고향사랑e음 busanlove.kr)</h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>기부금의 30% 한도 내에서 제공되는 부산 명품 답례품을 선택하세요.</p>
+            <section className="clm-document-section">
+              <div className="clm-section-heading">
+                <span className="clm-step-badge">STEP 02</span>
+                <h3>답례품 선택</h3>
+                <p>부산 고향사랑e음(busanlove.kr) 연계 · 기부금의 30% 한도 내에서 답례품을 고를 수 있습니다.</p>
               </div>
 
-              <div style={{
-                background: 'linear-gradient(135deg, #e6f4f1, #f0f9ff)',
-                border: '1.5px solid #2ec4b6', borderRadius: '12px', padding: '16px', marginBottom: '20px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              }}>
+              <div className="clm-point-bar">
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '14px', color: '#0077b6' }}>고향사랑기부 산정 포인트</div>
-                  <div style={{ fontSize: '12px', color: '#555' }}>소득세법 10만원 100% 세액공제 + 30% 답례품 포인트 환급</div>
+                  <strong>고향사랑기부 산정 포인트</strong>
+                  <span>소득세법 10만원 100% 세액공제 + 30% 답례품 포인트 환급</span>
                 </div>
-                <div style={{ background: '#0077b6', color: '#fff', fontSize: '16px', fontWeight: 800, padding: '6px 16px', borderRadius: '20px' }}>
+                <em>
                   보유 {intent?.amount ? Math.floor(intent.amount * 0.3).toLocaleString() : '30,000'} P
-                </div>
+                </em>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+              <div className="clm-gift-grid">
                 {[
                   { id: 'dongbaek', name: '💳 부산 동백전 지역화폐 30% 포인트', pts: '기부액 30%', desc: '부산 전역 가맹점 현금처럼 즉시 사용' },
                   { id: 'gijang', name: '🐟 부산 기장 명품 미역·다시마 세트', pts: '30,000 P', desc: '임금님 수라상 청정 기장 해풍 미역' },
@@ -564,46 +635,42 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                           setIntent({ ...intent, rewardPreference: 'UNSPECIFIED', giftItem: cleanName });
                         }
                       }}
-                      style={{
-                        border: isSelected ? '2.5px solid #0077b6' : '1px solid #cbd5e1',
-                        background: isSelected ? '#f0f9ff' : '#fff',
-                        borderRadius: '12px', padding: '14px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.2s',
-                        boxShadow: isSelected ? '0 4px 14px rgba(0,119,182,0.2)' : 'none',
-                      }}
+                      className={`clm-gift-card${isSelected ? ' is-selected' : ''}`}
+                      aria-pressed={isSelected}
                     >
-                      <div style={{ fontWeight: 800, fontSize: '13px', color: isSelected ? '#0077b6' : '#1e293b', marginBottom: '4px' }}>{gift.name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>{gift.desc}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#2ec4b6' }}>{gift.pts}</span>
-                        {isSelected && <span style={{ fontSize: '11px', fontWeight: 800, color: '#0077b6' }}>✓ 선택됨</span>}
-                      </div>
+                      <strong>{gift.name}</strong>
+                      <span className="clm-gift-desc">{gift.desc}</span>
+                      <span className="clm-gift-foot">
+                        <em>{gift.pts}</em>
+                        {isSelected && <b>선택됨</b>}
+                      </span>
                     </button>
                   );
                 })}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setActiveStep(1)} style={{ padding: '12px 20px', background: '#e2e8f0', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>← 1단계 이전</button>
-                <button type="button" onClick={() => setActiveStep(3)} style={{ flex: 1, padding: '12px 20px', background: 'linear-gradient(135deg, #0077b6, #2ec4b6)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, cursor: 'pointer' }}>답례품 선택 완료 → STEP 03. 세액공제 및 동의 ➔</button>
+              <div className="clm-step-nav">
+                <button type="button" className="clm-back-action" onClick={() => setActiveStep(1)}>이전 단계</button>
+                <button type="button" className="clm-primary-action" onClick={() => setActiveStep(3)}>답례품 선택 완료 → STEP 03. 세액공제 및 동의</button>
               </div>
             </section>
           )}
 
           {/* ================= STEP 03: 세액공제 & 개인정보 동의 ================= */}
           {activeStep === 3 && (
-            <section className="clm-document-section" style={{ background: '#fff', border: '2px solid #2ec4b6', borderRadius: '16px', padding: '24px' }}>
-              <div className="clm-section-heading" style={{ marginBottom: '16px' }}>
-                <span style={{ background: '#0077b6', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px' }}>
+            <section className="clm-document-section">
+              <div className="clm-section-heading">
+                <span className="clm-step-badge">
                   {isHometown ? 'STEP 03' : 'STEP 02'}
                 </span>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '6px 0 2px', color: '#0f172a' }}>
+                <h3>
                   {isHometown
-                    ? '⚖️ 세액공제 신청 및 약정 동의'
+                    ? '세액공제 신청 및 약정 동의'
                     : isVolunteer
-                    ? '🛡️ 봉사 참여 서약 및 필수 동의'
-                    : '🛡️ 후원 약정 필수 동의'}
+                    ? '봉사 참여 서약 및 필수 동의'
+                    : '후원 약정 필수 동의'}
                 </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
+                <p>
                   {isHometown
                     ? '국세청 홈택스 100% 세액공제 영수증 연동 및 필수 개인정보 동의를 진행하세요.'
                     : isVolunteer
@@ -612,14 +679,13 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                 </p>
               </div>
 
-              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
+              <div className="clm-consent-panel">
                 {isHometown && (
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '16px' }}>
-                    🏛️ 국세청 연말정산 100% 세액공제 영수증 발급
+                  <label className="clm-tax-field">
+                    국세청 연말정산 100% 세액공제 영수증 발급
                     <select
                       value={intent?.taxDeductionConsent !== false ? 'YES' : 'NO'}
                       onChange={(e) => intent && setIntent({ ...intent, taxDeductionConsent: e.target.value === 'YES' })}
-                      style={{ padding: '10px', borderRadius: '8px', border: '1.5px solid #2ec4b6', fontSize: '13px', background: '#fff' }}
                     >
                       <option value="YES">국세청 홈택스 자동 발급 신청함 (소득세법 제59조의4)</option>
                       <option value="NO">발급 신청하지 않음</option>
@@ -627,35 +693,31 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                   </label>
                 )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={privacyConsent} onChange={(e) => setPrivacyConsent(e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                    <span>[필수] 개인정보 수집 및 이용 동의 (약정 체결 및 본인 확인)</span>
+                <div className="clm-consent-list">
+                  <label>
+                    <input type="checkbox" checked={privacyConsent} onChange={(e) => setPrivacyConsent(e.target.checked)} />
+                    <span><b>필수</b> 개인정보 수집 및 이용 동의 (약정 체결 및 본인 확인)</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={thirdPartyConsent} onChange={(e) => setThirdPartyConsent(e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                    <span>[필수] 주관기관 및 행정안전부 고향사랑e음 정보 제공 동의</span>
+                  <label>
+                    <input type="checkbox" checked={thirdPartyConsent} onChange={(e) => setThirdPartyConsent(e.target.checked)} />
+                    <span><b>필수</b> 주관기관 및 행정안전부 고향사랑e음 정보 제공 동의</span>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={portraitConsent} onChange={(e) => setPortraitConsent(e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                    <span>[선택] 활동 기록 및 픽셀 온기 뱃지 수집 활용 동의</span>
+                  <label>
+                    <input type="checkbox" checked={portraitConsent} onChange={(e) => setPortraitConsent(e.target.checked)} />
+                    <span><b className="is-optional">선택</b> 활동 기록 및 잇다 온기 뱃지 수집 활용 동의</span>
                   </label>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setActiveStep(isHometown ? 2 : 1)} style={{ padding: '12px 20px', background: '#e2e8f0', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>← 이전 단계</button>
+              <div className="clm-step-nav">
+                <button type="button" className="clm-back-action" onClick={() => setActiveStep(isHometown ? 2 : 1)}>이전 단계</button>
                 <button
                   type="button"
+                  className="clm-primary-action"
                   disabled={!privacyConsent || !thirdPartyConsent}
                   onClick={() => setActiveStep(4)}
-                  style={{
-                    flex: 1, padding: '12px 20px',
-                    background: privacyConsent && thirdPartyConsent ? 'linear-gradient(135deg, #0077b6, #2ec4b6)' : '#cbd5e1',
-                    color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, cursor: privacyConsent && thirdPartyConsent ? 'pointer' : 'not-allowed',
-                  }}
                 >
-                  동의 완료 → {isHometown ? 'STEP 04' : 'STEP 03'}. 모두싸인 서명하기 ➔
+                  동의 완료 → {isHometown ? 'STEP 04' : 'STEP 03'}. 모두싸인 서명하기
                 </button>
               </div>
             </section>
@@ -663,58 +725,53 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
           {/* ================= STEP 04: 전자서명 & 증빙 ================= */}
           {activeStep === 4 && (
-            <section className="clm-document-section" style={{ background: '#fff', border: '2px solid #2ec4b6', borderRadius: '16px', padding: '24px' }}>
-              <div className="clm-section-heading" style={{ marginBottom: '16px' }}>
-                <span style={{ background: '#0077b6', color: '#fff', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px' }}>
+            <section className="clm-document-section">
+              <div className="clm-section-heading">
+                <span className="clm-step-badge">
                   {isHometown ? 'STEP 04' : 'STEP 03'}
                 </span>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '6px 0 2px', color: '#0f172a' }}>✍️ 모두싸인 API 전자서명 및 최종 증빙</h3>
-                <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>생성된 약정서를 확인하고 모두싸인 보안 전자서명을 완료하세요.</p>
+                <h3>모두싸인 전자서명 및 최종 증빙</h3>
+                <p>생성된 약정서를 확인하고 모두싸인 보안 전자서명을 완료하세요.</p>
               </div>
 
-              <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '16px', marginBottom: '20px' }}>
-                <div style={{ fontWeight: 800, fontSize: '14px', color: '#0077b6', marginBottom: '8px' }}>
-                  📄 {documentName}
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                  서명자: {applicantName} ({applicantEmail}) · 체결 방식: 모두싸인 전자서명 보안 인증
-                </div>
+              <div className="clm-sign-panel">
+                <strong className="clm-sign-title">{documentName}</strong>
+                <span className="clm-sign-meta">
+                  서명자 {applicantName} ({applicantEmail}) · 체결 방식 모두싸인 전자서명 보안 인증
+                </span>
 
                 {!clmDoc ? (
                   <button
                     type="button"
                     disabled={requestingSign}
                     onClick={handleStartModusign}
-                    style={{
-                      width: '100%', padding: '14px', background: 'linear-gradient(135deg, #0077b6, #2ec4b6)',
-                      color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 800, fontSize: '14px', cursor: 'pointer',
-                    }}
+                    className="clm-primary-action"
                   >
-                    {requestingSign ? '약정서 및 서명창 준비 중...' : '🖋️ 약정서 생성 및 모두싸인 전자서명 시작'}
+                    {requestingSign ? '약정서 및 서명창 준비 중…' : '약정서 생성 및 모두싸인 전자서명 시작'}
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ padding: '12px', background: '#e6f4f1', borderRadius: '8px', fontSize: '13px', color: '#0077b6', fontWeight: 700 }}>
-                      {isSigned ? '✅ 전자서명이 성공적으로 완료되었습니다!' : '⏳ 모두싸인 서명이 진행 중입니다.'}
+                  <div className="clm-sign-state">
+                    <div className={`clm-sign-status${isSigned ? ' is-done' : ''}`}>
+                      {isSigned ? '전자서명이 완료되었습니다.' : '모두싸인 서명이 진행 중입니다.'}
                     </div>
-                    {signatureStatusMessage && <div style={{ fontSize: '12px', color: '#0284c7' }}>{signatureStatusMessage}</div>}
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    {signatureStatusMessage && <p className="clm-sign-note">{signatureStatusMessage}</p>}
+                    <div className="clm-sign-actions">
                       {!isSigned && (
                         <>
-                          <button type="button" onClick={() => setIsSigningModalOpen(true)} style={{ flex: 1, padding: '10px', background: '#0077b6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>서명창 바로 열기</button>
-                          <button type="button" onClick={handleCheckSignature} disabled={checkingSignature} style={{ padding: '10px 14px', background: '#e2e8f0', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>{checkingSignature ? '확인중...' : '🔄 서명 상태 확인'}</button>
+                          <button type="button" className="clm-primary-action" onClick={openSigningWindow}>서명창 바로 열기</button>
+                          <button type="button" className="clm-back-action" onClick={handleCheckSignature} disabled={checkingSignature}>{checkingSignature ? '확인 중…' : '서명 상태 확인'}</button>
                         </>
                       )}
-                      <button type="button" onClick={handleOpenDocView} style={{ flex: 1, padding: '10px', background: '#2ec4b6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>약정서 PDF 확인</button>
+                      <button type="button" className="clm-ghost-action" onClick={handleOpenDocView}>약정서 PDF 확인</button>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setActiveStep(isHometown ? 3 : 1)} style={{ padding: '12px 20px', background: '#e2e8f0', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>← 이전 단계</button>
+              <div className="clm-step-nav">
+                <button type="button" className="clm-back-action" onClick={() => setActiveStep(isHometown ? 3 : 1)}>이전 단계</button>
                 {completed && (
-                  <button type="button" onClick={onBack} style={{ flex: 1, padding: '12px 20px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, cursor: 'pointer' }}>🎉 최종 신청 완료 및 목록으로 돌아가기</button>
+                  <button type="button" className="clm-primary-action is-complete" onClick={onBack}>최종 신청 완료 · 목록으로 돌아가기</button>
                 )}
               </div>
             </section>
@@ -724,16 +781,50 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
       {/* 모두싸인 전자서명 진행 모달 */}
       {isSigningModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ background: '#fff', width: '100%', maxWidth: '800px', height: '85vh', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '3px solid #2ec4b6' }}>
-            <div style={{ background: '#2ec4b6', padding: '12px 20px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800 }}>
-              <span>✍️ 모두싸인 전자서명</span>
-              <button type="button" onClick={() => setIsSigningModalOpen(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+        <div className="clm-modal-backdrop">
+          <div className="clm-modal clm-modal--sign">
+            <div className="clm-modal-bar">
+              <span>모두싸인 전자서명</span>
+              <button type="button" onClick={() => setIsSigningModalOpen(false)} aria-label="닫기">✕</button>
             </div>
-            {clmDoc?.signingUrl ? (
-              <iframe src={clmDoc.signingUrl} title="Modusign Signing" style={{ width: '100%', flex: 1, border: 'none' }} />
+            {!clmDoc?.signingUrl ? (
+              <div className="clm-modal-empty">서명 URL을 불러오는 중…</div>
+            ) : isModusignUrl(clmDoc.signingUrl) ? (
+              /*
+               * 모두싸인 서명창은 iframe에 넣지 않고 새 탭으로 연다.
+               * 다른 출처를 iframe에 담으면 브라우저가 서드파티 쿠키를 막아
+               * 모두싸인이 서명 세션을 못 만들고 "문서에 접근할 수 없습니다"로 끝난다.
+               * (사파리는 기본 차단이라 시연 환경에서 반드시 걸린다.)
+               */
+              <div className="clm-sign-launch">
+                <strong>{documentName}</strong>
+                <p>
+                  아래 버튼을 누르면 모두싸인 서명창이 새 탭에서 열립니다.
+                  서명을 마치면 이 화면이 자동으로 확인하고 서명창을 닫아 드립니다.
+                </p>
+                <button type="button" className="clm-primary-action" onClick={launchSigningWindow}>
+                  모두싸인 서명창 열기 ↗
+                </button>
+                <button
+                  type="button"
+                  className="clm-back-action"
+                  onClick={handleCheckSignature}
+                  disabled={checkingSignature}
+                >
+                  {checkingSignature ? '확인 중…' : '서명 상태 확인'}
+                </button>
+                <small>링크는 발급 후 10분간 유효합니다. 만료되면 &lsquo;서명창 바로 열기&rsquo;를 다시 눌러 주세요.</small>
+              </div>
             ) : (
-              <div style={{ padding: '40px', textAlign: 'center' }}>서명 URL을 불러오는 중...</div>
+              // 링크 발급이 막히면 서버가 로컬 대체 주소를 내려준다.
+              // 그대로 띄우면 서명창 자리에 우리 서비스 화면이 들어와 더 혼란스럽다.
+              <div className="clm-modal-empty">
+                <strong>서명창을 지금 열 수 없습니다.</strong>
+                <p>
+                  모두싸인 서명 링크 발급이 일시적으로 제한되었습니다.
+                  잠시 후 &lsquo;서명창 바로 열기&rsquo;를 다시 눌러 주세요.
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -741,37 +832,38 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
       {/* 완료 약정 증서 열람 모달 */}
       {isDocViewModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ background: '#fff', width: '100%', maxWidth: '720px', maxHeight: '90vh', borderRadius: '16px', border: '3px solid #2ec4b6', padding: '28px', overflowY: 'auto', textAlign: 'left', position: 'relative' }}>
-            <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, color: '#111', marginBottom: '16px' }}>📜 픽셀케어 전자서명 완료 약정 증서</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
+        <div className="clm-modal-backdrop">
+          <div className="clm-modal clm-modal--cert">
+            <p className="clm-cert-eyebrow">SIGNED CERTIFICATE</p>
+            <h2 className="clm-cert-title">잇다 전자서명 완료 약정 증서</h2>
+            <table className="clm-cert-table">
               <tbody>
-                <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0', width: '30%' }}>약정서 명칭</th><td style={{ padding: '10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{documentName}</td></tr>
-                <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0' }}>문서 관리번호</th><td style={{ padding: '10px', border: '1px solid #e2e8f0', color: '#0077b6', fontWeight: 'bold' }}>{clmDoc?.modusignDocumentId || 'MODU_SIGNED_PENDING'}</td></tr>
-                <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0' }}>신청 프로그램</th><td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{item.title} ({item.organizer})</td></tr>
-                <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0' }}>서명자 정보</th><td style={{ padding: '10px', border: '1px solid #e2e8f0' }}>{applicantName} ({applicantEmail})</td></tr>
-                <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0' }}>서명 인증 상태</th><td style={{ padding: '10px', border: '1px solid #e2e8f0', color: '#10b981', fontWeight: 'bold' }}>전자서명법 제3조 규정 법적 증빙 완료 (SIGNED)</td></tr>
+                <tr><th>약정서 명칭</th><td>{documentName}</td></tr>
+                <tr><th>문서 관리번호</th><td className="is-mono">{clmDoc?.modusignDocumentId || 'MODU_SIGNED_PENDING'}</td></tr>
+                <tr><th>신청 프로그램</th><td>{item.title} ({item.organizer})</td></tr>
+                <tr><th>서명자 정보</th><td>{applicantName} ({applicantEmail})</td></tr>
+                <tr><th>서명 인증 상태</th><td className="is-signed">전자서명법 제3조 규정 법적 증빙 완료 (SIGNED)</td></tr>
               </tbody>
             </table>
 
             {docFiles && docFiles.length > 0 ? (
-              <div style={{ marginBottom: '20px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '14px' }}>
-                <div style={{ fontWeight: 800, fontSize: '13px', color: '#0369a1', marginBottom: '8px' }}>📁 원본 약정서 PDF 다운로드</div>
+              <div className="clm-cert-files">
+                <strong>원본 약정서 PDF</strong>
                 {docFiles.map((f) => (
-                  <a key={f.id} href={f.downloadUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '12px', color: '#0077b6', textDecoration: 'none', marginBottom: '6px', fontWeight: 700 }}>
-                    <span>📥 {f.originalName} ({Math.round(f.sizeBytes / 1024)} KB)</span>
-                    <span style={{ fontSize: '11px', background: '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px' }}>다운로드</span>
+                  <a key={f.id} href={f.downloadUrl} target="_blank" rel="noreferrer">
+                    <span>{f.originalName} ({Math.round(f.sizeBytes / 1024)} KB)</span>
+                    <em>다운로드</em>
                   </a>
                 ))}
               </div>
             ) : (
-              <div style={{ marginBottom: '20px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '14px', textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
-                💡 약정서 생성이 완료되었으며, 보관함(마이페이지)에서도 언제든지 증명서를 조회할 수 있습니다.
+              <div className="clm-cert-empty">
+                약정서 생성이 완료되었습니다. 마이페이지 보관함에서도 언제든지 증명서를 조회할 수 있습니다.
               </div>
             )}
 
-            <div style={{ textAlign: 'center' }}>
-              <button type="button" style={{ padding: '12px 32px', background: 'linear-gradient(135deg, #0077b6, #2ec4b6)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, fontSize: '14px', cursor: 'pointer' }} onClick={() => setIsDocViewModalOpen(false)}>확인 및 닫기</button>
+            <div className="clm-cert-close">
+              <button type="button" className="clm-primary-action" onClick={() => setIsDocViewModalOpen(false)}>확인 및 닫기</button>
             </div>
           </div>
         </div>
