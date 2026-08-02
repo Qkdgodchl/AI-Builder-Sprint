@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { PostItem, CommentItem } from '../../services/communityApi';
 import { fetchPost, fetchPosts, createPost, likePost, deletePost, fetchComments, createComment, deleteComment } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
+import { uploadPhoto, photoUrl } from '../../services/photoApi';
 import type { SessionUser } from '../../types';
 
 interface PixelDiaryProps {
@@ -18,6 +19,22 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
   currentUser,
   onRequireLogin,
 }) => {
+  const [photo, setPhoto] = useState<{ id: number; name: string } | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const handlePhotoSelect = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const uploaded = await uploadPhoto(file, 'COMMUNITY_PHOTO');
+      setPhoto({ id: uploaded.id, name: uploaded.originalName });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '사진 업로드에 실패했습니다.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   // 글쓰기는 계정에 남는 기록이라 로그인한 사용자에게만 연다.
   const openComposer = () => {
     if (!currentUser) {
@@ -188,6 +205,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
         content: content.trim(),
         category,
         author: author.trim() || currentUser?.nickname || '부산 잇다 이웃',
+        imageUrl: photo ? photoUrl(photo.id) : undefined,
       });
 
       if (created) {
@@ -197,6 +215,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
       showToast(`📝 픽셀 커뮤니티 글이 등록되었습니다! 온기 +0.5°C 상승!`);
       playBeep(587, 0.15);
 
+      setPhoto(null);
       setTitle('');
       setContent('');
       setAuthor('');
@@ -552,6 +571,23 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
                   onChange={(e) => setContent(e.target.value)}
                   required
                 />
+              </label>
+              <label className="community-composer-wide">
+                <span>사진 (선택)</span>
+                <div className="community-photo-picker">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(event) => void handlePhotoSelect(event.target.files?.[0])}
+                  />
+                  {photoUploading && <em>올리는 중…</em>}
+                  {photo && !photoUploading && (
+                    <div className="community-photo-preview">
+                      <img src={photoUrl(photo.id)} alt="첨부한 사진 미리보기" />
+                      <button type="button" onClick={() => setPhoto(null)}>사진 빼기</button>
+                    </div>
+                  )}
+                </div>
               </label>
             </div>
             <div className="community-composer-footer">

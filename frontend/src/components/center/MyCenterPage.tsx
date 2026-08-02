@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CenterActivityNotePanel } from './CenterActivityNotePanel';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
 import {
@@ -1340,6 +1341,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         </section>
 
         <CenterSignedDocumentPanel applicationPublicId={viewingApplicant.publicId} />
+
+        <CenterActivityNotePanel applicationPublicId={viewingApplicant.publicId} />
 
         {viewingApplicant.status === '검토 대기' && (
           <button

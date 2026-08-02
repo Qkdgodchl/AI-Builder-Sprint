@@ -8161,3 +8161,405 @@ strong, small, em, span, label, button, a {
 .magazine-logo:hover .itda-logo-word {
   color: var(--magazine-accent);
 }
+
+/* 커뮤니티 사진 첨부 */
+.community-photo-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.community-photo-picker input[type='file'] {
+  font-size: 11px;
+}
+
+.community-photo-picker em {
+  color: var(--magazine-accent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.community-photo-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.community-photo-preview img {
+  width: 72px;
+  height: 72px;
+  border: 1px solid #d5d5d0;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.community-photo-preview button {
+  border: 1px solid #d5d5d0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: transparent;
+  color: #777;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------
+   봉사 다이어리 캘린더
+   --------------------------------------------------------------- */
+
+.activity-calendar {
+  margin-top: 30px;
+  overflow: hidden;
+  border: 1px solid var(--user-line);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.activity-calendar-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--user-line);
+  padding: 24px;
+}
+
+.activity-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.activity-calendar-nav button {
+  border: 1px solid var(--user-line);
+  border-radius: 999px;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.activity-calendar-nav strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.activity-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  padding: 18px 24px 24px;
+}
+
+.activity-calendar-weekday {
+  padding: 8px 0;
+  color: #92938e;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.activity-calendar-cell {
+  display: flex;
+  min-height: 62px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: default;
+}
+
+.activity-calendar-cell em {
+  color: #6f6f68;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.activity-calendar-cell.has-activity {
+  border-color: #e3e3dd;
+  background: #f7f7f4;
+  cursor: pointer;
+}
+
+.activity-calendar-cell.has-activity em {
+  color: var(--pc-dark);
+  font-weight: 900;
+}
+
+.activity-calendar-cell.selected {
+  border-color: var(--pc-dark);
+  background: #ffffff;
+}
+
+.activity-calendar-dot {
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: var(--magazine-accent);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.activity-day-detail {
+  border-top: 1px solid var(--user-line);
+  padding: 24px;
+  background: #fbfbf8;
+}
+
+.activity-day-detail h4 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.activity-day-card {
+  margin-bottom: 16px;
+  border: 1px solid var(--user-line);
+  border-radius: 14px;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.activity-day-card header {
+  margin-bottom: 14px;
+}
+
+.activity-day-card header strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.activity-day-card header span {
+  color: #8a8a84;
+  font-size: 11px;
+}
+
+.activity-day-empty {
+  color: #8a8a84;
+  font-size: 12px;
+}
+
+.activity-note {
+  margin-bottom: 12px;
+  border-left: 3px solid #d5d5d0;
+  padding: 10px 0 10px 14px;
+}
+
+.activity-note-center {
+  border-left-color: #237a57;
+}
+
+.activity-note-user {
+  border-left-color: var(--magazine-accent);
+}
+
+.activity-note-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.activity-note-meta em {
+  color: var(--pc-dark);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.activity-note-meta span {
+  color: #8a8a84;
+  font-size: 10px;
+}
+
+.activity-note p {
+  color: #444;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.activity-note-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.activity-note-photos img {
+  width: 96px;
+  height: 96px;
+  border: 1px solid #e3e3dd;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.activity-note-composer {
+  margin-top: 16px;
+  border-top: 1px dashed #d9d9d3;
+  padding-top: 14px;
+}
+
+.activity-note-composer textarea {
+  width: 100%;
+  border: 1px solid #d5d5d0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.activity-note-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.activity-note-composer-actions input[type='file'] {
+  font-size: 11px;
+}
+
+.activity-note-composer-actions small {
+  color: #8a8a84;
+  font-size: 10px;
+}
+
+.activity-note-composer-actions button {
+  margin-left: auto;
+  border: 1px solid var(--pc-dark);
+  border-radius: 999px;
+  padding: 10px 20px;
+  background: var(--pc-dark);
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.activity-note-composer-actions button:disabled {
+  border-color: #c4c4bd;
+  background: #c4c4bd;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .activity-note-photos img {
+    width: 76px;
+    height: 76px;
+  }
+}
+
+/* 센터가 참여자에게 남기는 활동 기록 */
+.center-note-panel {
+  border-bottom: 1px solid var(--pc-dark);
+  padding: 26px var(--pc-list-gutter);
+}
+
+.center-note-heading > span {
+  color: var(--magazine-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.center-note-heading h3 {
+  margin: 10px 0 0;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.center-note-heading p {
+  margin: 8px 0 0;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.center-note-list {
+  margin-top: 18px;
+}
+
+.center-note-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border-top: 1px dashed #d9d9d3;
+  padding-top: 18px;
+}
+
+.center-note-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.center-note-form label > span {
+  color: var(--pc-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.center-note-form input[type='date'],
+.center-note-form textarea {
+  width: 100%;
+  max-width: 620px;
+  border: 1px solid #bdbdbd;
+  padding: 11px 13px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  resize: vertical;
+}
+
+.center-note-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.center-note-form-actions input[type='file'] {
+  font-size: 11px;
+}
+
+.center-note-form-actions small {
+  color: #8a8a84;
+  font-size: 10px;
+}
+
+.center-note-form-actions button {
+  border: 1px solid var(--pc-dark);
+  border-radius: 999px;
+  padding: 11px 22px;
+  background: var(--pc-dark);
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.center-note-form-actions button:disabled {
+  border-color: #c4c4bd;
+  background: #c4c4bd;
+  cursor: not-allowed;
+}
+
+.center-note-status {
+  color: #237a57;
+  font-size: 11px;
+  font-weight: 700;
+}

@@ -8,6 +8,7 @@ import {
 } from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
+import { ActivityCalendar } from './ActivityCalendar';
 import { BadgeGrid } from '../roadmap/BadgeGrid';
 import { splitSentences } from '../../utils/text';
 import { computeBadges, DONE_APPLICATION_STATUSES } from '../roadmap/badgeProgress';
@@ -565,6 +566,8 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
               )}
             </section>
           </section>
+
+          <ActivityCalendar showNotice={setNotice} />
 
           <section className="user-badge-section" aria-label="내 뱃지">
             <div className="user-panel-heading user-badge-heading">
