@@ -9,6 +9,7 @@ import {
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
 import { PROFILE_UPDATED_EVENT } from '../../hooks/useMyRegion';
+import { useModusignSigning } from '../../hooks/useModusignSigning';
 import { ActivityCalendar } from './ActivityCalendar';
 import { BadgeGrid } from '../roadmap/BadgeGrid';
 import { splitSentences } from '../../utils/text';
@@ -18,6 +19,7 @@ import {
   fetchClmDocument,
   fetchClmDocumentFiles,
   loadClmDocumentFile,
+  requestClmSign,
   type ClmDocumentDto,
   type ClmDocumentFileDto,
 } from '../../services/clmApi';
@@ -64,6 +66,7 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [isChangingTerms, setIsChangingTerms] = useState(false);
   const [termAmount, setTermAmount] = useState('');
   const [termFrequency, setTermFrequency] = useState('MONTHLY');
+  const [resigning, setResigning] = useState(false);
   const [nickname, setNickname] = useState(currentUser.nickname);
   const [phone, setPhone] = useState('');
   const [region, setRegion] = useState('');
@@ -143,6 +146,37 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       cancelled = true;
     };
   }, [selectedClmDocumentId]);
+
+  /*
+   * 조건이 바뀐 갱신은 다시 서명을 받아야 한다.
+   * 신청 화면으로 보내면 기존 약정을 이어받지 못하고 새 신청이 시작되므로,
+   * 같은 약정에 서명 요청을 한 번 더 만들어 여기서 끝낸다.
+   */
+  const { open: openSigningWindow, message: signingMessage } = useModusignSigning(() => {
+    reloadApplications();
+    setNotice('재서명이 완료되어 약정이 다시 활성화되었습니다.');
+  });
+
+  const reloadApplications = () => {
+    fetchMyApplications()
+      .then(setApplications)
+      .catch(() => {
+        // 목록 갱신 실패는 화면을 막지 않는다. 다음 조회 때 맞춰진다.
+      });
+  };
+
+  const startResignature = async (commitmentPublicId: string) => {
+    setResigning(true);
+    setNotice('');
+    try {
+      const document = await requestClmSign({ commitmentPublicId });
+      openSigningWindow(document);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '재서명 요청에 실패했습니다.');
+    } finally {
+      setResigning(false);
+    }
+  };
 
   const renewPledge = async (
     commitmentPublicId: string,
@@ -374,6 +408,33 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 '작성된 약정서 내용이 없습니다.'}
             </p>
           </section>
+          {/*
+            서명 대기는 정기 약정만의 일이 아니다. 일시 약정도 서명이 밀리면
+            여기에 걸리는데, 예전에는 이 안내가 갱신 카드 안에 있어
+            갱신일이 없는 약정은 서명할 방법 자체가 없었다.
+          */}
+          {selectedApplication.commitment?.status === 'SIGNING' && (
+            <section className="user-renewal-card due">
+              <div>
+                <span>전자서명 대기</span>
+                <strong>약정서에 서명이 필요합니다</strong>
+                <p>
+                  {signingMessage
+                    || '약정 내용이 확정되어 서명을 기다리고 있습니다. 버튼을 누르면 서명창이 새 탭에서 열립니다.'}
+                </p>
+              </div>
+              <div className="user-renewal-actions">
+                <button
+                  type="button"
+                  disabled={resigning}
+                  onClick={() => startResignature(selectedApplication.commitment!.publicId)}
+                >
+                  {resigning ? '약정서 준비 중…' : '지금 서명하기'}
+                </button>
+              </div>
+            </section>
+          )}
+
           {selectedApplication.commitment?.renewalDueAt && (
             <section
               className={`user-renewal-card${
@@ -389,23 +450,11 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 </span>
                 <strong>다음 갱신일 {selectedApplication.commitment.renewalDueAt}</strong>
                 <p>
-                  {selectedApplication.commitment.status === 'SIGNING'
-                    ? '조건이 바뀐 갱신이라 약정서에 다시 서명해야 합니다. 신청 화면에서 전자서명을 진행해 주세요.'
-                    : selectedApplication.commitment.renewalStatus === 'DUE'
-                      ? '갱신일이 지났습니다. 같은 조건으로 갱신하면 별도 서류 없이 다음 주기까지 이어집니다.'
-                      : '갱신일이 되면 같은 조건으로 다음 주기까지 이어갈 수 있습니다. 금액이나 주기를 바꾸면 다시 서명이 필요합니다.'}
+                  {selectedApplication.commitment.renewalStatus === 'DUE'
+                    ? '갱신일이 지났습니다. 같은 조건으로 갱신하면 별도 서류 없이 다음 주기까지 이어집니다.'
+                    : '갱신일이 되면 같은 조건으로 다음 주기까지 이어갈 수 있습니다. 금액이나 주기를 바꾸면 다시 서명이 필요합니다.'}
                 </p>
               </div>
-              {selectedApplication.commitment.status === 'SIGNING' && (
-                <div className="user-renewal-actions">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/volunteer/${selectedApplication.opportunityId}/apply`)}
-                  >
-                    재서명하러 가기
-                  </button>
-                </div>
-              )}
               {selectedApplication.commitment.status === 'ACTIVE' &&
                 ['MONTHLY', 'ANNUAL'].includes(
                   selectedApplication.commitment.pledgeFrequency || '',

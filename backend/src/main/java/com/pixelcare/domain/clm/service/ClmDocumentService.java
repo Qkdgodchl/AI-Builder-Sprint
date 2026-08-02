@@ -67,7 +67,22 @@ public class ClmDocumentService {
                 commitmentRepository.requireOwnedSigningContext(request.getCommitmentPublicId(), currentUser.id());
         var existingDoc = clmDocumentRepository.findByCommitmentIdAndIsDeletedFalse(commitment.id());
         if (existingDoc.isPresent()) {
-            return ClmDocumentResponseDto.fromEntity(existingDoc.get());
+            /*
+             * 서명이 끝난 문서인데 약정이 다시 서명 대기로 돌아왔다면 조건이 바뀐 것이다.
+             * 옛 내용 그대로인 약정서를 다시 열어 줄 수는 없다. 게다가 이미 서명된
+             * 문서라 모두싸인에서도 "문서에 접근할 수 없습니다"로 막힌다.
+             * 지난 문서는 보관만 하고 새 약정서를 만든다.
+             */
+            ClmDocument previous = existingDoc.get();
+            boolean supersededByTermChange = "SIGNED".equals(previous.getStatus())
+                    && "SIGNING".equals(commitment.status());
+            if (!supersededByTermChange) {
+                // 서명 링크는 10분이면 만료된다. 예전 주소를 그대로 돌려주면
+                // 서명창을 열자마자 "문서에 접근할 수 없습니다"로 끝난다.
+                return ClmDocumentResponseDto.fromEntity(renewSigningLinkIfExpired(previous));
+            }
+            previous.markDeleted("RESIGN_AFTER_TERM_CHANGE");
+            clmDocumentRepository.save(previous);
         }
 
         Long consultationId = commitmentRepository.findConsultationIdByCommitmentId(commitment.id());
@@ -149,6 +164,24 @@ public class ClmDocumentService {
     }
 
     @Transactional
+    /** 만료된 서명 링크를 새로 받아 둔다. 아직 살아 있으면 그대로 쓴다. */
+    private ClmDocument renewSigningLinkIfExpired(ClmDocument document) {
+        java.time.LocalDateTime expiresAt = document.getSigningUrlExpiresAt();
+        if (expiresAt != null && expiresAt.isAfter(java.time.LocalDateTime.now())) {
+            return document;
+        }
+        try {
+            ModusignApiClient.SecureLinkResult link = modusignApiClient.createSecureLink(
+                    document.getModusignDocumentId(), document.getModusignParticipantId()
+            );
+            document.updateSecureLink(link.signingUrl(), link.expiresAt());
+        } catch (RuntimeException error) {
+            // 재발급이 막혀도 기존 주소로라도 열어 볼 수 있게 그대로 둔다.
+            System.err.println("서명 링크 재발급 실패, 기존 주소를 유지합니다: " + error.getMessage());
+        }
+        return document;
+    }
+
     public ClmDocumentResponseDto refreshSecureLink(Long documentId, CurrentUser currentUser) {
         ClmDocument doc = findOwnedDocument(documentId, currentUser);
         ModusignApiClient.SecureLinkResult link = modusignApiClient.createSecureLink(
