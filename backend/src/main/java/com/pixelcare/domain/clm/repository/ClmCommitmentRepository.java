@@ -26,7 +26,7 @@ public class ClmCommitmentRepository {
     public CommitmentSigningContext requireOwnedSigningContext(String publicId, Long userId) {
         List<CommitmentSigningContext> rows = jdbcTemplate.query("""
                 SELECT c.id, c.public_id, c.opportunity_id, c.title, c.commitment_status,
-                       c.pledge_frequency, c.effective_from,
+                       c.pledge_frequency, c.pledge_amount, c.effective_from,
                        u.name AS applicant_name, u.email AS applicant_email,
                        o.opportunity_type, COALESCE(org.name, '픽셀케어 지정 기관') AS organizer
                 FROM commitments c
@@ -37,7 +37,7 @@ public class ClmCommitmentRepository {
                 """, (rs, rowNum) -> new CommitmentSigningContext(
                 rs.getLong("id"), rs.getString("public_id"), rs.getLong("opportunity_id"),
                 rs.getString("title"), rs.getString("commitment_status"),
-                rs.getString("pledge_frequency"),
+                rs.getString("pledge_frequency"), rs.getBigDecimal("pledge_amount"),
                 rs.getDate("effective_from") == null ? null : rs.getDate("effective_from").toLocalDate(),
                 rs.getString("applicant_name"), rs.getString("applicant_email"),
                 rs.getString("opportunity_type"), rs.getString("organizer")
@@ -174,6 +174,7 @@ public class ClmCommitmentRepository {
             String title,
             String status,
             String pledgeFrequency,
+            java.math.BigDecimal pledgeAmount,
             LocalDate effectiveFrom,
             String applicantName,
             String applicantEmail,

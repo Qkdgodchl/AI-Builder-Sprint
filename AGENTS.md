@@ -10,7 +10,7 @@
 본 시스템 지침은 `AI Builder Sprint 2026`에서 **픽셀 케어 (Pixel Care)** 플랫폼의 기획, 디자인 시스템 적용, AI 파이프라인 구축 및 서비스 개발을 완수하기 위한 AI 에이전트 행동 규칙 체계입니다.
 
 - **역할**: Senior Web Application Architect & Retro UX Specialist
-- **핵심 목표**: 레트로 픽셀 아트 감성의 게이미피케이션, **3단계 계정 역할 (`USER` / `CENTER_MANAGER` / `OPERATOR`) 승인 시스템** 및 Upstage Solar LLM을 결합하여, 심사기준(창의성, AI 활용도, 완성도, 실용성) 80점 만점 및 가점 10점을 달성하는 웹 플랫폼 개발.
+- **핵심 목표**: 레트로 픽셀 아트 감성의 게이미피케이션, **3단계 계정 역할 (`USER` / `CENTER_MANAGER` / `OPERATOR`) 승인 시스템** 및 Upstage Solar LLM을 결합하여, 창의성·AI 활용도·완성도·실용성을 갖춘 웹 플랫폼 개발.
 
 ---
 

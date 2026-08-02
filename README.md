@@ -10,6 +10,16 @@
 ![Upstage Solar](https://img.shields.io/badge/AI-Upstage%20Solar%20LLM-purple?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Render-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
+## 🔗 배포 주소
+
+| 구분 | 주소 |
+|---|---|
+| 서비스 (프론트엔드) | _배포 후 기재_ |
+| API 서버 (백엔드) | https://ai-builder-sprint.onrender.com |
+| 데모 계정 | `manager@pixelcare.demo` / `Manager123!` (센터 관리자) |
+
+> 백엔드는 Render 무료 인스턴스라 접속이 없으면 절전 상태가 됩니다. 첫 요청은 응답까지 50초 남짓 걸릴 수 있습니다.
+
 ---
 
 ## 📌 프로젝트 개요 및 한 줄 소개 (Project Summary)
@@ -100,10 +110,12 @@
 cp .env.example .env
 ```
 
-#### 2. MySQL 실행 (Local Docker)
+#### 2. PostgreSQL 실행 (Local Docker)
 ```bash
-docker compose up -d mysql
+docker compose up -d postgres
+docker compose ps
 ```
+- 데이터는 `postgres_data` 볼륨에 남아 컨테이너를 재시작해도 유지됩니다.
 
 #### 3. 백엔드 실행 (Spring Boot)
 ```bash

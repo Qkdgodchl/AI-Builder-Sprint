@@ -13,8 +13,11 @@ spring:
       - optional:file:.env[.properties]
       - optional:file:../.env[.properties]
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://pg-278ea08-dropcast.i.aivencloud.com:21886/defaultdb?sslmode=require&sslfactory=org.postgresql.ssl.NonValidatingFactory}
-    username: ${SPRING_DATASOURCE_USERNAME:avnadmin}
+    # 접속 정보는 배포 환경변수로만 넣는다.
+    # 특정 인스턴스 주소를 기본값으로 박아 두면 환경변수를 빠뜨렸을 때
+    # 조용히 엉뚱한 데이터베이스에 붙어 버린다.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:5432/pixelcare}
+    username: ${SPRING_DATASOURCE_USERNAME:pixelcare}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     # 배포는 PostgreSQL이고 로컬은 아직 MySQL이다.
     # 드라이버가 고정이면 로컬에서 주소만 바꿔도 뜨지 않으므로 덮을 수 있게 둔다.

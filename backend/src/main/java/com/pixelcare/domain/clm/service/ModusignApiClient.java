@@ -16,9 +16,12 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.net.URI;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
@@ -49,7 +52,18 @@ public class ModusignApiClient {
             @Value("${modusign.api.participant-role:신청자}") String participantRole,
             @Value("${modusign.api.redirect-url:http://127.0.0.1:5173/my-page}") String redirectUrl
     ) {
-        this(new RestTemplate(), objectMapper, userEmail, apiKey, baseUrl, templateId, participantRole, redirectUrl);
+        this(timeoutBoundRestTemplate(), objectMapper, userEmail, apiKey, baseUrl, templateId, participantRole, redirectUrl);
+    }
+
+    /**
+     * 모두싸인이 느려질 때 요청 스레드가 무한정 붙잡히지 않도록 상한을 둔다.
+     * 서명 완료 PDF와 감사추적 파일을 내려받는 호출이 있어 읽기 시간은 넉넉히 잡는다.
+     */
+    private static RestTemplate timeoutBoundRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofSeconds(30));
+        return new RestTemplate(factory);
     }
 
     ModusignApiClient(RestTemplate restTemplate, ObjectMapper objectMapper, String userEmail, String apiKey,
@@ -221,7 +235,7 @@ public class ModusignApiClient {
         }
         String url = urlBuilder.buildAndExpand(documentId, participantId).encode().toUriString();
         if (documentId != null && documentId.startsWith("MODU_SIGNED_")) {
-            return new SecureLinkResult(baseUrl + "/clm/demo-sign?docId=" + documentId, LocalDateTime.now().plusDays(7));
+            return new SecureLinkResult(demoSignUrl(documentId), LocalDateTime.now().plusDays(7));
         }
         try {
             ResponseEntity<String> response = restTemplate.exchange(
@@ -231,9 +245,21 @@ public class ModusignApiClient {
             String embeddedUrl = requiredText(root, "embeddedUrl", "모두싸인 응답에 서명 링크가 없습니다.");
             return new SecureLinkResult(embeddedUrl, LocalDateTime.now().plusMinutes(10));
         } catch (Exception e) {
-            System.err.println("모두싸인 서명 링크 생성 중 오류 감지. Smart Failover 링크로 대체합니다: " + e.getMessage());
-            return new SecureLinkResult("http://localhost:5173/clm/demo-sign?docId=" + documentId, LocalDateTime.now().plusDays(7));
+            System.err.println("모두싸인 서명 링크 생성 중 오류 감지. 데모 안내 화면으로 대체합니다: " + e.getMessage());
+            return new SecureLinkResult(demoSignUrl(documentId), LocalDateTime.now().plusDays(7));
         }
+    }
+
+    /**
+     * 모두싸인 서명창을 못 여는 상황에서 사용자를 돌려보낼 주소.
+     * 전용 데모 화면이 따로 없으므로 서명 후 돌아올 화면(redirectUrl)을 그대로 쓴다.
+     * API 도메인이나 localhost를 박아 두면 배포 환경에서 열리지 않는 링크가 된다.
+     */
+    private String demoSignUrl(String documentId) {
+        String base = redirectUrl == null || redirectUrl.isBlank()
+                ? "http://127.0.0.1:5173/my-page"
+                : redirectUrl;
+        return base + (base.contains("?") ? "&" : "?") + "docId=" + documentId;
     }
 
     private boolean isPublicHttpsRedirectUrl() {

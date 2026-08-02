@@ -22,8 +22,17 @@ interface ChatMessage {
   timestamp?: Date;
 }
 
-/** 서명 링크 발급이 막히면 서버가 로컬 대체 주소를 내려주므로, 진짜 서명창인지 가린다. */
-const isModusignUrl = (url: string) => /(^|\.)modusign\.co\.kr/.test(new URL(url, window.location.origin).hostname);
+/** 서명 링크 발급이 막히면 서버가 대체 주소를 내려주므로, 진짜 서명창인지 가린다. */
+const isModusignUrl = (url: string) => /(^|\.)modusign\.co\.kr$/.test(new URL(url, window.location.origin).hostname);
+
+/** 서명 완료 신호는 모두싸인이 보낸 것만 받는다. */
+const isModusignOrigin = (origin: string) => {
+  try {
+    return /(^|\.)modusign\.co\.kr$/.test(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Solar 응답과 안내 문구에 **강조** 표기가 섞여 온다.
@@ -68,7 +77,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   const [consultation, setConsultation] = useState<ConsultationResponse | null>(null);
   const [intent, setIntent] = useState<PledgeIntent | null>(null);
   const [aiConfirmed, setAiConfirmed] = useState(false);
-  const [externalAiConsent] = useState(true);
+  // 외부 AI 전송은 사용자가 켤 때만 한다. 끄면 서버가 로컬 폴백으로 같은 스키마를 채운다.
+  const [externalAiConsent, setExternalAiConsent] = useState(false);
   const [commitmentPublicId, setCommitmentPublicId] = useState<string | null>(null);
 
   // 대화형 채팅 상태
@@ -131,6 +141,8 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
   // 모두싸인 iframe 서명 완료 postMessage 감지
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      // 보낸 곳을 확인하지 않으면 아무 창이나 "signed"만 보내도 서명 완료로 처리된다.
+      if (!isModusignOrigin(event.origin)) return;
       const dataStr = typeof event.data === 'string' ? event.data : JSON.stringify(event.data || {});
       if (dataStr.includes('signed') || dataStr.includes('MODUSIGN_SUCCESS') || event.data?.event === 'document_signed') {
         setIsSigned(true);
@@ -484,6 +496,20 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                     ? 'AI와 대화를 나눠 참여 주기와 활동 지역을 정리해 주세요.'
                     : 'AI와 대화를 나눠 기부금액, 약정 주기 및 기부 목적을 정리해 주세요.'}
                 </p>
+              </div>
+
+              <div className="clm-consent-list clm-ai-consent">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={externalAiConsent}
+                    onChange={(e) => setExternalAiConsent(e.target.checked)}
+                  />
+                  <span>
+                    <b className="is-optional">선택</b> 입력하신 문장을 Upstage Solar에 보내 약정 내용을 정리하는 데 동의합니다.
+                    동의하지 않으셔도 대화는 그대로 진행되며, 외부 전송 없이 정리됩니다.
+                  </span>
+                </label>
               </div>
 
               {/* 채팅창 컨테이너 */}

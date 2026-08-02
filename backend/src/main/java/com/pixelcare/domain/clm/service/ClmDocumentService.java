@@ -94,21 +94,16 @@ public class ClmDocumentService {
                 ? currentUser.nickname() : commitment.applicantName();
 
         // LLM 상담 ID가 없는 일반 신청도 iText 8로 커스텀 약정서 PDF를 생성하여 모두싸인에 업로드
-        String pledgeType = "VOLUNTEER";
-        if ("HOMETOWN".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "HOMETOWN_DONATION";
-        } else if ("HERITAGE".equalsIgnoreCase(commitment.opportunityType())
-                || "UNESCO".equalsIgnoreCase(commitment.opportunityType())
-                || "LEGACY".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "HERITAGE_DONATION";
-        } else if ("DONATION".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "DONATION";
-        }
+        String pledgeType = resolvePledgeType(commitment.opportunityType(), "VOLUNTEER");
+        boolean heritage = isHeritagePledge(pledgeType);
 
+        // 약정서에 찍히는 금액은 사용자가 신청할 때 정한 값이어야 한다.
+        // 여기서 임의의 값을 넣으면 실제 약정과 다른 금액으로 서명을 받게 된다.
+        java.math.BigDecimal pledgeAmount = commitment.pledgeAmount();
         PledgeIntent intent = new PledgeIntent(
                 pledgeType,
                 commitment.title(),
-                new java.math.BigDecimal("30000"),
+                pledgeAmount,
                 commitment.pledgeFrequency() != null ? commitment.pledgeFrequency() : "MONTHLY",
                 commitment.effectiveFrom() != null ? commitment.effectiveFrom() : java.time.LocalDate.now(),
                 "부산광역시",
@@ -116,11 +111,11 @@ public class ClmDocumentService {
                 true,
                 true,
                 "정식 약정서 체결",
-                "HOMETOWN_DONATION".equals(pledgeType) ? "부산 동백전 지역화폐 (3만원권)" : null,
+                "HOMETOWN_DONATION".equals(pledgeType) ? "부산 동백전 지역화폐" : null,
                 "HOMETOWN_DONATION".equals(pledgeType) ? "26000" : null,
-                new java.math.BigDecimal("100000"),
-                "HERITAGE_DONATION".equals(pledgeType) ? commitment.title() : null,
-                "HERITAGE_DONATION".equals(pledgeType) ? "사후 유산 유증 기부 약정 (유언 공증 체결)" : null,
+                hometownTaxCredit(pledgeType, pledgeAmount),
+                heritage ? commitment.title() : null,
+                heritage ? "사후 유산 유증 기부 약정 (유언 공증 체결)" : null,
                 java.util.List.of()
         );
 
@@ -265,19 +260,20 @@ public class ClmDocumentService {
                     markSigned(document);
                 }
             } catch (Exception e) {
+                // 모두싸인 이용한도가 막혀 시뮬레이션으로 발급한 데모 문서만 완료로 넘긴다.
                 if (document.getModusignDocumentId() != null && document.getModusignDocumentId().startsWith("MODU_SIGNED_")) {
                     if (document.applyModusignEvent("document_all_signed")) {
                         markSigned(document);
                     }
                     return;
                 }
-                if (e instanceof ApiException apiEx && "MODUSIGN_DOCUMENT_NOT_COMPLETED".equals(apiEx.getCode())) {
-                    return;
-                }
-                System.err.println("모두싸인 동기화 원활하지 않음 (Smart Failover 서명 완료 적용): " + e.getMessage());
-                if (document.applyModusignEvent("document_all_signed")) {
-                    markSigned(document);
-                }
+                /*
+                 * 조회에 실패했다고 서명이 끝났다고 볼 수는 없다.
+                 * 호출 한도(429)나 일시적인 네트워크 오류에도 완료로 넘겨 버리면
+                 * 아무도 서명하지 않은 약정이 체결로 남고 온기까지 오른다.
+                 * 상태를 그대로 두면 다음 조회나 웹훅에서 실제 상태로 맞춰진다.
+                 */
+                System.err.println("모두싸인 상태 동기화 실패, 상태를 유지한다: " + e.getMessage());
             }
         }
         // 웹훅으로 먼저 완료 처리된 약정도 감사 메시지를 받을 수 있도록
@@ -287,6 +283,36 @@ public class ClmDocumentService {
 
     private ClmDocument findOwnedDocument(Long documentId, CurrentUser currentUser) {
         return accessService.requireAccess(documentId, currentUser);
+    }
+
+    /**
+     * 공고 종류를 약정 유형으로 옮긴다.
+     * 유형 이름은 AI 구조화(UpstageApiClient)와 약정서 서식이 함께 쓰는 값이라
+     * 한 곳에서만 정해 두고 양쪽 서명 경로가 같은 표를 보게 한다.
+     */
+    private String resolvePledgeType(String opportunityType, String fallback) {
+        if (opportunityType == null) return fallback;
+        return switch (opportunityType.toUpperCase()) {
+            case "HOMETOWN" -> "HOMETOWN_DONATION";
+            case "LEGACY" -> "LEGACY_DONATION";
+            case "HERITAGE", "UNESCO" -> "CULTURAL_HERITAGE_DONATION";
+            case "VOLUNTEER" -> "VOLUNTEER";
+            case "DONATION" -> "DONATION";
+            default -> fallback;
+        };
+    }
+
+    private boolean isHeritagePledge(String pledgeType) {
+        return "LEGACY_DONATION".equals(pledgeType) || "CULTURAL_HERITAGE_DONATION".equals(pledgeType);
+    }
+
+    /**
+     * 고향사랑기부는 10만원까지 전액 세액공제된다.
+     * 약정 금액을 모르면 공제액도 적을 수 없으므로 비워 둔다.
+     */
+    private java.math.BigDecimal hometownTaxCredit(String pledgeType, java.math.BigDecimal amount) {
+        if (!"HOMETOWN_DONATION".equals(pledgeType) || amount == null) return null;
+        return amount.min(new java.math.BigDecimal("100000"));
     }
 
     private String signatureState(String eventType) {
@@ -327,16 +353,7 @@ public class ClmDocumentService {
                 commitmentRepository.requireOwnedSigningContext(commitmentPublicId, currentUser.id());
 
         // 프로그램 카테고리에 맞춰 pledgeType 자동 보완
-        String pledgeType = intent.pledgeType();
-        if ("HOMETOWN".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "HOMETOWN_DONATION";
-        } else if ("HERITAGE".equalsIgnoreCase(commitment.opportunityType())
-                || "UNESCO".equalsIgnoreCase(commitment.opportunityType())
-                || "LEGACY".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "HERITAGE_DONATION";
-        } else if ("VOLUNTEER".equalsIgnoreCase(commitment.opportunityType())) {
-            pledgeType = "VOLUNTEER";
-        }
+        String pledgeType = resolvePledgeType(commitment.opportunityType(), intent.pledgeType());
 
         String organizerName = commitment.organizer() != null && !commitment.organizer().isBlank()
                 ? commitment.organizer()
