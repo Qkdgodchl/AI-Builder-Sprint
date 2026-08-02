@@ -13,6 +13,7 @@ import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { AuthModal } from './components/auth/AuthModal';
 import { ManagerApplicationPage } from './components/user/ManagerApplicationPage';
 import { MyPage } from './components/user/MyPage';
+import { DiaryDayPage } from './components/user/DiaryDayPage';
 import { MyCenterPage } from './components/center/MyCenterPage';
 import { ManagementPage } from './components/operator/ManagementPage';
 import { HomePage } from './components/home/HomePage';
@@ -220,6 +221,20 @@ export function App() {
                 currentUser={currentUser}
                 onLogin={() => setIsAuthModalOpen(true)}
               />
+            }
+          />
+          <Route
+            path="/diary/:date"
+            element={
+              currentUser ? (
+                <DiaryDayPage currentUser={currentUser} />
+              ) : (
+                <LoginRequired
+                  title="다이어리는 로그인 후 볼 수 있어요"
+                  description="활동 기록은 계정에 저장되는 개인 기록이라 로그인이 필요합니다."
+                  onLogin={() => setIsAuthModalOpen(true)}
+                />
+              )
             }
           />
           <Route

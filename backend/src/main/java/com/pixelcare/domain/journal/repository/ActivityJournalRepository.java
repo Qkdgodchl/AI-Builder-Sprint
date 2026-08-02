@@ -100,13 +100,16 @@ public class ActivityJournalRepository {
         List<Object[]> rows = jdbcTemplate.query("""
                 SELECT a.public_id AS application_public_id, a.status,
                        o.id AS opportunity_id, o.title, org.name AS organization_name,
-                       a.participation_date AS activity_date
+                       CASE WHEN o.opportunity_type = 'VOLUNTEER'
+                            THEN a.participation_date
+                            ELSE DATE(a.submitted_at) END AS activity_date
                 FROM applications a
                 JOIN opportunities o ON o.id = a.opportunity_id
                 JOIN organizations org ON org.id = o.organization_id
                 WHERE a.applicant_user_id = ?
-                  AND a.participation_date IS NOT NULL
-                  AND a.participation_date BETWEEN ? AND ?
+                  AND CASE WHEN o.opportunity_type = 'VOLUNTEER'
+                           THEN a.participation_date
+                           ELSE DATE(a.submitted_at) END BETWEEN ? AND ?
                 ORDER BY activity_date DESC
                 """, (rs, rowNum) -> new Object[]{
                 rs.getString("application_public_id"),

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { PixelAiMate } from './PixelAiMate';
+import { Logo } from '../common/Logo';
 
 interface AiDockProps {
   open: boolean;
@@ -54,7 +55,7 @@ export const AiDock: React.FC<AiDockProps> = ({
         aria-label={open ? 'AI 메이트 닫기' : 'AI 메이트에게 추천받기'}
       >
         <span className="ai-dock-launcher-face" aria-hidden="true">
-          {open ? '✕' : '🤖'}
+          {open ? '✕' : <Logo variant="mark" />}
         </span>
         {!open && <span className="ai-dock-launcher-label">AI 추천</span>}
       </button>

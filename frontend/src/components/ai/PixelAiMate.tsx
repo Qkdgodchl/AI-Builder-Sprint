@@ -29,7 +29,7 @@ const INITIAL_MESSAGES: AiChatMessage[] = [
   {
     id: 'init-1',
     sender: 'AI',
-    text: '안녕! 나는 잇다 AI 메이트야 🤖✨\n부산 지역 봉사활동이나 기부처를 물어봐줘!\n우리 DB에 등록된 실제 활동만 정확하게 추천해드려요.\n\n예: "금정구 봉사 추천해줘" / "유기견 봉사 알려줘" / "부산대 근처 봉사"',
+    text: '안녕하세요, 잇다 AI 메이트예요.\n어떤 봉사나 기부를 찾고 계신지 편하게 말씀해 주세요.\n\n예: "금정구 봉사 추천해줘" / "유기견 봉사 알려줘" / "부산대 근처 봉사"',
     recommendedCards: [],
     createdAt: new Date().toLocaleTimeString(),
   },
@@ -249,7 +249,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
       <div className="ai-chat-body">
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-bubble-row ${msg.sender === 'USER' ? 'user-row' : 'ai-row'}`}>
-            {msg.sender === 'AI' && <div className="chat-avatar">🤖</div>}
+            {msg.sender === 'AI' && <div className="chat-avatar">AI</div>}
 
             <div className="chat-content">
               <div className={`chat-bubble ${msg.sender === 'USER' ? 'user-bubble' : 'ai-bubble'}`}>

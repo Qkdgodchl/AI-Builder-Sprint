@@ -8607,3 +8607,90 @@ strong, small, em, span, label, button, a {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* 다이어리 하루 상세 페이지 */
+.activity-calendar-hint {
+  border-top: 1px solid var(--user-line);
+  padding: 14px 24px;
+  color: #8a8a84;
+  font-size: 11px;
+}
+
+.diary-day-page {
+  width: 100%;
+}
+
+.diary-day-header {
+  border-bottom: 1px solid var(--pc-dark);
+  padding: 34px var(--pc-list-gutter);
+}
+
+.diary-day-header > span {
+  color: var(--magazine-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.diary-day-header h2 {
+  margin: 12px 0 0;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+
+.diary-day-header p {
+  margin: 12px 0 0;
+  color: #6f6f68;
+  font-size: 12px;
+}
+
+.diary-day-section {
+  border-bottom: 1px solid #e3e3dd;
+  padding: 26px var(--pc-list-gutter);
+}
+
+.diary-day-section h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.diary-day-activity {
+  border-left: 3px solid var(--pc-dark);
+  padding: 4px 0 4px 14px;
+  margin-bottom: 12px;
+}
+
+.diary-day-activity strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.diary-day-activity span {
+  color: #8a8a84;
+  font-size: 11px;
+}
+
+/* AI 진입 버튼과 대화 아바타는 이모지 대신 브랜드 마크와 모노그램을 쓴다. */
+.ai-dock-launcher-face .itda-logo {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.ai-dock-launcher-face .itda-logo-mark {
+  width: 2em;
+  height: 1.1em;
+}
+
+.chat-avatar {
+  color: var(--pc-dark);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.ai-header .ai-avatar {
+  font-size: 0;
+}

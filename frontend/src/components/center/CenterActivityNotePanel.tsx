@@ -27,7 +27,9 @@ export const CenterActivityNotePanel: React.FC<CenterActivityNotePanelProps> = (
       .catch(() => setNotes([]));
   };
 
-  useEffect(load, [applicationPublicId]);
+  useEffect(() => {
+    load();
+  }, [applicationPublicId]);
 
   const attachPhoto = async (file: File | undefined) => {
     if (!file) return;
