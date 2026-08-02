@@ -44,6 +44,11 @@ app:
     manager-password: ${APP_MANAGER_PASSWORD:Manager123!}
     donor-password: ${APP_DONOR_PASSWORD:Donor123!}
 
+naver:
+  search:
+    client-id: ${NAVER_CLIENT_ID:}
+    client-secret: ${NAVER_CLIENT_SECRET:}
+
 modusign:
   api:
     email: ${MODUSIGN_USER_EMAIL:}

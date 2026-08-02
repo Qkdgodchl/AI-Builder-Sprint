@@ -1,5 +1,6 @@
 import React from 'react';
 import type { VolunteerItem } from '../../types';
+import { splitSentences } from '../../utils/text';
 
 interface DetailItem extends VolunteerItem {
   programType: string;
@@ -185,7 +186,11 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
         <div>
           <h3>이 프로그램은</h3>
           {/* 기관이 등록한 실제 소개글. 없을 때만 구분별 기본 설명으로 대체한다. */}
-          <p>{item.description?.trim() || descriptions[item.programType] || descriptions.GENERAL}</p>
+          {splitSentences(
+            item.description?.trim() || descriptions[item.programType] || descriptions.GENERAL,
+          ).map((sentence) => (
+            <p key={sentence}>{sentence}</p>
+          ))}
         </div>
       </section>
 

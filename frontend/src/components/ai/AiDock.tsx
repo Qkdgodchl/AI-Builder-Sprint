@@ -65,11 +65,11 @@ export const AiDock: React.FC<AiDockProps> = ({
             className="ai-dock-panel"
             role="dialog"
             aria-modal="true"
-            aria-label="픽셀 AI 메이트"
+            aria-label="잇다 AI 메이트"
             onClick={(event) => event.stopPropagation()}
           >
             <header className="ai-dock-panel-bar">
-              <span>PIXEL AI MATE</span>
+              <span>ITDA AI MATE</span>
               <button type="button" onClick={() => onOpenChange(false)} aria-label="닫기">
                 ✕
               </button>

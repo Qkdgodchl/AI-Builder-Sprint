@@ -81,7 +81,7 @@ interface CenterApplicant {
 const initialManagedCenters: ManagedCenter[] = [
   {
     id: 1,
-    name: '픽셀케어 데모 센터',
+    name: '잇다 데모 센터',
     type: '사회복지기관',
     region: '부산광역시 금정구',
     status: '승인 완료',

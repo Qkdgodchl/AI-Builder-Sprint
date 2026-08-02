@@ -621,7 +621,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               )}
             </div>
             <p className="clm-placeholder-note">
-                모두싸인 보안 서명창에서 작성한 전자서명 문서가 픽셀케어 CLM에 안전하게 보관됩니다.
+                모두싸인 보안 서명창에서 작성한 전자서명 문서가 잇다 CLM에 안전하게 보관됩니다.
             </p>
           </section>
         </div>
@@ -654,7 +654,7 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
           {errorMessage && <small className="auth-form-error">{errorMessage}</small>}
           <small>
             {completed
-              ? '신청서와 모두싸인 전자서명이 픽셀케어 CLM에 보관되었습니다.'
+              ? '신청서와 모두싸인 전자서명이 잇다 CLM에 보관되었습니다.'
               : '모두싸인 서명 완료 후 최종 신청할 수 있습니다.'}
           </small>
         </aside>
@@ -762,16 +762,16 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
               transform: 'rotate(-12deg)', fontWeight: 'bold', fontSize: '11px', textAlign: 'center',
               background: 'rgba(255,255,255,0.95)', boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
             }}>
-              <span>픽셀케어</span>
+              <span>잇다</span>
               <span>전자서명</span>
               <span>[검증완료]</span>
             </div>
 
             <h2 style={{ textAlign: 'center', fontSize: '22px', fontWeight: '900', color: '#111', marginBottom: '6px' }}>
-              📜 픽셀케어 전자서명 완료 약정 증서
+              📜 잇다 전자서명 완료 약정 증서
             </h2>
             <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '24px' }}>
-              모두싸인에서 체결된 완료 문서와 감사추적 자료를 픽셀케어 CLM에서 함께 보관합니다.
+              모두싸인에서 체결된 완료 문서와 감사추적 자료를 잇다 CLM에서 함께 보관합니다.
             </p>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>

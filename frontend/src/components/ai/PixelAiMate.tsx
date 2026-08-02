@@ -29,7 +29,7 @@ const INITIAL_MESSAGES: AiChatMessage[] = [
   {
     id: 'init-1',
     sender: 'AI',
-    text: '안녕! 나는 픽셀 케어 AI 메이트야 🤖✨\n부산 지역 봉사활동이나 기부처를 물어봐줘!\n우리 DB에 등록된 실제 활동만 정확하게 추천해드려요.\n\n예: "금정구 봉사 추천해줘" / "유기견 봉사 알려줘" / "부산대 근처 봉사"',
+    text: '안녕! 나는 잇다 AI 메이트야 🤖✨\n부산 지역 봉사활동이나 기부처를 물어봐줘!\n우리 DB에 등록된 실제 활동만 정확하게 추천해드려요.\n\n예: "금정구 봉사 추천해줘" / "유기견 봉사 알려줘" / "부산대 근처 봉사"',
     recommendedCards: [],
     createdAt: new Date().toLocaleTimeString(),
   },
@@ -50,7 +50,7 @@ function parseCard(raw: any): RecommendedCard | null {
     title: raw.title,
     category: isDonation ? 'DONATION' : 'VOLUNTEER',
     location: raw.region || '부산 지역',
-    organizer: '픽셀 케어',
+    organizer: '잇다',
     tags: ['AI 추천', isDonation ? '기부' : '봉사'],
   };
 }
@@ -233,7 +233,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
       {/* Header */}
       <div className="ai-header">
         <div className="ai-header-identity">
-          <h2>PIXEL AI MATE</h2>
+          <h2>ITDA AI MATE</h2>
           <p>Upstage Solar LLM · 등록된 프로그램만 추천</p>
         </div>
 
@@ -318,7 +318,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
                 </div>
                 <div style={{ opacity: thinkingStep >= 2 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{thinkingStep > 2 ? '✅' : '🔍'}</span>
-                  <span style={{ fontWeight: thinkingStep === 2 ? 'bold' : 'normal' }}>2단계: 픽셀 케어 DB 내 맞춤 봉사·기부 카드 정밀 탐색</span>
+                  <span style={{ fontWeight: thinkingStep === 2 ? 'bold' : 'normal' }}>2단계: 잇다 DB 내 맞춤 봉사·기부 카드 정밀 탐색</span>
                 </div>
                 <div style={{ opacity: thinkingStep >= 3 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{thinkingStep >= 3 ? '⚡' : '⏳'}</span>

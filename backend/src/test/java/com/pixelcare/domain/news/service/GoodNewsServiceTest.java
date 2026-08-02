@@ -18,7 +18,7 @@ class GoodNewsServiceTest {
                 </item></channel></rss>
                 """;
 
-        var items = new GoodNewsService().parse("부산", xml);
+        var items = new GoodNewsService("build/test-news-cache", "", "").parse("부산", xml);
 
         assertThat(items).hasSize(1);
         assertThat(items.get(0).title()).isEqualTo("부산 시민봉사단 연탄 나눔");

@@ -224,7 +224,7 @@ export function HomePage({ currentUser, onLogin, onOpenAi }: HomePageProps) {
 
       <section className="home-ai-cta">
         <div>
-          <span>PIXEL AI MATE</span>
+          <span>ITDA AI MATE</span>
           <h2>무엇부터 해야 할지 모르겠다면?</h2>
           <p>지역과 관심사를 말하면 등록된 프로그램 중 맞는 활동을 찾아드립니다.</p>
         </div>

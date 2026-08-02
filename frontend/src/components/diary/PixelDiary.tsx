@@ -187,7 +187,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
         title: title.trim(),
         content: content.trim(),
         category,
-        author: author.trim() || currentUser?.nickname || '부산 픽셀용사',
+        author: author.trim() || currentUser?.nickname || '부산 잇다 이웃',
       });
 
       if (created) {
@@ -271,9 +271,9 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
   };
 
   const getAuthorName = (authorInfo: any) => {
-    if (!authorInfo) return '부산 픽셀용사';
+    if (!authorInfo) return '부산 잇다 이웃';
     if (typeof authorInfo === 'string') return authorInfo;
-    return authorInfo.nickname || '부산 픽셀용사';
+    return authorInfo.nickname || '부산 잇다 이웃';
   };
 
   const getAuthorBadge = (authorInfo: any) => {
@@ -474,7 +474,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({
     <section className="community-board-page">
       <header className="community-board-header">
         <div>
-          <p>PIXEL CARE COMMUNITY</p>
+          <p>ITDA COMMUNITY</p>
           <h2>선행을 나누는 사람들의 이야기</h2>
           <span>
             봉사 경험과 유용한 팁을 기록하고, 같은 마음을 가진 이웃을 만나보세요.

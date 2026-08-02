@@ -45,7 +45,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
     public void run(String... args) {
         Long operatorId = ensureUser(
                 "operator@pixelcare.local",
-                "픽셀케어 운영진",
+                "잇다 운영진",
                 "운영진",
                 operatorPassword,
                 "OPERATOR"
@@ -64,11 +64,13 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 donorPassword,
                 "USER"
         );
+        rebrandLegacyNames();
         Long organizationId = ensureDemoOrganization(managerId);
         seedOpportunities(managerId, organizationId);
         seedExtraOpportunities(managerId, organizationId);
         ensureVolunteerRequiredDocuments();
         refreshPlaceholderDescriptions();
+        alignDemoFundingTargets();
         seedRecurringCommitments(donorId, organizationId);
         seedCommunityActivity(organizationId);
     }
@@ -210,6 +212,37 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 """);
     }
 
+    /**
+     * 데모 모금 목표를 30~50만원 규모로 맞춘다.
+     * 모금액은 실제 체결된 약정 합계로 계산하므로, 목표가 수천만원이면
+     * 진행률이 늘 0%대로 보여 화면에서 의미를 읽기 어렵다.
+     * id 기반이라 여러 번 실행해도 같은 값이 된다.
+     */
+    private void alignDemoFundingTargets() {
+        jdbcTemplate.update("""
+                UPDATE opportunities
+                SET target_amount = 300000 + (id %% 3) * 100000
+                WHERE target_amount IS NOT NULL AND target_amount > 0
+                """.formatted());
+    }
+
+    /**
+     * 서비스명을 잇다(ITDA)로 바꾸기 전에 만들어진 이름을 옮긴다.
+     * 데모 센터를 이름으로 찾기 때문에, 옮기지 않으면 센터가 중복 생성된다.
+     */
+    private void rebrandLegacyNames() {
+        jdbcTemplate.update(
+                "UPDATE organizations SET name = '잇다 데모 센터' WHERE name = '픽셀케어 데모 센터'");
+        jdbcTemplate.update(
+                "UPDATE commitments SET title = REPLACE(title, '픽셀케어', '잇다') WHERE title LIKE '%픽셀케어%'");
+        jdbcTemplate.update(
+                "UPDATE opportunities SET summary = REPLACE(summary, '픽셀케어', '잇다') WHERE summary LIKE '%픽셀케어%'");
+        jdbcTemplate.update(
+                "UPDATE users SET nickname = REPLACE(nickname, '픽셀 이웃', '잇다 이웃') WHERE nickname LIKE '%픽셀 이웃%'");
+        jdbcTemplate.update(
+                "UPDATE users SET nickname = REPLACE(nickname, '픽셀케어', '잇다') WHERE nickname LIKE '%픽셀케어%'");
+    }
+
     /** 봉사 공고에는 참여 약정서를 필수 제출 서류로 붙인다. */
     private void ensureVolunteerRequiredDocuments() {
         jdbcTemplate.update("""
@@ -268,7 +301,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
             String suffix = String.format("%02d", index + 1);
             Long memberId = ensureUser(
                     "member" + suffix + "@pixelcare.demo",
-                    "픽셀 이웃 " + suffix,
+                    "잇다 이웃 " + suffix,
                     "이웃" + suffix,
                     donorPassword,
                     "USER"
@@ -345,7 +378,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
     private Long insertDonationCommitment(
             Long applicationId, Long opportunityId, Long userId, Long organizationId, long amount
     ) {
-        String title = "픽셀케어 기부 약정 " + money(amount) + "원";
+        String title = "잇다 기부 약정 " + money(amount) + "원";
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement statement = connection.prepareStatement("""
@@ -465,7 +498,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 SELECT o.id
                 FROM organizations o
                 JOIN organization_managers om ON om.organization_id = o.id
-                WHERE om.user_id = ? AND o.name = '픽셀케어 데모 센터'
+                WHERE om.user_id = ? AND o.name = '잇다 데모 센터'
                 """, (rs, rowNum) -> rs.getLong("id"), managerId);
         if (!existing.isEmpty()) {
             return existing.get(0);
@@ -477,7 +510,7 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                         name, organization_type, representative_name, phone, email,
                         address, description, verification_status
                     ) VALUES (
-                        '픽셀케어 데모 센터', 'SOCIAL_WELFARE',
+                        '잇다 데모 센터', 'SOCIAL_WELFARE',
                         '데모 관리자', '051-000-0000', 'manager@pixelcare.demo',
                         '부산광역시 금정구', '로컬 개발용 데모 센터입니다.', 'VERIFIED'
                     )

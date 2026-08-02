@@ -26,8 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class GoodNewsService {
 
-    private static final String PROVIDER = "Google News RSS";
-    private static final Duration CACHE_TTL = Duration.ofMinutes(15);
+    private static final String PROVIDER_NAVER = "네이버 뉴스";
+    private static final String PROVIDER_GOOGLE = "Google News RSS";
+    // 구글 뉴스 RSS는 짧은 시간에 반복 호출하면 결과를 거의 돌려주지 않는다.
+    // 캐시를 길게 잡아 외부 호출 자체를 줄인다.
+    private static final Duration CACHE_TTL = Duration.ofHours(6);
     private static final Map<String, String> REGIONS = Map.ofEntries(
             Map.entry("전국", "전국"),
             Map.entry("서울", "서울"), Map.entry("부산", "부산"),
@@ -43,8 +46,27 @@ public class GoodNewsService {
 
     private final RestClient restClient;
     private final Map<String, CachedFeed> cache = new ConcurrentHashMap<>();
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+    private final java.nio.file.Path snapshotDir;
 
-    public GoodNewsService() {
+    private final String naverClientId;
+    private final String naverClientSecret;
+
+    public GoodNewsService(
+            @org.springframework.beans.factory.annotation.Value("${app.storage.path:storage}")
+            String storagePath,
+            @org.springframework.beans.factory.annotation.Value("${naver.search.client-id:}")
+            String naverClientId,
+            @org.springframework.beans.factory.annotation.Value("${naver.search.client-secret:}")
+            String naverClientSecret
+    ) {
+        this.naverClientId = naverClientId;
+        this.naverClientSecret = naverClientSecret;
+        this.snapshotDir = java.nio.file.Path.of(storagePath)
+                .toAbsolutePath().normalize().resolve("news-cache");
+        restoreSnapshots();
+
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(3_000);
         factory.setReadTimeout(5_000);
@@ -65,10 +87,22 @@ public class GoodNewsService {
 
         try {
             List<GoodNewsItem> items = fetch(region);
+
+            if (items.isEmpty()) {
+                if (cached != null && !cached.items().isEmpty()) {
+                    // 제공처가 일시적으로 빈 결과를 주면 마지막 정상 수집분을 유지한다.
+                    return response(region, cached.items(), cached.fetchedAt(), true,
+                            "뉴스 제공처가 잠시 응답하지 않아 마지막으로 수집한 소식을 보여드립니다.", limit);
+                }
+                // 빈 결과는 캐시에 넣지 않는다. 넣으면 TTL이 끝날 때까지 재시도조차 하지 못한다.
+                return response(region, List.of(), now, false,
+                        "조건에 맞는 최근 선행 소식이 없습니다.", limit);
+            }
+
             CachedFeed fresh = new CachedFeed(items, now);
             cache.put(region, fresh);
-            return response(region, items, now, false,
-                    items.isEmpty() ? "조건에 맞는 최근 선행 소식이 없습니다." : null, limit);
+            saveSnapshot(region, fresh);
+            return response(region, items, now, false, null, limit);
         } catch (RuntimeException error) {
             if (cached != null) {
                 return response(region, cached.items(), cached.fetchedAt(), true,
@@ -111,20 +145,163 @@ public class GoodNewsService {
         }
     }
 
+    /** 제목에 하나라도 있어야 선행 소식으로 본다. */
+    private static final List<String> GOOD_KEYWORDS = List.of(
+            "기부", "성금", "기탁", "후원", "나눔", "봉사", "자원봉사", "선행", "온정",
+            "장학금", "무료급식", "연탄", "헌혈", "모금", "선한", "미담", "돕", "전달");
+
+    /** 하나라도 있으면 제외한다. 같은 검색어에 사건·사고 기사가 섞여 들어온다. */
+    private static final List<String> BAD_KEYWORDS = List.of(
+            "사고", "사망", "숨져", "숨진", "부상", "화재", "참사", "실종", "피해",
+            "횡령", "비리", "논란", "의혹", "구속", "체포", "기소", "징역", "실형",
+            "고발", "사기", "갈등", "반발", "폐지", "삭감", "적발", "수사", "재판",
+            "소송", "파산", "분쟁", "학대", "폭행", "성추행", "마약", "음주운전");
+
+    /**
+     * 네이버 검색 API를 먼저 쓰고, 키가 없거나 실패하면 구글 뉴스 RSS로 넘어간다.
+     * 구글 RSS는 인증이 없어 짧은 시간에 반복 호출하면 결과를 거의 주지 않는다.
+     */
     private List<GoodNewsItem> fetch(String region) {
-        String location = "전국".equals(region) ? "대한민국" : region;
-        String query = ("전국".equals(region) ? location : "intitle:" + location)
-                + " (봉사 OR 기부 OR 나눔 OR 선행 OR 후원) when:30d";
-        String url = "https://news.google.com/rss/search?q="
-                + URLEncoder.encode(query, StandardCharsets.UTF_8)
-                + "&hl=ko&gl=KR&ceid=KR:ko";
-        String xml = restClient.get().uri(url).retrieve().body(String.class);
-        if (xml == null || xml.isBlank()) throw new IllegalStateException("빈 RSS 응답입니다.");
-        List<GoodNewsItem> parsed = parse(region, xml);
-        if ("전국".equals(region)) return parsed;
-        return parsed.stream()
-                .filter(item -> item.title().contains(region) || item.summary().contains(region))
+        if (hasNaverCredentials()) {
+            try {
+                List<GoodNewsItem> naverItems = filterItems(region, fetchFromNaver(region));
+                if (!naverItems.isEmpty()) return naverItems;
+            } catch (RuntimeException error) {
+                System.err.println("네이버 뉴스 검색 실패, 구글 RSS로 전환: "
+                        + error.getClass().getSimpleName());
+            }
+        }
+        return filterItems(region, fetchFromGoogle(region));
+    }
+
+    private boolean hasNaverCredentials() {
+        return naverClientId != null && !naverClientId.isBlank()
+                && naverClientSecret != null && !naverClientSecret.isBlank();
+    }
+
+    private List<GoodNewsItem> filterItems(String region, List<GoodNewsItem> items) {
+        return items.stream()
+                .filter(GoodNewsService::isGoodNews)
+                .filter(item -> matchesRegion(region, item))
                 .toList();
+    }
+
+    private List<GoodNewsItem> fetchFromGoogle(String region) {
+        // URI 객체로 넘긴다. 문자열로 주면 RestClient가 이미 인코딩된 %20을 %2520으로
+        // 다시 인코딩해, 검색어가 깨진 채 빈 결과만 돌아온다.
+        String xml = restClient.get()
+                .uri(java.net.URI.create(buildSearchUrl(region)))
+                .retrieve()
+                .body(String.class);
+        if (xml == null || xml.isBlank()) throw new IllegalStateException("빈 RSS 응답입니다.");
+        return parse(region, xml);
+    }
+
+    private List<GoodNewsItem> fetchFromNaver(String region) {
+        String subject = "기부 OR 성금 OR 기탁 OR 후원 OR 나눔 OR 봉사 OR 선행 OR 온정";
+        String query = ("전국".equals(region) ? "" : region + " ") + subject;
+        String url = "https://openapi.naver.com/v1/search/news.json?display=100&sort=date&query="
+                + URLEncoder.encode(query, StandardCharsets.UTF_8).replace("+", "%20");
+
+        String body = restClient.get().uri(java.net.URI.create(url))
+                .header("X-Naver-Client-Id", naverClientId)
+                .header("X-Naver-Client-Secret", naverClientSecret)
+                .retrieve()
+                .body(String.class);
+        if (body == null || body.isBlank()) throw new IllegalStateException("빈 네이버 응답입니다.");
+
+        try {
+            com.fasterxml.jackson.databind.JsonNode items = objectMapper.readTree(body).path("items");
+            java.util.ArrayList<GoodNewsItem> parsed = new java.util.ArrayList<>();
+            for (com.fasterxml.jackson.databind.JsonNode node : items) {
+                String link = node.path("originallink").asText("");
+                if (link.isBlank()) link = node.path("link").asText("");
+                String title = cleanHtml(node.path("title").asText(""));
+                if (title.isBlank() || link.isBlank()) continue;
+                parsed.add(new GoodNewsItem(
+                        hash(link),
+                        region,
+                        title,
+                        cleanHtml(node.path("description").asText("")),
+                        hostOf(link),
+                        link,
+                        parsePublishedAt(node.path("pubDate").asText(""))
+                ));
+            }
+            return parsed;
+        } catch (Exception error) {
+            throw new IllegalStateException("네이버 응답을 해석하지 못했습니다.", error);
+        }
+    }
+
+    /** 네이버 응답에는 언론사명이 없어 링크 도메인을 출처로 쓴다. */
+    private String hostOf(String link) {
+        try {
+            String host = java.net.URI.create(link).getHost();
+            return host == null ? "뉴스" : host.replaceFirst("^www\\.", "");
+        } catch (Exception ignored) {
+            return "뉴스";
+        }
+    }
+
+    /**
+     * intitle: 제약은 지역 기사를 거의 걸러내 결과가 비어버린다.
+     * 지역명을 일반 검색어로 넣고, 사건·사고 단어는 검색 단계에서 먼저 제외한다.
+     */
+    private String buildSearchUrl(String region) {
+        String subject = "(기부 OR 성금 OR 기탁 OR 후원 OR 나눔 OR 봉사 OR 선행 OR 온정 OR 모금)";
+        String exclude = " -사고 -사망 -숨져 -화재 -횡령 -비리 -구속 -기소 -징역 -사기 -학대 -폭행";
+        String query = ("전국".equals(region) ? "" : region + " ") + subject + exclude + " when:30d";
+        // URLEncoder는 공백을 '+'로 바꾸는데, 구글 뉴스는 이를 검색어의 일부로 읽어
+        // 질의가 통째로 어긋난다. 공백은 %20으로 넣어야 지역·주제 조건이 살아난다.
+        String encoded = URLEncoder.encode(query, StandardCharsets.UTF_8).replace("+", "%20");
+        return "https://news.google.com/rss/search?q=" + encoded + "&hl=ko&gl=KR&ceid=KR:ko";
+    }
+
+    /** 검색어만으로는 부정 기사가 남아 제목을 한 번 더 본다. */
+    private static boolean isGoodNews(GoodNewsItem item) {
+        String title = item.title();
+        if (BAD_KEYWORDS.stream().anyMatch(title::contains)) return false;
+        return GOOD_KEYWORDS.stream().anyMatch(title::contains);
+    }
+
+    private static boolean matchesRegion(String region, GoodNewsItem item) {
+        if ("전국".equals(region)) return true;
+        return item.title().contains(region) || item.summary().contains(region);
+    }
+
+    /** 재시작 후에도 마지막 수집분을 보여줄 수 있도록 디스크에 남긴다. */
+    private void saveSnapshot(String region, CachedFeed feed) {
+        if (feed.items().isEmpty()) return;
+        try {
+            java.nio.file.Files.createDirectories(snapshotDir);
+            objectMapper.writeValue(snapshotDir.resolve(snapshotName(region)).toFile(), feed.items());
+        } catch (Exception ignored) {
+            // 스냅샷 저장 실패는 화면에 영향을 주지 않는다.
+        }
+    }
+
+    private void restoreSnapshots() {
+        for (String region : REGIONS.keySet()) {
+            java.nio.file.Path file = snapshotDir.resolve(snapshotName(region));
+            if (!java.nio.file.Files.isRegularFile(file)) continue;
+            try {
+                List<GoodNewsItem> items = objectMapper.readValue(
+                        file.toFile(),
+                        objectMapper.getTypeFactory()
+                                .constructCollectionType(List.class, GoodNewsItem.class));
+                if (!items.isEmpty()) {
+                    // 오래된 스냅샷이므로 즉시 갱신을 시도하도록 만료된 시각으로 넣는다.
+                    cache.put(region, new CachedFeed(items, Instant.EPOCH));
+                }
+            } catch (Exception ignored) {
+                // 손상된 스냅샷은 무시하고 새로 수집한다.
+            }
+        }
+    }
+
+    private String snapshotName(String region) {
+        return java.net.URLEncoder.encode(region, StandardCharsets.UTF_8) + ".json";
     }
 
     private GoodNewsResponse response(
@@ -132,7 +309,8 @@ public class GoodNewsService {
             boolean stale, String message, int limit
     ) {
         return new GoodNewsResponse(
-                region, items.stream().limit(limit).toList(), updatedAt, PROVIDER, stale, message
+                region, items.stream().limit(limit).toList(), updatedAt,
+                hasNaverCredentials() ? PROVIDER_NAVER : PROVIDER_GOOGLE, stale, message
         );
     }
 

@@ -8,6 +8,9 @@ import {
 } from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
+import { BadgeGrid } from '../roadmap/BadgeGrid';
+import { splitSentences } from '../../utils/text';
+import { computeBadges, DONE_APPLICATION_STATUSES } from '../roadmap/badgeProgress';
 import {
   fetchMyClmDocuments,
   fetchClmDocument,
@@ -182,6 +185,21 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     ['APPLIED', 'IN_REVIEW', 'REVISION_REQUESTED'].includes(application.status),
   ).length;
   const signedDocumentCount = clmDocuments.filter((document) => document.status === 'SIGNED').length;
+  // 로드맵과 같은 기준으로 계산한다. 이미 불러온 데이터를 재사용해 추가 요청이 없다.
+  const badges = useMemo(
+    () =>
+      computeBadges({
+        temperature: profile?.temperature ?? 0,
+        applicationCount: applications.length,
+        completedCount: applications.filter((application) =>
+          DONE_APPLICATION_STATUSES.includes(application.status),
+        ).length,
+        signedCount: signedDocumentCount,
+      }),
+    [profile, applications, signedDocumentCount],
+  );
+  const earnedBadgeCount = badges.filter((badge) => badge.current >= badge.goal).length;
+
   const profileCompletion = Math.round(
     ([profile?.email || currentUser.email, displayName, profile?.phone, profile?.region]
       .filter(Boolean).length / 4) * 100,
@@ -193,13 +211,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       : '일반 회원';
   const joinedAt = profile?.createdAt
     ? `${new Date(profile.createdAt).getFullYear()}년 ${new Date(profile.createdAt).getMonth() + 1}월 가입`
-    : '픽셀케어 회원';
+    : '잇다 회원';
 
   return (
     <article className="user-my-page">
       <header className="user-my-page-header">
         <div>
-          <span className="user-page-eyebrow">MY PIXEL CARE</span>
+          <span className="user-page-eyebrow">MY ITDA</span>
           <h2>마이페이지</h2>
           <p>나의 선행 활동과 전자 약정 진행 상태를 한눈에 확인하세요.</p>
         </div>
@@ -303,7 +321,9 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
           {selectedClmDocument?.completionMessage && (
             <section className="user-gratitude-card">
               <span>SIGNED WITH HEART</span>
-              <p>{selectedClmDocument.completionMessage}</p>
+              {splitSentences(selectedClmDocument.completionMessage).map((sentence) => (
+                <p key={sentence}>{sentence}</p>
+              ))}
               <small>
                 {selectedClmDocument.completionMessageSource === 'UPSTAGE_SOLAR'
                   ? 'Upstage Solar가 약정 내용을 읽고 남긴 인사입니다.'
@@ -544,6 +564,19 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 </section>
               )}
             </section>
+          </section>
+
+          <section className="user-badge-section" aria-label="내 뱃지">
+            <div className="user-panel-heading user-badge-heading">
+              <div>
+                <span>MY BADGES</span>
+                <h3>내 뱃지</h3>
+              </div>
+              <button type="button" onClick={() => navigate('/roadmap')}>
+                {earnedBadgeCount}/{badges.length} 획득 · 성장의 길 보기 →
+              </button>
+            </div>
+            <BadgeGrid badges={badges} />
           </section>
         </>
       )}

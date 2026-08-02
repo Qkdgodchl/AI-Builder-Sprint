@@ -1,4 +1,4 @@
-// 픽셀 케어 (Pixel Care) 공통 타입 정의
+// 잇다 (ITDA) 공통 타입 정의
 
 export interface VolunteerItem {
   id: number;

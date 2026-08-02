@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { SessionUser } from '../../types';
 import type { PlatformStats } from '../../services/statsApi';
+import { Logo } from './Logo';
 
 interface HeaderProps {
   stats: PlatformStats | null;
@@ -61,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
     { label: 'COMMUNITY', path: '/community' },
     { label: 'GOOD NEWS', path: '/news' },
-    { label: 'MY PAGE', path: currentUser ? '/my-page' : '/roadmap' },
+    { label: 'MY PAGE', path: '/my-page' },
   ];
 
   if (currentUser?.role === 'CENTER_MANAGER') {
@@ -92,10 +93,6 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className={`magazine-header ${usesContentDivider ? 'flush-content' : ''}`}>
       <div className="magazine-header-top">
-        <button className="brand-button" type="button" onClick={() => navigate('/')}>
-          PIXEL CARE STUDIO
-        </button>
-
         <nav className="primary-navigation" aria-label="주요 메뉴">
           {navigation.map((item) => (
             <button
@@ -129,11 +126,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <h1 className="magazine-title" onClick={() => navigate('/')}>
-        PIXEL CARE MAGAZINE
-      </h1>
+      <Logo className="magazine-logo" onClick={() => navigate('/')} />
 
-      <div className="magazine-stats" aria-label="픽셀 케어 누적 현황">
+      <div className="magazine-stats" aria-label="잇다 누적 현황">
         {/* 같은 항목을 세 벌 이어 붙이고 한 벌만큼 밀어 끊김 없이 순환시킨다.
             두 벌만 두면 넓은 화면에서 순환 지점에 빈 공간이 보인다.
             복제본은 화면에만 필요하므로 보조기기에서는 숨긴다. */}

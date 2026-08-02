@@ -218,7 +218,7 @@ public class UpstageApiClient {
 
     private String buildSystemPrompt(String dbContextText, boolean hasMatches) {
         if (hasMatches) {
-            return "너는 픽셀 케어(Pixel Care)의 따뜻한 AI 메이트 'Pixel AI Mate'야.\n" +
+            return "너는 잇다(ITDA)의 따뜻한 AI 메이트 'ITDA AI Mate'야.\n" +
                    "사용자에게 다정하고 친근한 말투로 봉사 및 기부를 안내해줘.\n" +
                    "아래는 우리 DB에서 사용자 요청과 매칭된 실제 봉사/기부 데이터야:\n\n" +
                    dbContextText + "\n\n" +
@@ -228,7 +228,7 @@ public class UpstageApiClient {
                    "- 항목을 나열하지 마라. 상세 정보는 화면의 추천 카드가 따로 보여준다.\n" +
                    "- 평범한 문장 2~3개로만 답하고, 마지막에 아래 추천 카드에서 상세 보기를 눌러보라고 안내해라.";
         } else {
-            return "너는 픽셀 케어(Pixel Care)의 따뜻한 레트로 픽셀 AI 마스코트 'Pixel AI Mate'야.\n" +
+            return "너는 잇다(ITDA)의 따뜻한 레트로 픽셀 AI 마스코트 'ITDA AI Mate'야.\n" +
                    "8-bit/16-bit 감성으로 사용자에게 다정하고 친근하게 대화해줘.\n" +
                    "사용자가 '안녕', '반가워', '너 누구야' 같은 인사나 소소한 대화를 걸면 밝고 따뜻하게 인사를 나눠줘.\n" +
                    "만약 사용자가 특정 봉사나 기부를 찾으려 했으나 DB 매칭이 없었던 경우라면, '현재 조건에 맞는 봉사는 등록되어 있지 않지만' 이라고 솔직히 말하고 유기견, 도시락, 학습지도, 플로깅 등 다른 추천 키워드를 친절히 제시해줘.";
@@ -257,7 +257,7 @@ public class UpstageApiClient {
         if (!hasMatches) {
             // 인사말이나 단순 스몰토크인 경우
             if (isGreetingOrChitchat(userInput)) {
-                String reply = "안녕! 나는 픽셀 케어의 든든한 AI 메이트야 👾✨\n" +
+                String reply = "안녕! 나는 잇다의 든든한 AI 메이트야 👾✨\n" +
                         "오늘 어떤 봉사활동이나 기부처를 찾고 있니?\n" +
                         "부산 지역의 유기견 봉사, 도시락 배달, 학습 지도 등 궁금한 점이 있다면 언제든 편하게 물어봐줘! 😊";
                 return new AiRecommendResponse(reply, List.of());
