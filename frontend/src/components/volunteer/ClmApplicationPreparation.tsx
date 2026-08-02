@@ -705,21 +705,20 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
                           <button type="button" onClick={handleCheckSignature} disabled={checkingSignature} style={{ padding: '10px 14px', background: '#e2e8f0', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>{checkingSignature ? '확인중...' : '🔄 서명 상태 확인'}</button>
                         </>
                       )}
-                      <button type="button" onClick={handleOpenDocView} style={{ flex: 1, padding: '10px', background: '#2ec4b6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>약정서 PDF 확인</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setActiveStep(3)} style={{ padding: '12px 20px', background: '#e2e8f0', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>← 3단계 이전</button>
-                {completed && (
-                  <button type="button" onClick={onBack} style={{ flex: 1, padding: '12px 20px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 800, cursor: 'pointer' }}>🎉 최종 신청 완료 및 목록으로 돌아가기</button>
-                )}
-              </div>
-            </section>
-          )}
-        </div>
+                      <button type="button" onClick={handleOpenDocView} style={{ flex: 1, padding: '10px', background: '#2ec4b6', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer      {/* 완료 약정 증서 열람 모달 */}
+      {isDocViewModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: '720px', maxHeight: '90vh', borderRadius: '16px', border: '3px solid #2ec4b6', padding: '28px', overflowY: 'auto', textAlign: 'left', position: 'relative' }}>
+            <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, color: '#111', marginBottom: '16px' }}>📜 픽셀케어 전자서명 완료 약정 증서</h2> 완료!' : submitting ? '신청 처리 중...' : '🚀 작성 완료 및 최종 신청'}
+          </button>
+          {errorMessage && <small className="auth-form-error">{errorMessage}</small>}
+          <small>
+            {completed
+              ? '신청서와 모두싸인 전자서명이 잇다 CLM에 보관되었습니다.'
+              : '모두싸인 서명 완료 후 최종 신청할 수 있습니다.'}
+          </small>
+        </aside>
+>>>>>>> origin/main
       </div>
 
       {/* 모두싸인 전자서명 진행 모달 */}
@@ -741,9 +740,43 @@ export const ClmApplicationPreparation: React.FC<ClmApplicationPreparationProps>
 
       {/* 완료 약정 증서 열람 모달 */}
       {isDocViewModalOpen && (
+<<<<<<< HEAD
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '20px' }}>
           <div style={{ background: '#fff', width: '100%', maxWidth: '720px', maxHeight: '90vh', borderRadius: '16px', border: '3px solid #2ec4b6', padding: '28px', overflowY: 'auto', textAlign: 'left', position: 'relative' }}>
             <h2 style={{ textAlign: 'center', fontSize: '20px', fontWeight: 800, color: '#111', marginBottom: '16px' }}>📜 픽셀케어 전자서명 완료 약정 증서</h2>
+=======
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '20px'
+        }}>
+          <div style={{
+            background: '#fff', width: '100%', maxWidth: '680px', maxHeight: '90vh',
+            borderRadius: '16px', border: '3px solid #2ec4b6', padding: '32px', overflowY: 'auto',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)', textAlign: 'left', position: 'relative'
+          }}>
+            {/* 공식 직인 뱃지 */}
+            <div style={{
+              position: 'absolute', top: '24px', right: '24px',
+              width: '85px', height: '85px', borderRadius: '50%',
+              border: '3px double #ff3b30', color: '#ff3b30', display: 'flex',
+              flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
+              transform: 'rotate(-12deg)', fontWeight: 'bold', fontSize: '11px', textAlign: 'center',
+              background: 'rgba(255,255,255,0.95)', boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+            }}>
+              <span>잇다</span>
+              <span>전자서명</span>
+              <span>[검증완료]</span>
+            </div>
+
+            <h2 style={{ textAlign: 'center', fontSize: '22px', fontWeight: '900', color: '#111', marginBottom: '6px' }}>
+              📜 잇다 전자서명 완료 약정 증서
+            </h2>
+            <p style={{ textAlign: 'center', fontSize: '12px', color: '#666', marginBottom: '24px' }}>
+              모두싸인에서 체결된 완료 문서와 감사추적 자료를 잇다 CLM에서 함께 보관합니다.
+            </p>
+
+>>>>>>> origin/main
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
               <tbody>
                 <tr><th style={{ background: '#f8f9fa', padding: '10px', border: '1px solid #e2e8f0', width: '30%' }}>약정서 명칭</th><td style={{ padding: '10px', border: '1px solid #e2e8f0', fontWeight: 'bold' }}>{documentName}</td></tr>

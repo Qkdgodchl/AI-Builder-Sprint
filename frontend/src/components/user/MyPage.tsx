@@ -1,11 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
-import { fetchMyApplications, type ApplicationResponse } from '../../services/applicationApi';
+import {
+  fetchMyApplications,
+  renewCommitment,
+  type ApplicationResponse,
+} from '../../services/applicationApi';
 import { fetchMyPosts, type PostItem } from '../../services/communityApi';
 import { fetchMyProfile, updateMyProfile, type UserProfile } from '../../services/authApi';
+import { PROFILE_UPDATED_EVENT } from '../../hooks/useMyRegion';
+import { ActivityCalendar } from './ActivityCalendar';
+import { BadgeGrid } from '../roadmap/BadgeGrid';
+import { splitSentences } from '../../utils/text';
+import { computeBadges, DONE_APPLICATION_STATUSES } from '../roadmap/badgeProgress';
 import {
   fetchMyClmDocuments,
+  fetchClmDocument,
   fetchClmDocumentFiles,
   loadClmDocumentFile,
   type ClmDocumentDto,
@@ -49,6 +59,7 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const [clmFiles, setClmFiles] = useState<ClmDocumentFileDto[]>([]);
   const [previewPdfUrl, setPreviewPdfUrl] = useState('');
   const [previewPdfTitle, setPreviewPdfTitle] = useState('');
+  const [renewingCommitmentId, setRenewingCommitmentId] = useState('');
   const [nickname, setNickname] = useState(currentUser.nickname);
   const [phone, setPhone] = useState('');
   const [region, setRegion] = useState('');
@@ -86,7 +97,12 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     [clmDocuments, selectedApplication],
   );
 
+  // 목록 조회는 모두싸인 상태를 동기화하지 않는다. 상세를 한 번 더 불러
+  // 서명 완료 여부와 감사 메시지를 최신 상태로 맞춘 뒤 보관 파일을 가져온다.
+  const selectedClmDocumentId = selectedClmDocument?.id ?? null;
+
   useEffect(() => {
+<<<<<<< HEAD
     if (!selectedClmDocument) {
       setClmFiles([]);
       return;
@@ -95,12 +111,61 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       .then(setClmFiles)
       .catch((error) => console.error('전자서명 파일 조회 오류:', error));
   }, [selectedClmDocument]);
+=======
+    if (!selectedClmDocumentId) {
+      setClmFiles([]);
+      return;
+    }
+    let cancelled = false;
+    fetchClmDocument(selectedClmDocumentId)
+      .then(async (fresh) => {
+        if (cancelled) return;
+        setClmDocuments((previous) =>
+          previous.map((document) => (document.id === fresh.id ? fresh : document)),
+        );
+        if (fresh.status !== 'SIGNED') {
+          setClmFiles([]);
+          return;
+        }
+        const files = await fetchClmDocumentFiles(fresh.id);
+        if (!cancelled) setClmFiles(files);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setNotice(error instanceof Error ? error.message : '전자서명 파일을 불러오지 못했습니다.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClmDocumentId]);
+
+  const renewPledge = async (commitmentPublicId: string) => {
+    setRenewingCommitmentId(commitmentPublicId);
+    try {
+      const renewed = await renewCommitment(commitmentPublicId);
+      setApplications((previous) =>
+        previous.map((application) =>
+          application.commitment?.publicId === commitmentPublicId
+            ? { ...application, commitment: renewed }
+            : application,
+        ),
+      );
+      setNotice(`정기 약정을 갱신했습니다. 다음 갱신일은 ${renewed.renewalDueAt || '-'}입니다.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '약정 갱신에 실패했습니다.');
+    } finally {
+      setRenewingCommitmentId('');
+    }
+  };
+>>>>>>> origin/main
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
       const updated = await updateMyProfile({ nickname, phone, region });
       setProfile(updated);
+      // 활동 지역이 바뀌면 홈·소식 화면의 지역 소식도 곧바로 따라오게 한다.
+      window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
       setNotice('프로필을 저장했습니다.');
       navigate('/my-page');
     } catch (error) {
@@ -141,6 +206,21 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
     ['APPLIED', 'IN_REVIEW', 'REVISION_REQUESTED'].includes(application.status),
   ).length;
   const signedDocumentCount = clmDocuments.filter((document) => document.status === 'SIGNED').length;
+  // 로드맵과 같은 기준으로 계산한다. 이미 불러온 데이터를 재사용해 추가 요청이 없다.
+  const badges = useMemo(
+    () =>
+      computeBadges({
+        temperature: profile?.temperature ?? 0,
+        applicationCount: applications.length,
+        completedCount: applications.filter((application) =>
+          DONE_APPLICATION_STATUSES.includes(application.status),
+        ).length,
+        signedCount: signedDocumentCount,
+      }),
+    [profile, applications, signedDocumentCount],
+  );
+  const earnedBadgeCount = badges.filter((badge) => badge.current >= badge.goal).length;
+
   const profileCompletion = Math.round(
     ([profile?.email || currentUser.email, displayName, profile?.phone, profile?.region]
       .filter(Boolean).length / 4) * 100,
@@ -152,13 +232,13 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       : '일반 회원';
   const joinedAt = profile?.createdAt
     ? `${new Date(profile.createdAt).getFullYear()}년 ${new Date(profile.createdAt).getMonth() + 1}월 가입`
-    : '픽셀케어 회원';
+    : '잇다 회원';
 
   return (
     <article className="user-my-page">
       <header className="user-my-page-header">
         <div>
-          <span className="user-page-eyebrow">MY PIXEL CARE</span>
+          <span className="user-page-eyebrow">MY ITDA</span>
           <h2>마이페이지</h2>
           <p>나의 선행 활동과 전자 약정 진행 상태를 한눈에 확인하세요.</p>
         </div>
@@ -259,6 +339,19 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
             <div><span>신청일</span><strong>{selectedApplication.submittedAt?.slice(0, 10) || '-'}</strong></div>
             <div><span>참여 희망일</span><strong>{selectedApplication.participationDate || '-'}</strong></div>
           </div>
+          {selectedClmDocument?.completionMessage && (
+            <section className="user-gratitude-card">
+              <span>SIGNED WITH HEART</span>
+              {splitSentences(selectedClmDocument.completionMessage).map((sentence) => (
+                <p key={sentence}>{sentence}</p>
+              ))}
+              <small>
+                {selectedClmDocument.completionMessageSource === 'UPSTAGE_SOLAR'
+                  ? 'Upstage Solar가 약정 내용을 읽고 남긴 인사입니다.'
+                  : '약정 내용을 바탕으로 남긴 인사입니다.'}
+              </small>
+            </section>
+          )}
           <section className="user-commitment-preview">
             <span>전자 약정서</span>
             <h4>{selectedApplication.commitment?.title || '약정서 미작성'}</h4>
@@ -268,6 +361,42 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 '작성된 약정서 내용이 없습니다.'}
             </p>
           </section>
+          {selectedApplication.commitment?.renewalDueAt && (
+            <section
+              className={`user-renewal-card${
+                selectedApplication.commitment.renewalStatus === 'DUE' ? ' due' : ''
+              }`}
+            >
+              <div>
+                <span>
+                  정기 약정 갱신
+                  {selectedApplication.commitment.renewalStatus === 'DUE' && (
+                    <em className="user-renewal-badge">갱신 필요</em>
+                  )}
+                </span>
+                <strong>다음 갱신일 {selectedApplication.commitment.renewalDueAt}</strong>
+                <p>
+                  {selectedApplication.commitment.renewalStatus === 'DUE'
+                    ? '갱신일이 지났습니다. 지금 갱신하면 다음 주기까지 약정이 이어집니다.'
+                    : '갱신일이 되면 버튼 한 번으로 다음 주기까지 약정을 이어갈 수 있습니다.'}
+                </p>
+              </div>
+              {selectedApplication.commitment.status === 'ACTIVE' &&
+                ['MONTHLY', 'ANNUAL'].includes(
+                  selectedApplication.commitment.pledgeFrequency || '',
+                ) && (
+                  <button
+                    type="button"
+                    disabled={renewingCommitmentId === selectedApplication.commitment.publicId}
+                    onClick={() => renewPledge(selectedApplication.commitment!.publicId)}
+                  >
+                    {renewingCommitmentId === selectedApplication.commitment.publicId
+                      ? '갱신하는 중…'
+                      : '지금 갱신하기'}
+                  </button>
+                )}
+            </section>
+          )}
           <div className="user-document-list">
             <div className="user-application-heading">
               <h3>내가 제출한 서류</h3>
@@ -405,7 +534,12 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                         onClick={() => navigate(`/my-page/applications/${application.publicId}`)}
                       >
                         <div>
-                          <strong>{application.opportunityTitle}</strong>
+                          <strong>
+                            {application.opportunityTitle}
+                            {application.commitment?.renewalStatus === 'DUE' && (
+                              <em className="user-renewal-badge">갱신 필요</em>
+                            )}
+                          </strong>
                           <span>{application.organizationName}</span>
                         </div>
                         <span>{application.submittedAt?.slice(0, 10) || '-'}</span>
@@ -445,6 +579,21 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
                 </section>
               )}
             </section>
+          </section>
+
+          <ActivityCalendar showNotice={setNotice} />
+
+          <section className="user-badge-section" aria-label="내 뱃지">
+            <div className="user-panel-heading user-badge-heading">
+              <div>
+                <span>MY BADGES</span>
+                <h3>내 뱃지</h3>
+              </div>
+              <button type="button" onClick={() => navigate('/roadmap')}>
+                {earnedBadgeCount}/{badges.length} 획득 · 성장의 길 보기 →
+              </button>
+            </div>
+            <BadgeGrid badges={badges} />
           </section>
         </>
       )}

@@ -3,15 +3,46 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { PostItem, CommentItem } from '../../services/communityApi';
 import { fetchPost, fetchPosts, createPost, likePost, deletePost, fetchComments, createComment, deleteComment } from '../../services/communityApi';
 import { playBeep } from '../../services/soundFx';
+import { uploadPhoto, photoUrl } from '../../services/photoApi';
 import type { SessionUser } from '../../types';
 
 interface PixelDiaryProps {
   onAddDiary: (tempIncrease: number) => void;
   showToast: (message: string) => void;
   currentUser: SessionUser | null;
+  onRequireLogin: (message: string) => void;
 }
 
-export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, currentUser }) => {
+export const PixelDiary: React.FC<PixelDiaryProps> = ({
+  onAddDiary,
+  showToast,
+  currentUser,
+  onRequireLogin,
+}) => {
+  const [photo, setPhoto] = useState<{ id: number; name: string } | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  const handlePhotoSelect = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoUploading(true);
+    try {
+      const uploaded = await uploadPhoto(file, 'COMMUNITY_PHOTO');
+      setPhoto({ id: uploaded.id, name: uploaded.originalName });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '사진 업로드에 실패했습니다.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  // 글쓰기는 계정에 남는 기록이라 로그인한 사용자에게만 연다.
+  const openComposer = () => {
+    if (!currentUser) {
+      onRequireLogin('로그인이 필요합니다. 이야기 작성은 로그인 후 이용할 수 있어요.');
+      return;
+    }
+    setIsWriteOpen((open) => !open);
+  };
   const navigate = useNavigate();
   const { id: urlPostId } = useParams<{ id?: string }>();
 
@@ -173,7 +204,8 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
         title: title.trim(),
         content: content.trim(),
         category,
-        author: author.trim() || currentUser?.nickname || '부산 픽셀용사',
+        author: author.trim() || currentUser?.nickname || '부산 잇다 이웃',
+        imageUrl: photo ? photoUrl(photo.id) : undefined,
       });
 
       if (created) {
@@ -183,6 +215,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
       showToast(`📝 픽셀 커뮤니티 글이 등록되었습니다! 온기 +0.5°C 상승!`);
       playBeep(587, 0.15);
 
+      setPhoto(null);
       setTitle('');
       setContent('');
       setAuthor('');
@@ -257,9 +290,9 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
   };
 
   const getAuthorName = (authorInfo: any) => {
-    if (!authorInfo) return '부산 픽셀용사';
+    if (!authorInfo) return '부산 잇다 이웃';
     if (typeof authorInfo === 'string') return authorInfo;
-    return authorInfo.nickname || '부산 픽셀용사';
+    return authorInfo.nickname || '부산 잇다 이웃';
   };
 
   const getAuthorBadge = (authorInfo: any) => {
@@ -460,13 +493,13 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
     <section className="community-board-page">
       <header className="community-board-header">
         <div>
-          <p>PIXEL CARE COMMUNITY</p>
+          <p>ITDA COMMUNITY</p>
           <h2>선행을 나누는 사람들의 이야기</h2>
           <span>
             봉사 경험과 유용한 팁을 기록하고, 같은 마음을 가진 이웃을 만나보세요.
           </span>
         </div>
-        <button type="button" onClick={() => setIsWriteOpen((open) => !open)}>
+        <button type="button" onClick={openComposer}>
           {isWriteOpen ? '작성 닫기' : '이야기 작성'} <span aria-hidden="true">＋</span>
         </button>
       </header>
@@ -539,6 +572,23 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
                   required
                 />
               </label>
+              <label className="community-composer-wide">
+                <span>사진 (선택)</span>
+                <div className="community-photo-picker">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(event) => void handlePhotoSelect(event.target.files?.[0])}
+                  />
+                  {photoUploading && <em>올리는 중…</em>}
+                  {photo && !photoUploading && (
+                    <div className="community-photo-preview">
+                      <img src={photoUrl(photo.id)} alt="첨부한 사진 미리보기" />
+                      <button type="button" onClick={() => setPhoto(null)}>사진 빼기</button>
+                    </div>
+                  )}
+                </div>
+              </label>
             </div>
             <div className="community-composer-footer">
               <p>서로를 배려하는 표현과 정확한 정보를 사용해주세요.</p>
@@ -570,7 +620,7 @@ export const PixelDiary: React.FC<PixelDiaryProps> = ({ onAddDiary, showToast, c
           <div className="community-empty-state">
             <strong>아직 등록된 이야기가 없습니다.</strong>
             <span>첫 번째 경험을 나누고 새로운 연결을 만들어보세요.</span>
-            <button type="button" onClick={() => setIsWriteOpen(true)}>첫 이야기 작성하기</button>
+            <button type="button" onClick={openComposer}>첫 이야기 작성하기</button>
           </div>
         ) : (
           <div className="community-topic-list">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CenterActivityNotePanel } from './CenterActivityNotePanel';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
 import {
@@ -38,6 +39,11 @@ interface ManagedCenter {
   completedPosts: number;
   pendingApplicants: number;
   monthlyParticipants: number;
+  totalCommitments: number;
+  signedCommitments: number;
+  awaitingSignature: number;
+  signedPledgeAmount: number;
+  renewalDueSoon: number;
 }
 
 type PostStatus = '공개 중' | '마감';
@@ -76,7 +82,7 @@ interface CenterApplicant {
 const initialManagedCenters: ManagedCenter[] = [
   {
     id: 1,
-    name: '픽셀케어 데모 센터',
+    name: '잇다 데모 센터',
     type: '사회복지기관',
     region: '부산광역시 금정구',
     status: '승인 완료',
@@ -270,6 +276,27 @@ const formatPeriod = (start?: string, end?: string) => {
   if (!start && !end) return '상시 모집';
   const format = (value?: string) => value ? value.slice(0, 10).replaceAll('-', '.') : '-';
   return `${format(start)} – ${format(end)}`;
+};
+
+/** datetime-local 입력은 'YYYY-MM-DDTHH:mm'만 받는다. 서버 ISO 문자열을 잘라 맞춘다. */
+const toDateTimeLocal = (value?: string | null) => (value ? value.slice(0, 16) : '');
+
+/**
+ * 모집 마감 → 활동 시작 → 활동 종료 순서를 확인한다.
+ * 입력 순서가 자유로워 브라우저 min 속성만으로는 뒤늦게 뒤집힌 값을 잡지 못한다.
+ */
+const validateSchedule = (
+  recruitmentEnd?: string | null,
+  activityStart?: string | null,
+  activityEnd?: string | null,
+) => {
+  if (recruitmentEnd && activityStart && activityStart < recruitmentEnd) {
+    return '활동 시작은 모집 마감 이후여야 합니다.';
+  }
+  if (activityStart && activityEnd && activityEnd < activityStart) {
+    return '활동 종료는 활동 시작 이후여야 합니다.';
+  }
+  return '';
 };
 
 const mapOpportunity = (opportunity: ManagedOpportunity): CenterPost => ({
@@ -486,6 +513,11 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
               completedPosts: dashboard.closedOpportunities,
               pendingApplicants: dashboard.pendingApplications,
               monthlyParticipants: dashboard.monthlyParticipants,
+              totalCommitments: dashboard.totalCommitments,
+              signedCommitments: dashboard.signedCommitments,
+              awaitingSignature: dashboard.awaitingSignature,
+              signedPledgeAmount: dashboard.signedPledgeAmount,
+              renewalDueSoon: dashboard.renewalDueSoon,
             } satisfies ManagedCenter;
           }),
         );
@@ -653,7 +685,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         type: editingPost.category === '봉사' ? 'VOLUNTEER' : raw.type,
         category: raw.category,
         title: editingPost.title,
-        summary: raw.summary,
+        // 목록 요약문은 작성 화면과 동일하게 본문 앞부분에서 다시 만든다.
+        summary: editingPost.description.slice(0, 120),
         description: editingPost.description,
         region: raw.region,
         location: raw.location,
@@ -671,8 +704,16 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
       if (editingPost.status === '마감' && raw.status === 'PUBLISHED') {
         await closeManagedOpportunity(editingPost.id);
       }
+      // 일정을 고쳤으면 목록에 보이는 모집 기간 문구도 새 값으로 다시 만든다.
+      const savedPost: CenterPost = {
+        ...editingPost,
+        period: formatPeriod(
+          editingPost.raw.recruitmentStartDateTime,
+          editingPost.raw.recruitmentEndDateTime,
+        ),
+      };
       setPosts((current) =>
-        current.map((post) => (post.id === editingPost.id ? editingPost : post)),
+        current.map((post) => (post.id === editingPost.id ? savedPost : post)),
       );
       const center = managedCenters.find((item) => item.id === editingPost.centerId);
       navigate(center ? `/my-centers/${center.id}` : '/my-centers');
@@ -695,7 +736,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         region: newPost.region,
         location: newPost.location,
         participationMode: 'OFFLINE',
-        recruitmentCapacity: Number(newPost.recruitmentCapacity),
+        recruitmentCapacity:
+          newPost.type === 'VOLUNTEER' ? Number(newPost.recruitmentCapacity) : null,
         recruitmentEndDateTime: newPost.recruitmentEndDateTime || null,
         activityStartDateTime: newPost.activityStartDateTime || null,
         activityEndDateTime: newPost.activityEndDateTime || null,
@@ -793,6 +835,13 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   }
 
   if (creatingPost) {
+    const isVolunteerPost = newPost.type === 'VOLUNTEER';
+    const scheduleWarning = validateSchedule(
+      newPost.recruitmentEndDateTime,
+      newPost.activityStartDateTime,
+      newPost.activityEndDateTime,
+    );
+
     return (
       <article className="center-editor-page">
         <div className="my-center-detail-nav">
@@ -807,91 +856,134 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           <span>{selectedCenter.name}</span>
         </header>
         <form className="center-editor-form" onSubmit={createPost}>
+          <div className="center-editor-form-row">
+            <label>
+              <span>구분 <em className="field-required">필수</em></span>
+              <select
+                value={newPost.type}
+                onChange={(event) => setNewPost({ ...newPost, type: event.target.value })}
+              >
+                <option value="VOLUNTEER">봉사</option>
+                <option value="DONATION">기부</option>
+                <option value="LEGACY_DONATION">유산기부</option>
+                <option value="HERITAGE_SPONSORSHIP">문화유산 후원</option>
+              </select>
+              <small>구분에 따라 신청자에게 보이는 약정서 항목이 달라집니다.</small>
+            </label>
+            {isVolunteerPost && (
+              <label>
+                <span>모집 인원 <em className="field-required">필수</em></span>
+                <input
+                  type="number"
+                  min="1"
+                  value={newPost.recruitmentCapacity}
+                  onChange={(event) =>
+                    setNewPost({ ...newPost, recruitmentCapacity: event.target.value })
+                  }
+                  required
+                />
+                <small>모집할 봉사자 수를 명 단위로 입력하세요.</small>
+              </label>
+            )}
+          </div>
+
           <label>
-            <span>구분</span>
-            <select
-              value={newPost.type}
-              onChange={(event) => setNewPost({ ...newPost, type: event.target.value })}
-            >
-              <option value="VOLUNTEER">봉사</option>
-              <option value="DONATION">기부</option>
-              <option value="LEGACY_DONATION">유산기부</option>
-              <option value="HERITAGE_SPONSORSHIP">문화유산 후원</option>
-            </select>
-          </label>
-          <label>
-            <span>모집글 제목</span>
+            <span>모집글 제목 <em className="field-required">필수</em></span>
             <input
               value={newPost.title}
               onChange={(event) => setNewPost({ ...newPost, title: event.target.value })}
+              placeholder="예) 금정구 독거어르신 온기 도시락 배달"
+              maxLength={100}
               required
             />
+            <small>{newPost.title.length}/100자 · 목록에 그대로 노출됩니다.</small>
           </label>
-          <label className="wide">
-            <span>상세 설명</span>
+
+          <label>
+            <span>상세 설명 <em className="field-required">필수</em></span>
             <textarea
+              rows={8}
               value={newPost.description}
               onChange={(event) => setNewPost({ ...newPost, description: event.target.value })}
+              placeholder={'활동 내용, 준비물, 유의사항을 적어주세요.\n앞부분 120자가 목록 요약문으로 사용됩니다.'}
               required
             />
+            <small>앞 120자가 목록 요약문이 되니 핵심을 먼저 적어주세요.</small>
           </label>
-          <label>
-            <span>지역</span>
-            <input
-              value={newPost.region}
-              onChange={(event) => setNewPost({ ...newPost, region: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>활동 장소</span>
-            <input
-              value={newPost.location}
-              onChange={(event) => setNewPost({ ...newPost, location: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>모집 인원</span>
-            <input
-              type="number"
-              min="1"
-              value={newPost.recruitmentCapacity}
-              onChange={(event) =>
-                setNewPost({ ...newPost, recruitmentCapacity: event.target.value })
-              }
-              required
-            />
-          </label>
-          <label>
-            <span>모집 마감</span>
-            <input
-              type="datetime-local"
-              value={newPost.recruitmentEndDateTime}
-              onChange={(event) =>
-                setNewPost({ ...newPost, recruitmentEndDateTime: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span>활동 시작</span>
-            <input
-              type="datetime-local"
-              value={newPost.activityStartDateTime}
-              onChange={(event) =>
-                setNewPost({ ...newPost, activityStartDateTime: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            <span>활동 종료</span>
-            <input
-              type="datetime-local"
-              value={newPost.activityEndDateTime}
-              onChange={(event) =>
-                setNewPost({ ...newPost, activityEndDateTime: event.target.value })
-              }
-            />
-          </label>
-          <button type="submit">작성 완료 및 공개</button>
+
+          <div className="center-editor-form-row">
+            <label>
+              <span>지역</span>
+              <input
+                value={newPost.region}
+                onChange={(event) => setNewPost({ ...newPost, region: event.target.value })}
+                placeholder="예) 부산광역시 금정구"
+              />
+            </label>
+            <label>
+              <span>활동 장소</span>
+              <input
+                value={newPost.location}
+                onChange={(event) => setNewPost({ ...newPost, location: event.target.value })}
+                placeholder="예) 금정구 종합사회복지관 2층"
+              />
+            </label>
+          </div>
+
+          <fieldset className="center-editor-fieldset">
+            <legend>일정</legend>
+            <div className="center-editor-form-row center-editor-form-row-3">
+              <label>
+                <span>모집 마감</span>
+                <input
+                  type="datetime-local"
+                  value={newPost.recruitmentEndDateTime}
+                  onChange={(event) =>
+                    setNewPost({ ...newPost, recruitmentEndDateTime: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>활동 시작</span>
+                <input
+                  type="datetime-local"
+                  value={newPost.activityStartDateTime}
+                  min={newPost.recruitmentEndDateTime || undefined}
+                  onChange={(event) =>
+                    setNewPost({ ...newPost, activityStartDateTime: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>활동 종료</span>
+                <input
+                  type="datetime-local"
+                  value={newPost.activityEndDateTime}
+                  min={newPost.activityStartDateTime || undefined}
+                  onChange={(event) =>
+                    setNewPost({ ...newPost, activityEndDateTime: event.target.value })
+                  }
+                />
+              </label>
+            </div>
+            <small className="center-editor-fieldset-hint">
+              비워두면 상시 모집으로 표시됩니다.
+            </small>
+          </fieldset>
+
+          {scheduleWarning && <p className="center-editor-warning">{scheduleWarning}</p>}
+
+          <div className="center-editor-actions">
+            <span className="center-editor-actions-hint">
+              작성을 완료하면 모집글이 <strong>바로 공개</strong>됩니다.
+            </span>
+            <button type="button" onClick={() => navigate(`/my-centers/${selectedCenter.id}`)}>
+              취소
+            </button>
+            <button type="submit" disabled={Boolean(scheduleWarning)}>
+              작성 완료 및 공개
+            </button>
+          </div>
         </form>
         {notice && <div className="center-notice">{notice}</div>}
       </article>
@@ -899,6 +991,17 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   }
 
   if (editingPost && !viewingApplicant) {
+    // 일정·지역 같은 값은 CenterPost가 아니라 원본 응답(raw)에 있고, 저장 시에도 raw가 그대로 전송된다.
+    const updateEditingRaw = (patch: Partial<ManagedOpportunity>) =>
+      setEditingPost((current) =>
+        current ? { ...current, raw: { ...current.raw, ...patch } } : current,
+      );
+    const editScheduleWarning = validateSchedule(
+      editingPost.raw.recruitmentEndDateTime,
+      editingPost.raw.activityStartDateTime,
+      editingPost.raw.activityEndDateTime,
+    );
+
     return (
       <article className="center-editor-page">
         <div className="my-center-detail-nav">
@@ -941,13 +1044,16 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         {postManagerTab === 'edit' ? (
           <form className="center-editor-form" onSubmit={savePost}>
             <label>
-              <span>모집글 제목</span>
+              <span>모집글 제목 <em className="field-required">필수</em></span>
               <input
                 value={editingPost.title}
                 onChange={(event) => setEditingPost({ ...editingPost, title: event.target.value })}
+                maxLength={100}
                 required
               />
+              <small>{editingPost.title.length}/100자 · 목록에 그대로 노출됩니다.</small>
             </label>
+
             <div className="center-editor-form-row">
               <label>
                 <span>구분</span>
@@ -972,18 +1078,95 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
                   <option>공개 중</option>
                   <option>마감</option>
                 </select>
+                <small>
+                  {editingPost.status === '마감'
+                    ? '저장하면 신청을 더 이상 받지 않습니다.'
+                    : '신청자에게 공개되어 신청을 받는 상태입니다.'}
+                </small>
               </label>
             </div>
+
+            <div className="center-editor-form-row">
+              <label>
+                <span>지역</span>
+                <input
+                  value={editingPost.raw.region || ''}
+                  onChange={(event) => updateEditingRaw({ region: event.target.value })}
+                  placeholder="예) 부산광역시 금정구"
+                />
+              </label>
+              <label>
+                <span>활동 장소</span>
+                <input
+                  value={editingPost.raw.location || ''}
+                  onChange={(event) => updateEditingRaw({ location: event.target.value })}
+                  placeholder="예) 금정구 종합사회복지관 2층"
+                />
+              </label>
+            </div>
+
+            <fieldset className="center-editor-fieldset">
+              <legend>일정</legend>
+              <div className="center-editor-form-row center-editor-form-row-3">
+                <label>
+                  <span>모집 마감</span>
+                  <input
+                    type="datetime-local"
+                    value={toDateTimeLocal(editingPost.raw.recruitmentEndDateTime)}
+                    onChange={(event) =>
+                      updateEditingRaw({ recruitmentEndDateTime: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>활동 시작</span>
+                  <input
+                    type="datetime-local"
+                    value={toDateTimeLocal(editingPost.raw.activityStartDateTime)}
+                    onChange={(event) =>
+                      updateEditingRaw({ activityStartDateTime: event.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>활동 종료</span>
+                  <input
+                    type="datetime-local"
+                    value={toDateTimeLocal(editingPost.raw.activityEndDateTime)}
+                    onChange={(event) =>
+                      updateEditingRaw({ activityEndDateTime: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <small className="center-editor-fieldset-hint">
+                비워두면 상시 모집으로 표시됩니다. 현재 모집 기간: {editingPost.period}
+              </small>
+            </fieldset>
+
+            {editingPost.category === '봉사' && (
+              <div className="center-editor-form-row">
+                <label>
+                  <span>모집 인원</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editingPost.raw.recruitmentCapacity ?? ''}
+                    onChange={(event) =>
+                      updateEditingRaw({
+                        recruitmentCapacity: event.target.value
+                          ? Number(event.target.value)
+                          : undefined,
+                      })
+                    }
+                  />
+                  <small>현재 {editingPost.applicantCount}명이 신청했습니다.</small>
+                </label>
+              </div>
+            )}
+
             <label>
-              <span>모집 기간</span>
-              <input
-                value={editingPost.period}
-                onChange={(event) => setEditingPost({ ...editingPost, period: event.target.value })}
-                required
-              />
-            </label>
-            <label>
-              <span>상세 설명</span>
+              <span>상세 설명 <em className="field-required">필수</em></span>
               <textarea
                 rows={8}
                 value={editingPost.description}
@@ -992,12 +1175,20 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
                 }
                 required
               />
+              <small>앞 120자가 목록 요약문이 되니 핵심을 먼저 적어주세요.</small>
             </label>
+
+            {editScheduleWarning && (
+              <p className="center-editor-warning">{editScheduleWarning}</p>
+            )}
+
             <div className="center-editor-actions">
               <button type="button" onClick={() => navigate(`/my-centers/${selectedCenter.id}`)}>
                 취소
               </button>
-              <button type="submit">수정 내용 저장</button>
+              <button type="submit" disabled={Boolean(editScheduleWarning)}>
+                수정 내용 저장
+              </button>
             </div>
           </form>
         ) : (
@@ -1151,6 +1342,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
 
         <CenterSignedDocumentPanel applicationPublicId={viewingApplicant.publicId} />
 
+        <CenterActivityNotePanel applicationPublicId={viewingApplicant.publicId} />
+
         {viewingApplicant.status === '검토 대기' && (
           <button
             type="button"
@@ -1207,6 +1400,51 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           <span>이번 달 참여자</span>
           <strong>{selectedCenter.monthlyParticipants}</strong>
         </div>
+      </section>
+
+      <section className="center-commitment-board" aria-label="약정 현황 및 증빙">
+        <div className="center-commitment-heading">
+          <span>COMMITMENT STATUS</span>
+          <h3>약정 현황 · 전자서명 증빙</h3>
+        </div>
+        <div className="center-commitment-metrics">
+          <div>
+            <span>전체 약정</span>
+            <strong>{selectedCenter.totalCommitments}<small>건</small></strong>
+            <p>취소를 제외한 누적 약정</p>
+          </div>
+          <div className="accent">
+            <span>서명 완료</span>
+            <strong>{selectedCenter.signedCommitments}<small>건</small></strong>
+            <p>모두싸인 증빙이 보관된 약정</p>
+          </div>
+          <div>
+            <span>서명 대기</span>
+            <strong>{selectedCenter.awaitingSignature}<small>건</small></strong>
+            <p>요청했으나 아직 미완료</p>
+          </div>
+          <div>
+            <span>증빙된 약정액</span>
+            <strong>{selectedCenter.signedPledgeAmount.toLocaleString('ko-KR')}<small>원</small></strong>
+            <p>서명으로 확정된 후원 금액</p>
+          </div>
+          <div className={selectedCenter.renewalDueSoon > 0 ? 'warn' : ''}>
+            <span>갱신 임박</span>
+            <strong>{selectedCenter.renewalDueSoon}<small>건</small></strong>
+            <p>30일 내 갱신이 필요한 정기 약정</p>
+          </div>
+        </div>
+        <p className="center-commitment-rate">
+          서명 완료율{' '}
+          <strong>
+            {selectedCenter.totalCommitments === 0
+              ? 0
+              : Math.round(
+                  (selectedCenter.signedCommitments / selectedCenter.totalCommitments) * 100,
+                )}
+            %
+          </strong>
+        </p>
       </section>
 
       <nav className="center-management-tabs" aria-label="센터 관리 메뉴">

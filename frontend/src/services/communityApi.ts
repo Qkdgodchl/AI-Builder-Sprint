@@ -135,7 +135,7 @@ export const createPost = async (payload: CreatePostPayload): Promise<PostItem |
         title: payload.title,
         content: payload.content,
         category: payload.category || 'FREE',
-        authorNickname: payload.author || '부산 픽셀용사',
+        authorNickname: payload.author || '부산 잇다 이웃',
         imageUrl: payload.imageUrl || '',
       }),
     });

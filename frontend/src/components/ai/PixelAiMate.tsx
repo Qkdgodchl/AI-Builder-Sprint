@@ -56,9 +56,45 @@ function parseCard(raw: any): RecommendedCard | null {
     title: raw.title,
     category: isDonation ? 'DONATION' : 'VOLUNTEER',
     location: raw.region || '부산 지역',
-    organizer: '픽셀 케어',
+    organizer: '잇다',
     tags: ['AI 추천', isDonation ? '기부' : '봉사'],
   };
+}
+
+/**
+ * LLM 답변에 섞여 오는 마크다운을 화면용으로 정리한다.
+ * `**굵게**`는 실제 굵은 글씨로, 줄머리 `- `는 가운뎃점으로 바꿔
+ * 별표가 그대로 노출되지 않게 한다.
+ */
+function renderMessageText(text: string) {
+  const lines = text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .split('\n')
+    // 표 구분선(|---|)은 화면에서 의미가 없으므로 버린다.
+    .filter((line) => !/^\s*\|?[\s|:-]{3,}\|?\s*$/.test(line))
+    .map((line) =>
+      line
+        .replace(/^\s*\|\s?/, '')
+        .replace(/\s?\|\s*$/, '')
+        .replace(/\s*\|\s*/g, ' · '),
+    );
+
+  return lines.map((rawLine, lineIndex) => {
+    const line = rawLine.replace(/^\s*[-*]\s+/, '· ');
+    const segments = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+    return (
+      <React.Fragment key={lineIndex}>
+        {segments.map((segment, index) =>
+          segment.startsWith('**') && segment.endsWith('**') ? (
+            <strong key={index}>{segment.slice(2, -2)}</strong>
+          ) : (
+            <React.Fragment key={index}>{segment}</React.Fragment>
+          ),
+        )}
+        {lineIndex < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
 }
 
 export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenModal }) => {
@@ -260,28 +296,16 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
     <section className="pixel-ai-container">
       {/* Header */}
       <div className="ai-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="ai-avatar">🤖</div>
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', margin: 0, color: '#1a1a24' }}>
-              PIXEL AI MATE
-            </h2>
-            <p style={{ fontSize: '12px', color: '#666', margin: '2px 0 0' }}>
-              Upstage Solar LLM · DB 기반 정확 추천
-            </p>
-          </div>
+        <div className="ai-header-identity">
+          <h2>ITDA AI MATE</h2>
+          <p>Upstage Solar LLM · 등록된 프로그램만 추천</p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            type="button"
-            className="pixel-button"
-            style={{ fontSize: '11px', padding: '5px 10px', background: '#ffe5ec', color: '#ff3b30', borderColor: '#ff3b30' }}
-            onClick={handleClearHistory}
-          >
-            🗑️ 대화 초기화
+        <div className="ai-header-actions">
+          <span className="online-badge">응답 가능</span>
+          <button type="button" className="ai-reset-button" onClick={handleClearHistory}>
+            대화 초기화
           </button>
-          <span className="online-badge">● ONLINE</span>
         </div>
       </div>
 
@@ -289,13 +313,11 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
       <div className="ai-chat-body">
         {messages.map((msg) => (
           <div key={msg.id} className={`chat-bubble-row ${msg.sender === 'USER' ? 'user-row' : 'ai-row'}`}>
-            {msg.sender === 'AI' && <div className="chat-avatar">🤖</div>}
+            {msg.sender === 'AI' && <div className="chat-avatar">AI</div>}
 
             <div className="chat-content">
               <div className={`chat-bubble ${msg.sender === 'USER' ? 'user-bubble' : 'ai-bubble'}`}>
-                {msg.text.split('\n').map((line, i) => (
-                  <React.Fragment key={i}>{line}{i < msg.text.split('\n').length - 1 && <br />}</React.Fragment>
-                ))}
+                {renderMessageText(msg.text)}
               </div>
 
               {/* DB 매칭 카드 목록 (있을 때만 표시) */}
@@ -416,7 +438,7 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
                 </div>
                 <div style={{ opacity: thinkingStep >= 2 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{thinkingStep > 2 ? '✅' : '🔍'}</span>
-                  <span style={{ fontWeight: thinkingStep === 2 ? 'bold' : 'normal' }}>2단계: 픽셀 케어 DB 내 맞춤 봉사·기부 카드 정밀 탐색</span>
+                  <span style={{ fontWeight: thinkingStep === 2 ? 'bold' : 'normal' }}>2단계: 잇다 DB 내 맞춤 봉사·기부 카드 정밀 탐색</span>
                 </div>
                 <div style={{ opacity: thinkingStep >= 3 ? 1 : 0.4, transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{thinkingStep >= 3 ? '⚡' : '⏳'}</span>

@@ -36,7 +36,7 @@ public class DataLoader implements CommandLineRunner {
             ));
             volunteerRepository.save(new Volunteer(
                     null, "🍲 금정구 독거어르신 온기 도시락 배달", "VOLUNTEER",
-                    "부산 금정구 종합복지관", "사랑의 픽셀 이웃",
+                    "부산 금정구 종합복지관", "사랑의 잇다 이웃",
                     null, 0L, List.of("공식 인증", "4시간 인정", "어르신복지"), null
             ));
             volunteerRepository.save(new Volunteer(
@@ -58,7 +58,7 @@ public class DataLoader implements CommandLineRunner {
             // 2. 일반기부 (GENERAL)
             volunteerRepository.save(new Volunteer(
                     null, "❤️ 저소득층 희귀질환 환아 치료비 정기후원", "GENERAL",
-                    "전국", "픽셀케어 파트너 재단",
+                    "전국", "잇다 파트너 재단",
                     10000000L, 4250000L, List.of("정기후원", "의료지원", "환아돕기"), null
             ));
             volunteerRepository.save(new Volunteer(

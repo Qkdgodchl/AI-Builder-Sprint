@@ -1,5 +1,6 @@
 import React from 'react';
 import type { VolunteerItem } from '../../types';
+import { splitSentences } from '../../utils/text';
 
 interface DetailItem extends VolunteerItem {
   programType: string;
@@ -12,6 +13,9 @@ interface OpportunityDetailProps {
   onApply: () => void;
   canDelete: boolean;
   onDelete: () => void;
+  /** 같은 구분의 다른 프로그램. 상세에서 곧바로 이어 볼 수 있게 한다. */
+  related?: DetailItem[];
+  onSelectRelated?: (id: number) => void;
 }
 
 const descriptions: Record<string, string> = {
@@ -52,15 +56,55 @@ const notices: Record<string, string[]> = {
   ],
 };
 
+/**
+ * 괄호 안 설명이 '(감천마을 재 / 생)'처럼 갈라지지 않도록
+ * 괄호 내부 공백만 줄바꿈 없는 공백으로 바꾼다.
+ */
+const keepParentheticalTogether = (title: string) =>
+  title.replace(/\(([^)]*)\)/g, (_match, inner: string) => `(${inner.replace(/ /g, '\u00A0')})`);
+
+const formatDateTime = (value?: string) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
   item,
   onBack,
   onApply,
   canDelete,
   onDelete,
+  related = [],
+  onSelectRelated,
 }) => {
   const programNotices = notices[item.programType] ?? notices.DEFAULT;
   const isVolunteer = item.category === 'VOLUNTEER';
+
+  const target = item.targetAmount ?? 0;
+  const raised = item.currentAmount ?? 0;
+  const fundingPercent = target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : null;
+
+  const capacity = item.recruitmentCapacity ?? 0;
+  const applicants = item.applicantCount ?? 0;
+  const seatsLeft = capacity > 0 ? Math.max(0, capacity - applicants) : null;
+
+  const schedule = [
+    { label: '모집 마감', value: formatDateTime(item.recruitmentEndDateTime) },
+    { label: '활동 시작', value: formatDateTime(item.activityStartDateTime) },
+    { label: '활동 종료', value: formatDateTime(item.activityEndDateTime) },
+  ].filter((entry) => entry.value);
+
+  const documents = item.requiredDocuments ?? [];
+  let sectionNumber = 0;
+  const nextNumber = () => String(++sectionNumber).padStart(2, '0');
 
   return (
     <article className="opportunity-detail">
@@ -76,8 +120,8 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
       </div>
 
       <header className="detail-hero">
-        <h2>{item.title}</h2>
-        <p>{descriptions[item.programType] ?? descriptions.GENERAL}</p>
+        <h2>{keepParentheticalTogether(item.title)}</h2>
+        <p>{item.summary?.trim() || descriptions[item.programType] || descriptions.GENERAL}</p>
         <div className="detail-inline-keywords" aria-label="관련 키워드">
           {item.tags.map((tag) => (
             <span key={tag}>#{tag.replace(/\s+/g, '')}</span>
@@ -104,20 +148,117 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
         </div>
       </dl>
 
+      {(fundingPercent !== null || capacity > 0) && (
+        <section className="detail-progress">
+          {fundingPercent !== null && (
+            <div className="detail-progress-main">
+              <span>모금 현황</span>
+              <strong>{fundingPercent}%</strong>
+              <div className="detail-progress-track">
+                <span style={{ width: `${fundingPercent}%` }} />
+              </div>
+              <p>
+                {raised.toLocaleString()}원 모금 · 목표 {target.toLocaleString()}원
+              </p>
+            </div>
+          )}
+          {capacity > 0 && (
+            <div className="detail-progress-side">
+              <div>
+                <span>모집 인원</span>
+                <strong>{capacity}명</strong>
+              </div>
+              <div>
+                <span>현재 신청</span>
+                <strong>{applicants}명</strong>
+              </div>
+              <div className={seatsLeft === 0 ? 'warn' : ''}>
+                <span>남은 자리</span>
+                <strong>{seatsLeft}명</strong>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="detail-section">
-        <p className="detail-section-number">01</p>
+        <p className="detail-section-number">{nextNumber()}</p>
         <div>
-          <h3>프로그램 안내</h3>
-          <p>
-            {isVolunteer
-              ? '신청이 접수되면 주관기관에서 참여 가능 여부를 확인합니다. 확정된 참여자에게 활동 시간, 장소, 준비사항을 별도로 안내합니다.'
-              : '신청서에 입력한 내용을 바탕으로 후원 또는 상담 절차가 시작됩니다. 금액과 약정 조건은 최종 확인 전까지 자유롭게 검토할 수 있습니다.'}
-          </p>
+          <h3>이 프로그램은</h3>
+          {/* 기관이 등록한 실제 소개글. 없을 때만 구분별 기본 설명으로 대체한다. */}
+          {splitSentences(
+            item.description?.trim() || descriptions[item.programType] || descriptions.GENERAL,
+          ).map((sentence) => (
+            <p key={sentence}>{sentence}</p>
+          ))}
         </div>
       </section>
 
       <section className="detail-section">
-        <p className="detail-section-number">02</p>
+        <p className="detail-section-number">{nextNumber()}</p>
+        <div>
+          <h3>참여 절차</h3>
+          <ol className="detail-steps">
+            {(isVolunteer
+              ? [
+                  '신청서를 작성해 참여 의사를 전달합니다.',
+                  '주관기관이 참여 가능 여부를 확인하고 승인합니다.',
+                  '확정되면 활동 시간·장소·준비물을 안내받습니다.',
+                  '활동을 마치면 참여 기록이 내 기록에 남습니다.',
+                ]
+              : [
+                  'AI 상담으로 후원 금액과 주기를 정리합니다.',
+                  '정리된 내용으로 약정서를 확인하고 수정합니다.',
+                  '모두싸인 전자서명으로 약정을 체결합니다.',
+                  '서명 완료본과 감사추적증명서가 보관됩니다.',
+                ]
+            ).map((step, index) => (
+              <li key={step}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <p>{step}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {schedule.length > 0 && (
+        <section className="detail-section">
+          <p className="detail-section-number">{nextNumber()}</p>
+          <div>
+            <h3>일정</h3>
+            <ol className="detail-timeline">
+              {schedule.map((entry) => (
+                <li key={entry.label}>
+                  <span>{entry.label}</span>
+                  <strong>{entry.value}</strong>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      )}
+
+      {documents.length > 0 && (
+        <section className="detail-section">
+          <p className="detail-section-number">{nextNumber()}</p>
+          <div>
+            <h3>제출 서류</h3>
+            <ul className="detail-document-list">
+              {documents.map((document) => (
+                <li key={document.code}>
+                  <strong>{document.name}</strong>
+                  <em>{document.required ? '필수' : '선택'}</em>
+                  {document.description && <p>{document.description}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      <section className="detail-section">
+        <p className="detail-section-number">{nextNumber()}</p>
         <div>
           <h3>신청 전 확인사항</h3>
           <ul>
@@ -137,6 +278,24 @@ export const OpportunityDetail: React.FC<OpportunityDetailProps> = ({
           {isVolunteer ? '봉사 신청하기' : '후원 신청하기'}
         </button>
       </footer>
+
+      {related.length > 0 && onSelectRelated && (
+        <section className="detail-related">
+          <div className="detail-related-heading">
+            <span>RELATED</span>
+            <h3>비슷한 프로그램</h3>
+          </div>
+          <div className="detail-related-grid">
+            {related.map((program) => (
+              <button type="button" key={program.id} onClick={() => onSelectRelated(program.id)}>
+                <span>{program.availability}</span>
+                <strong>{program.title}</strong>
+                <small>{program.location}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   );
 };

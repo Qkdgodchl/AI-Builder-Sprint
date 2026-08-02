@@ -32,6 +32,7 @@ public class ClmDocumentService {
     private final AiConsultationRepository consultationRepository;
     private final AiConsultationService consultationService;
     private final PledgeContractPdfGenerator pdfGenerator;
+    private final ClmCompletionMessageService completionMessageService;
 
     public ClmDocumentService(ClmDocumentRepository clmDocumentRepository,
                               ClmCommitmentRepository commitmentRepository,
@@ -42,7 +43,8 @@ public class ClmDocumentService {
                               ClmDocumentAccessRepository accessRepository,
                               AiConsultationRepository consultationRepository,
                               AiConsultationService consultationService,
-                              PledgeContractPdfGenerator pdfGenerator) {
+                              PledgeContractPdfGenerator pdfGenerator,
+                              ClmCompletionMessageService completionMessageService) {
         this.clmDocumentRepository = clmDocumentRepository;
         this.commitmentRepository = commitmentRepository;
         this.webhookEventRepository = webhookEventRepository;
@@ -53,6 +55,7 @@ public class ClmDocumentService {
         this.consultationRepository = consultationRepository;
         this.consultationService = consultationService;
         this.pdfGenerator = pdfGenerator;
+        this.completionMessageService = completionMessageService;
     }
 
     @Transactional
@@ -196,6 +199,7 @@ public class ClmDocumentService {
                                 document.getCommitmentId(), document.getSignatureRequestId(), signatureState(eventType));
                         if ("document_all_signed".equals(eventType)) {
                             archiveService.archiveCompletedFiles(document);
+                            completionMessageService.attachTo(document);
                         }
                     });
             webhookEventRepository.complete("MODUSIGN", eventId);
@@ -206,35 +210,38 @@ public class ClmDocumentService {
     }
 
     private void synchronizeModusignStatus(ClmDocument document) {
-        if ("SIGNED".equals(document.getStatus())
+        boolean settled = "SIGNED".equals(document.getStatus())
                 || "REJECTED".equals(document.getStatus())
-                || "CANCELED".equals(document.getStatus())) {
-            return;
-        }
+                || "CANCELED".equals(document.getStatus());
 
-        try {
-            archiveService.archiveCompletedFiles(document);
-            if (document.applyModusignEvent("document_all_signed")) {
-                commitmentRepository.applySignatureState(
-                        document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
-            }
-        } catch (Exception e) {
-            if (document.getModusignDocumentId() != null && document.getModusignDocumentId().startsWith("MODU_SIGNED_")) {
+        if (!settled) {
+            try {
+                archiveService.archiveCompletedFiles(document);
                 if (document.applyModusignEvent("document_all_signed")) {
                     commitmentRepository.applySignatureState(
                             document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
                 }
-                return;
-            }
-            if (e instanceof ApiException apiEx && "MODUSIGN_DOCUMENT_NOT_COMPLETED".equals(apiEx.getCode())) {
-                return;
-            }
-            System.err.println("모두싸인 동기화 원활하지 않음 (Smart Failover 서명 완료 적용): " + e.getMessage());
-            if (document.applyModusignEvent("document_all_signed")) {
-                commitmentRepository.applySignatureState(
-                        document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+            } catch (Exception e) {
+                if (document.getModusignDocumentId() != null && document.getModusignDocumentId().startsWith("MODU_SIGNED_")) {
+                    if (document.applyModusignEvent("document_all_signed")) {
+                        commitmentRepository.applySignatureState(
+                                document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                    }
+                    return;
+                }
+                if (e instanceof ApiException apiEx && "MODUSIGN_DOCUMENT_NOT_COMPLETED".equals(apiEx.getCode())) {
+                    return;
+                }
+                System.err.println("모두싸인 동기화 원활하지 않음 (Smart Failover 서명 완료 적용): " + e.getMessage());
+                if (document.applyModusignEvent("document_all_signed")) {
+                    commitmentRepository.applySignatureState(
+                            document.getCommitmentId(), document.getSignatureRequestId(), "SIGNED");
+                }
             }
         }
+        // 웹훅으로 먼저 완료 처리된 약정도 감사 메시지를 받을 수 있도록
+        // 상태와 무관하게 시도한다. 서명 전이거나 이미 남긴 경우는 내부에서 걸러진다.
+        completionMessageService.attachTo(document);
     }
 
     private ClmDocument findOwnedDocument(Long documentId, CurrentUser currentUser) {

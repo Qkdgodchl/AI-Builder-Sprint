@@ -19,6 +19,9 @@ export const clearTokens = () => {
   localStorage.removeItem('pixel-care-refresh-token');
 };
 
+/** 토큰이 만료돼 세션이 끊겼음을 앱 전역에 알리는 이벤트. */
+export const SESSION_EXPIRED_EVENT = 'pixel-care:session-expired';
+
 export const apiRequest = async <T>(
   path: string,
   init: RequestInit = {},
@@ -31,6 +34,16 @@ export const apiRequest = async <T>(
   }
 
   const response = await fetch(`${API_ORIGIN}${path}`, { ...init, headers });
+
+  // 토큰이 만료되면 화면마다 빈 목록이 뜨는 대신 로그아웃 상태로 되돌리고 알린다.
+  // 로그인·회원가입 요청의 401은 자격 증명 오류이므로 그대로 흘려보낸다.
+  if (response.status === 401 && !path.startsWith('/api/v1/auth/')) {
+    clearTokens();
+    localStorage.removeItem('pixel-care-user');
+    window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    throw new Error('로그인이 만료되었습니다. 다시 로그인해 주세요.');
+  }
+
   if (!response.ok) {
     let message = `요청에 실패했습니다. (${response.status})`;
     try {

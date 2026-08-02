@@ -85,7 +85,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           ×
         </button>
 
-        <p className="auth-modal-eyebrow">PIXEL CARE ACCOUNT</p>
+        <p className="auth-modal-eyebrow">ITDA ACCOUNT</p>
         <div className="auth-view-tabs" role="tablist" aria-label="계정 메뉴">
           <button
             type="button"
@@ -111,7 +111,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <p className="auth-modal-description">
           {view === 'login'
             ? '로그인하고 봉사·기부 신청 내역과 약정 진행 상태를 관리하세요.'
-            : '픽셀케어 계정을 만들고 나에게 맞는 선행 활동을 시작하세요.'}
+            : '잇다 계정을 만들고 나에게 맞는 선행 활동을 시작하세요.'}
         </p>
 
         {view === 'login' ? (

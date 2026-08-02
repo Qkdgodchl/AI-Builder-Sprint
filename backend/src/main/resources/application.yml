@@ -42,6 +42,7 @@ app:
     enabled: ${APP_BOOTSTRAP_ENABLED:true}
     operator-password: ${APP_OPERATOR_PASSWORD:Operator123!}
     manager-password: ${APP_MANAGER_PASSWORD:Manager123!}
+    donor-password: ${APP_DONOR_PASSWORD:Donor123!}
 
 modusign:
   api:

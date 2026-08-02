@@ -719,6 +719,112 @@
   font-weight: 800;
 }
 
+.user-renewal-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--user-line);
+  padding: 24px;
+  background: #fbfbf8;
+}
+
+.user-renewal-card.due {
+  background: #fdf4ef;
+}
+
+.user-renewal-card > div > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #92938e;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
+.user-renewal-card strong {
+  display: block;
+  font-size: 16px;
+}
+
+.user-renewal-card p {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: var(--user-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.user-renewal-card button {
+  flex-shrink: 0;
+  border: 1px solid var(--user-line);
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: #1f1f1d;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.user-renewal-card button:disabled {
+  background: #9a9a95;
+  cursor: progress;
+}
+
+.user-renewal-badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #f3dcd1;
+  color: #b5502f;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.user-application-row .user-renewal-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.user-gratitude-card {
+  border-bottom: 1px solid var(--user-line);
+  border-left: 4px solid #237a57;
+  padding: 26px 24px;
+  background: #f2f8f4;
+}
+
+.user-gratitude-card > span {
+  display: block;
+  margin-bottom: 12px;
+  color: #237a57;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+}
+
+.user-gratitude-card p {
+  max-width: 760px;
+  margin: 0;
+  color: #23402f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.8;
+}
+
+.user-gratitude-card small {
+  display: block;
+  margin-top: 12px;
+  color: #6d8577;
+  font-size: 10px;
+}
+
 .user-commitment-preview {
   border-bottom: 1px solid var(--user-line);
   padding: 28px 24px;

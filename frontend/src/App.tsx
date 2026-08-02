@@ -1,22 +1,27 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import { Header } from './components/common/Header';
 import { Modal } from './components/common/Modal';
 import { Toast } from './components/common/Toast';
 import { PixelAiMate } from './components/ai/PixelAiMate';
+import { AiDock } from './components/ai/AiDock';
+import { LoginRequired } from './components/common/LoginRequired';
 import { VolunteerCatalog } from './components/volunteer/VolunteerCatalog';
 import { PixelDiary } from './components/diary/PixelDiary';
 import { RoadmapMap } from './components/roadmap/RoadmapMap';
 import { AuthModal } from './components/auth/AuthModal';
 import { ManagerApplicationPage } from './components/user/ManagerApplicationPage';
 import { MyPage } from './components/user/MyPage';
+import { DiaryDayPage } from './components/user/DiaryDayPage';
 import { MyCenterPage } from './components/center/MyCenterPage';
 import { ManagementPage } from './components/operator/ManagementPage';
 import { HomePage } from './components/home/HomePage';
 import { GoodNewsPage } from './components/news/GoodNewsPage';
 import { playBeep } from './services/soundFx';
 import { logout as logoutApi } from './services/authApi';
+import { fetchPlatformStats, type PlatformStats } from './services/statsApi';
+import { SESSION_EXPIRED_EVENT } from './services/apiClient';
 import type { SessionUser } from './types';
 
 const loadStoredUser = (): SessionUser | null => {
@@ -35,12 +40,11 @@ const loadStoredUser = (): SessionUser | null => {
 
 export function App() {
   const navigate = useNavigate();
-  const [temperature, setTemperature] = useState<number>(78.4);
-  const [totalDonation, setTotalDonation] = useState<number>(1250000);
-  const [totalHours, setTotalHours] = useState<number>(342);
-  const [totalMembers, setTotalMembers] = useState<number>(128);
+  // 홈 상단 누적 현황은 서버 집계를 그대로 보여준다. 조회 전에는 빈 값으로 둔다.
+  const [stats, setStats] = useState<PlatformStats | null>(null);
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(loadStoredUser);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAiDockOpen, setIsAiDockOpen] = useState(false);
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -54,12 +58,53 @@ export function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const reloadStats = useCallback(() => {
+    fetchPlatformStats()
+      .then(setStats)
+      .catch(() => {
+        // 통계는 보조 정보이므로 실패해도 화면 전체를 막지 않는다.
+      });
+  }, []);
+
+  useEffect(() => {
+    reloadStats();
+  }, [reloadStats, currentUser]);
+
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
   }, []);
+
+  // 세션이 끊기면 헤더를 로그아웃 상태로 되돌려 왜 데이터가 비었는지 알 수 있게 한다.
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setCurrentUser((previous) => {
+        if (previous) triggerToast('로그인이 만료되었습니다. 다시 로그인해 주세요.');
+        return null;
+      });
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [triggerToast]);
+
+  // 로그인이 필요한 동작을 눌렀을 때 이유를 알려주고 곧바로 로그인 창을 띄운다.
+  const requireLogin = useCallback(
+    (message: string) => {
+      triggerToast(message);
+      setIsAuthModalOpen(true);
+    },
+    [triggerToast],
+  );
+
+  const openAiDock = useCallback(() => {
+    if (!currentUser) {
+      requireLogin('로그인이 필요합니다. AI 추천은 로그인 후 이용할 수 있어요.');
+      return;
+    }
+    setIsAiDockOpen(true);
+  }, [currentUser, requireLogin]);
 
   const handleOpenModal = (title: string, type: 'volunteer' | 'donate') => {
     setModalState({ isOpen: true, title, type });
@@ -70,23 +115,22 @@ export function App() {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
+  // 커뮤니티 활동으로 온기가 오르면 서버 값을 다시 읽어 반영한다.
+  const handleDiaryActivity = useCallback(() => {
+    reloadStats();
+  }, [reloadStats]);
+
   const handleModalSubmit = (name: string, amount: number) => {
     if (modalState.type === 'donate') {
-      setTotalDonation((prev) => prev + amount);
       triggerToast(`❤️ ${name}님, ${amount.toLocaleString()}원 기부 완료! 뱃지를 획득하셨습니다!`);
     } else {
-      setTotalMembers((prev) => prev + 1);
-      setTotalHours((prev) => prev + 4);
       triggerToast(`⚡ ${name}님, 간편 봉사 신청이 완료되었습니다! 뱃지 발급!`);
     }
 
-    setTemperature((prev) => Math.min(99.9, prev + 0.8));
+    // 누적 현황은 로컬에서 더하지 않고 서버 집계를 다시 읽는다.
+    reloadStats();
     handleCloseModal();
     playBeep(660, 0.2);
-  };
-
-  const handleIncreaseTemp = (val: number) => {
-    setTemperature((prev) => Math.min(99.9, prev + val));
   };
 
   const handleAuthenticate = (user: SessionUser) => {
@@ -97,7 +141,12 @@ export function App() {
   };
 
   const handleLogout = async () => {
-    await logoutApi();
+    try {
+      await logoutApi();
+    } catch {
+      // 토큰이 이미 만료돼 서버 호출이 실패해도 로컬 로그인 상태는 반드시 정리한다.
+      // 그러지 않으면 만료된 세션에서 로그아웃 자체가 불가능해진다.
+    }
     localStorage.removeItem('pixel-care-user');
     setCurrentUser(null);
     triggerToast('로그아웃되었습니다.');
@@ -111,10 +160,7 @@ export function App() {
   return (
     <div className="app-container">
       <Header
-        temperature={temperature}
-        totalDonation={totalDonation}
-        totalHours={totalHours}
-        totalMembers={totalMembers}
+        stats={stats}
         currentUser={currentUser}
         onLogin={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
@@ -123,20 +169,85 @@ export function App() {
 
       <main>
         <Routes>
-          <Route path="/" element={<HomePage currentUser={currentUser} onLogin={() => setIsAuthModalOpen(true)} />} />
-          <Route path="/volunteer/*" element={<VolunteerCatalog currentUser={currentUser} showToast={triggerToast} />} />
-          <Route path="/community" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
-          <Route path="/community/posts/:id" element={<PixelDiary currentUser={currentUser} onAddDiary={handleIncreaseTemp} showToast={triggerToast} />} />
+          <Route
+            path="/"
+            element={
+              <HomePage
+                currentUser={currentUser}
+                onLogin={() => setIsAuthModalOpen(true)}
+                onOpenAi={openAiDock}
+              />
+            }
+          />
+          <Route
+            path="/volunteer/*"
+            element={
+              <VolunteerCatalog
+                currentUser={currentUser}
+                showToast={triggerToast}
+                onRequireLogin={requireLogin}
+              />
+            }
+          />
+          <Route
+            path="/community"
+            element={
+              <PixelDiary
+                currentUser={currentUser}
+                onAddDiary={handleDiaryActivity}
+                showToast={triggerToast}
+                onRequireLogin={requireLogin}
+              />
+            }
+          />
+          <Route
+            path="/community/posts/:id"
+            element={
+              <PixelDiary
+                currentUser={currentUser}
+                onAddDiary={handleDiaryActivity}
+                showToast={triggerToast}
+                onRequireLogin={requireLogin}
+              />
+            }
+          />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
-          <Route path="/news" element={<GoodNewsPage />} />
-          <Route path="/roadmap" element={<RoadmapMap showToast={triggerToast} />} />
+          <Route path="/news" element={<GoodNewsPage currentUser={currentUser} />} />
+          <Route
+            path="/roadmap"
+            element={
+              <RoadmapMap
+                showToast={triggerToast}
+                currentUser={currentUser}
+                onLogin={() => setIsAuthModalOpen(true)}
+              />
+            }
+          />
+          <Route
+            path="/diary/:date"
+            element={
+              currentUser ? (
+                <DiaryDayPage currentUser={currentUser} />
+              ) : (
+                <LoginRequired
+                  title="다이어리는 로그인 후 볼 수 있어요"
+                  description="활동 기록은 계정에 저장되는 개인 기록이라 로그인이 필요합니다."
+                  onLogin={() => setIsAuthModalOpen(true)}
+                />
+              )
+            }
+          />
           <Route
             path="/my-page/*"
             element={
               currentUser ? (
                 <MyPage currentUser={currentUser} />
               ) : (
-                <Navigate to="/volunteer" replace />
+                <LoginRequired
+                  title="마이페이지는 로그인 후 볼 수 있어요"
+                  description="신청 내역과 전자서명 약정은 계정에 저장되는 기록이라 로그인이 필요합니다."
+                  onLogin={() => setIsAuthModalOpen(true)}
+                />
               )
             }
           />
@@ -184,6 +295,16 @@ export function App() {
         type={modalState.type}
         onClose={handleCloseModal}
         onSubmit={handleModalSubmit}
+      />
+
+      <AiDock
+        open={isAiDockOpen}
+        onOpenChange={setIsAiDockOpen}
+        onOpenModal={handleOpenModal}
+        canUseAi={Boolean(currentUser)}
+        onRequireLogin={() =>
+          requireLogin('로그인이 필요합니다. AI 추천은 로그인 후 이용할 수 있어요.')
+        }
       />
 
       <Toast message={toastMessage} />

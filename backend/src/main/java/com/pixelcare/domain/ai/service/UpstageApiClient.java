@@ -99,6 +99,54 @@ public class UpstageApiClient {
         }
     }
 
+    /**
+     * 전자서명이 끝난 약정을 사람이 건넨 한마디처럼 되돌려주는 감사 메시지를 만든다.
+     * 키가 없거나 호출이 실패하면 비어 있는 값을 돌려주고, 호출부가 로컬 문구로 폴백한다.
+     */
+    public Optional<String> generateGratitudeMessage(String pledgeSummary) {
+        if (apiKey == null || apiKey.contains("your_upstage") || apiKey.isBlank()) return Optional.empty();
+        if (pledgeSummary == null || pledgeSummary.isBlank()) return Optional.empty();
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiKey);
+
+            String systemPrompt = """
+                    너는 기부·봉사 약정에 전자서명을 마친 사람에게 건네는 짧은 감사 인사를 쓴다.
+                    조건:
+                    - 2문장 이내, 120자 이내의 한국어 존댓말.
+                    - 약정 내용이 어떤 도움으로 이어지는지 구체적인 장면 하나를 담아라.
+                    - 주어진 약정 정보에 없는 수치나 기관, 성과를 지어내지 마라.
+                    - 이모지, 마크다운, 따옴표, 머리말 없이 인사말 본문만 출력하라.
+                    """;
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("temperature", 0.7);
+            requestBody.put("messages", List.of(
+                    Map.of("role", "system", "content", systemPrompt),
+                    Map.of("role", "user", "content", "약정 정보:\n" + pledgeSummary)
+            ));
+
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    baseUrl + "/chat/completions",
+                    new HttpEntity<>(requestBody, headers),
+                    String.class
+            );
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) return Optional.empty();
+
+            JsonNode choices = objectMapper.readTree(response.getBody()).path("choices");
+            if (!choices.isArray() || choices.isEmpty()) return Optional.empty();
+            String content = choices.get(0).path("message").path("content").asText("").trim();
+            if (content.isBlank()) return Optional.empty();
+            return Optional.of(content.length() > 300 ? content.substring(0, 300) : content);
+        } catch (Exception e) {
+            System.err.println("Upstage 감사 메시지 생성 오류 (로컬 폴백 전환): " + e.getClass().getSimpleName());
+            return Optional.empty();
+        }
+    }
+
     private String stripCodeFence(String content) {
         String trimmed = content.trim();
         if (!trimmed.startsWith("```")) return trimmed;
@@ -171,14 +219,17 @@ public class UpstageApiClient {
 
     private String buildSystemPrompt(String dbContextText, boolean hasMatches) {
         if (hasMatches) {
-            return "너는 픽셀 케어(Pixel Care)의 따뜻한 레트로 픽셀 AI 마스코트 'Pixel AI Mate'야.\n" +
-                   "8-bit/16-bit 감성으로 사용자에게 다정하고 친근하게 봉사 및 기부를 추천해줘.\n" +
+            return "너는 잇다(ITDA)의 따뜻한 AI 메이트 'ITDA AI Mate'야.\n" +
+                   "사용자에게 다정하고 친근한 말투로 봉사 및 기부를 안내해줘.\n" +
                    "아래는 우리 DB에서 사용자 요청과 매칭된 실제 봉사/기부 데이터야:\n\n" +
                    dbContextText + "\n\n" +
                    "반드시 위 목록에 있는 항목만 추천해. 목록에 없는 봉사나 기관은 절대 지어내지 마.\n" +
-                   "추천 카드가 아래에 표시될 예정이니 '아래 추천 카드의 [상세 보기]를 클릭해보세요!'라고 안내해줘.";
+                   "출력 규칙(반드시 지켜라):\n" +
+                   "- 표, 마크다운 문법(**, |, #, - 등), HTML 태그(<br> 등)를 쓰지 마라.\n" +
+                   "- 항목을 나열하지 마라. 상세 정보는 화면의 추천 카드가 따로 보여준다.\n" +
+                   "- 평범한 문장 2~3개로만 답하고, 마지막에 아래 추천 카드에서 상세 보기를 눌러보라고 안내해라.";
         } else {
-            return "너는 픽셀 케어(Pixel Care)의 따뜻한 레트로 픽셀 AI 마스코트 'Pixel AI Mate'야.\n" +
+            return "너는 잇다(ITDA)의 따뜻한 레트로 픽셀 AI 마스코트 'ITDA AI Mate'야.\n" +
                    "8-bit/16-bit 감성으로 사용자에게 다정하고 친근하게 대화해줘.\n" +
                    "사용자가 '안녕', '반가워', '너 누구야' 같은 인사나 소소한 대화를 걸면 밝고 따뜻하게 인사를 나눠줘.\n" +
                    "만약 사용자가 특정 봉사나 기부를 찾으려 했으나 DB 매칭이 없었던 경우라면, '현재 조건에 맞는 봉사는 등록되어 있지 않지만' 이라고 솔직히 말하고 유기견, 도시락, 학습지도, 플로깅 등 다른 추천 키워드를 친절히 제시해줘.";
@@ -207,7 +258,7 @@ public class UpstageApiClient {
         if (!hasMatches) {
             // 인사말이나 단순 스몰토크인 경우
             if (isGreetingOrChitchat(userInput)) {
-                String reply = "안녕! 나는 픽셀 케어의 든든한 AI 메이트야 👾✨\n" +
+                String reply = "안녕! 나는 잇다의 든든한 AI 메이트야 👾✨\n" +
                         "오늘 어떤 봉사활동이나 기부처를 찾고 있니?\n" +
                         "부산 지역의 유기견 봉사, 도시락 배달, 학습 지도 등 궁금한 점이 있다면 언제든 편하게 물어봐줘! 😊";
                 return new AiRecommendResponse(reply, List.of());

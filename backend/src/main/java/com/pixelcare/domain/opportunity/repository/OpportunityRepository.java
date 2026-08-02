@@ -18,9 +18,17 @@ import java.util.Optional;
 @Repository
 public class OpportunityRepository {
 
+    /**
+     * 모금액은 별도 컬럼을 갱신하지 않고 체결된 약정 금액을 그때그때 합산한다.
+     * 전자서명으로 약정이 확정되는 즉시 진행률에 반영되고, 값이 어긋날 여지가 없다.
+     */
     private static final String SELECT = """
             SELECT o.*, org.name AS organization_name,
-                   (SELECT COUNT(*) FROM applications a WHERE a.opportunity_id = o.id) AS applicant_count
+                   (SELECT COUNT(*) FROM applications a WHERE a.opportunity_id = o.id) AS applicant_count,
+                   (SELECT COALESCE(SUM(c.pledge_amount), 0)
+                      FROM commitments c
+                     WHERE c.opportunity_id = o.id
+                       AND c.commitment_status IN ('ACTIVE', 'COMPLETED')) AS pledged_amount
             FROM opportunities o
             JOIN organizations org ON org.id = o.organization_id
             """;
@@ -289,7 +297,7 @@ public class OpportunityRepository {
                 localDateTime(rs.getTimestamp("activity_end_at")),
                 rs.getString("eligibility"),
                 nullableLong(rs.getObject("target_amount")),
-                rs.getLong("current_amount"),
+                rs.getLong("pledged_amount"),
                 rs.getString("cancellation_policy"),
                 rs.getString("status"),
                 rs.getLong("applicant_count"),
