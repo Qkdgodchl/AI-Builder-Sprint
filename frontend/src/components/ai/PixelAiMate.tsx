@@ -9,6 +9,8 @@ import { Logo } from '../common/Logo';
 
 interface PixelAiMateProps {
   onOpenModal: (title: string, type: 'volunteer' | 'donate') => void;
+  /** 도크 안에서 열렸을 때, 다른 화면으로 넘어가면 도크를 닫아 준다. */
+  onNavigateAway?: () => void;
 }
 
 interface RecommendedCard {
@@ -27,6 +29,8 @@ export interface AiChatMessage {
   /** DB에서 실제 매칭된 카드 목록. 없으면 빈 배열 */
   recommendedCards: RecommendedCard[];
   createdAt: string;
+  /** 등록된 프로그램을 못 찾은 답변. CONNECT로 넘길 수 있게 원문을 들고 있는다. */
+  unmatchedQuery?: string;
   /** Solar LLM 파싱 결과 (있을 경우 약정서 생성 카드 표시) */
   consultation?: ConsultationResponse;
   signedDoc?: ClmDocumentDto;
@@ -103,7 +107,10 @@ function renderMessageText(text: string) {
     });
 }
 
-export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenModal }) => {
+export const PixelAiMate: React.FC<PixelAiMateProps> = ({
+  onOpenModal: _onOpenModal,
+  onNavigateAway,
+}) => {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<AiChatMessage[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
@@ -153,9 +160,29 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
     loadHistory();
   }, []);
 
+  /**
+   * 못 찾은 요청을 CONNECT로 옮긴다.
+   * 사용자가 한 말을 그대로 초안으로 넘겨 다시 쓰지 않게 한다.
+   */
+  const goConnect = (query: string) => {
+    playBeep(520, 0.1);
+    // 도크가 화면을 덮고 있으면 이동해도 아무 일 없는 것처럼 보인다. 먼저 닫는다.
+    onNavigateAway?.();
+    navigate('/connect', {
+      state: {
+        connectDraft: {
+          title: query.length > 110 ? `${query.slice(0, 110)}…` : query,
+          content: query,
+          category: /기부|후원|모금|성금/.test(query) ? 'DONATION' : 'VOLUNTEER',
+        },
+      },
+    });
+  };
+
   /** 카드 ID로 상세 페이지 이동 (봉사 or 커뮤니티) */
   const handleCardNavigate = (cardId: number) => {
     playBeep(520, 0.1);
+    onNavigateAway?.();
     if (cardId >= 1000) {
       navigate(`/community/posts/${cardId - 1000}`);
     } else {
@@ -218,6 +245,8 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
         sender: 'AI',
         text: aiResult.reply,
         recommendedCards: cards,
+        // 맞는 프로그램이 없으면 그 말을 그대로 들고 있다가 CONNECT로 넘긴다.
+        unmatchedQuery: cards.length === 0 ? textToSend : undefined,
         createdAt: new Date().toLocaleTimeString(),
       };
 
@@ -327,6 +356,26 @@ export const PixelAiMate: React.FC<PixelAiMateProps> = ({ onOpenModal: _onOpenMo
                 서명은 프로그램을 고른 뒤 신청 화면에서 단계를 밟아 진행하는 흐름이고,
                 도크에서 곧바로 체결 버튼이 뜨면 무엇에 서명하는지 알 수 없다.
               */}
+
+              {/*
+                찾는 활동이 등록되어 있지 않을 때, 그냥 "없다"로 끝내지 않고
+                그 말을 CONNECT로 옮겨 센터가 새 프로그램을 열도록 잇는다.
+              */}
+              {msg.unmatchedQuery && (
+                <div className="ai-connect-suggest">
+                  <strong>아직 등록된 프로그램이 없어요</strong>
+                  <p>
+                    말씀하신 활동을 CONNECT에 남기면 관련 센터가 보고
+                    프로그램 개설을 검토합니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => goConnect(msg.unmatchedQuery!)}
+                  >
+                    CONNECT에 요청 남기기 →
+                  </button>
+                </div>
+              )}
 
               <span className="chat-timestamp">{msg.createdAt}</span>
             </div>

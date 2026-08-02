@@ -76,7 +76,7 @@ export const AiDock: React.FC<AiDockProps> = ({
               </button>
             </header>
             <div className="ai-dock-panel-body">
-              <PixelAiMate onOpenModal={onOpenModal} />
+              <PixelAiMate onOpenModal={onOpenModal} onNavigateAway={() => onOpenChange(false)} />
             </div>
           </section>
         </div>

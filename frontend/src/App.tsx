@@ -18,6 +18,7 @@ import { MyCenterPage } from './components/center/MyCenterPage';
 import { ManagementPage } from './components/operator/ManagementPage';
 import { HomePage } from './components/home/HomePage';
 import { GoodNewsPage } from './components/news/GoodNewsPage';
+import { ConnectPage } from './components/connect/ConnectPage';
 import { playBeep } from './services/soundFx';
 import { logout as logoutApi } from './services/authApi';
 import { fetchPlatformStats, type PlatformStats } from './services/statsApi';
@@ -212,6 +213,16 @@ export function App() {
             }
           />
           <Route path="/ai" element={<PixelAiMate onOpenModal={handleOpenModal} />} />
+          <Route
+            path="/connect"
+            element={
+              <ConnectPage
+                currentUser={currentUser}
+                onRequireLogin={requireLogin}
+                showToast={triggerToast}
+              />
+            }
+          />
           <Route path="/news" element={<GoodNewsPage currentUser={currentUser} />} />
           <Route
             path="/roadmap"

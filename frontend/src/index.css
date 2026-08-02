@@ -9687,3 +9687,514 @@ strong, small, em, span, label, button, a {
 .ai-header .ai-avatar {
   font-size: 0;
 }
+
+/* ── CONNECT: 원하는 활동을 남기면 센터가 프로그램을 여는 자리 ───────── */
+.connect-page {
+  width: 100%;
+}
+
+.connect-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  border-top: 2px solid var(--pc-dark);
+  border-bottom: 1px solid var(--pc-dark);
+  padding: 40px 0 32px;
+}
+
+.connect-heading > div > span {
+  color: var(--magazine-accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2.2px;
+}
+
+.connect-heading h2 {
+  margin-top: 10px;
+  color: var(--pc-dark);
+  font-size: clamp(30px, 4.2vw, 50px);
+  font-weight: 900;
+  letter-spacing: -2.2px;
+  line-height: 1.08;
+}
+
+.connect-heading p {
+  max-width: 620px;
+  margin-top: 14px;
+  color: #666666;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.connect-write-open {
+  flex-shrink: 0;
+  border: 1px solid var(--pc-dark);
+  border-radius: 999px;
+  background: var(--pc-dark);
+  padding: 13px 24px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/*
+ * 작성 폼은 목록 위에 얹히는 패널이다.
+ * 입력칸이 화면 끝까지 늘어나면 어디를 채워야 할지 눈이 흩어지므로 폭을 묶는다.
+ */
+.connect-form {
+  border-bottom: 1px solid var(--pc-dark);
+  background: #f1f1ed;
+  padding: 30px var(--pc-list-gutter) 34px;
+}
+
+.connect-form-inner {
+  display: flex;
+  max-width: 680px;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.connect-form-origin {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  border-left: 3px solid var(--magazine-accent);
+  background: #ffffff;
+  padding: 11px 14px;
+  color: #555555;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.connect-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.connect-form label small {
+  color: #8a8a84;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.connect-form input,
+.connect-form select,
+.connect-form textarea {
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 13px 14px;
+  color: var(--pc-dark);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+}
+
+.connect-form input::placeholder,
+.connect-form textarea::placeholder {
+  color: #b4b4ae;
+}
+
+.connect-form input:focus,
+.connect-form select:focus,
+.connect-form textarea:focus {
+  border-color: var(--pc-dark);
+}
+
+.connect-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.connect-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #dcdcd6;
+  padding-top: 18px;
+}
+
+.connect-form-actions button[type='submit'] {
+  border: 1px solid var(--pc-dark);
+  background: var(--pc-dark);
+  padding: 14px 28px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.connect-form-actions button[type='submit']:disabled {
+  border-color: #c9c9c4;
+  background: #c9c9c4;
+  cursor: progress;
+}
+
+.connect-form-actions button[type='button'] {
+  border: 0;
+  background: none;
+  color: #777777;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* 센터가 연 프로그램을 요청에 이어 붙이는 자리 */
+.connect-link-panel {
+  margin-top: 12px;
+  border: 1px solid var(--pc-dark);
+  background: #ffffff;
+  padding: 14px 16px;
+}
+
+.connect-link-panel strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--pc-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.connect-link-panel p {
+  margin: 0;
+  color: #777777;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.connect-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.connect-link-row select {
+  min-width: 220px;
+  flex: 1;
+  border: 1px solid #d5d5d0;
+  background: #ffffff;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.connect-link-row button {
+  border: 1px solid var(--pc-dark);
+  background: var(--pc-dark);
+  padding: 10px 18px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.connect-other-center {
+  color: #9a9a94;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.connect-filter {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--pc-dark);
+  padding: 16px 0;
+}
+
+.connect-filter button {
+  border: 1px solid #d5d5d0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 8px 18px;
+  color: #666666;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.connect-filter button.active {
+  border-color: var(--pc-dark);
+  background: var(--pc-dark);
+  color: #ffffff;
+}
+
+.connect-list {
+  border-top: 1px solid var(--pc-dark);
+}
+
+/* 커뮤니티 목록과 같은 행 구조로 둔다. 읽는 흐름이 서비스 안에서 하나여야 한다. */
+.connect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px;
+  align-items: center;
+  column-gap: 20px;
+  min-height: 132px;
+  border-bottom: 1px solid #e6e6e1;
+  padding: 22px var(--pc-list-gutter);
+  transition: background-color 0.15s ease;
+}
+
+.connect-row:hover {
+  background: #f4f4f0;
+}
+
+.connect-row.status-fulfilled {
+  background: #f4f8f3;
+}
+
+.connect-row-main {
+  min-width: 0;
+}
+
+.connect-row-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.connect-row-main h4 {
+  margin: 10px 0 6px;
+  color: var(--pc-dark);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  line-height: 1.4;
+}
+
+.connect-row-main > p {
+  margin: 0;
+  color: #666666;
+  font-size: 12.5px;
+  line-height: 1.7;
+  white-space: pre-line;
+}
+
+.connect-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #9a9a94;
+  font-size: 11px;
+}
+
+.connect-row-meta strong {
+  color: #555555;
+  font-weight: 800;
+}
+
+.connect-badge {
+  border: 1px solid #d5d5d0;
+  padding: 3px 8px;
+  color: #555555;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+}
+
+.connect-badge.is-ai {
+  border-color: var(--magazine-accent);
+  color: var(--magazine-accent);
+}
+
+.connect-status {
+  color: #8a8a84;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.connect-row.status-fulfilled .connect-status {
+  color: #237a57;
+}
+
+.connect-reply {
+  margin-top: 12px;
+  border-left: 3px solid #237a57;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.connect-reply strong {
+  display: block;
+  color: #237a57;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.connect-reply p {
+  margin: 6px 0 0;
+  color: #555555;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.connect-reply button {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: var(--pc-dark);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 공감 수는 센터가 프로그램을 열지 판단하는 근거라 행 끝에 크게 세운다. */
+.connect-row-reaction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.connect-support {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #d5d5d0;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px 0;
+  color: #555555;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.connect-support span {
+  font-size: 15px;
+}
+
+.connect-support:hover {
+  border-color: var(--pc-dark);
+}
+
+.connect-support.is-on {
+  border-color: var(--magazine-accent);
+  background: var(--magazine-accent);
+  color: #ffffff;
+}
+
+.connect-row-reaction small {
+  color: #9a9a94;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.connect-claim {
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid var(--pc-dark);
+  border-radius: 999px;
+  background: var(--pc-dark);
+  padding: 8px 0;
+  color: #ffffff;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.connect-empty {
+  border-bottom: 1px solid #e6e6e1;
+  padding: 50px var(--pc-list-gutter);
+  color: #777777;
+  font-size: 13px;
+  text-align: center;
+}
+
+.connect-empty strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--pc-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+/* AI 도크에서 CONNECT로 넘기는 제안 카드 */
+.ai-connect-suggest {
+  margin-top: 10px;
+  border: 1px solid var(--pc-dark);
+  border-left-width: 4px;
+  background: #ffffff;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.ai-connect-suggest strong {
+  display: block;
+  color: var(--pc-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.ai-connect-suggest p {
+  margin: 6px 0 12px;
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.ai-connect-suggest button {
+  border: 1px solid var(--pc-dark);
+  background: var(--pc-dark);
+  padding: 10px 16px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .connect-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .connect-row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 16px;
+  }
+
+  .connect-row-reaction {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .connect-support {
+    width: auto;
+    flex-direction: row;
+    padding: 9px 18px;
+  }
+
+  .connect-claim {
+    width: auto;
+    margin-top: 0;
+    padding: 9px 18px;
+  }
+}
