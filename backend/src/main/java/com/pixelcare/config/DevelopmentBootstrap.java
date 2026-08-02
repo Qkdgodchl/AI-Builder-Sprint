@@ -446,10 +446,10 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                                 INSERT INTO clm_documents (
                                     commitment_id, volunteer_id, volunteer_title, applicant_user_id,
                                     applicant_name, applicant_email, modusign_document_id,
-                                    signing_method, status, signed_at, last_event_type, last_event_rank
+                                    signing_method, status, signed_at, last_event_type, last_event_rank, created_at
                                 )
                                 SELECT ?, o.id, o.title, u.id, u.name, u.email, ?,
-                                       'SECURE_LINK', ?, %s, ?, ?
+                                       'SECURE_LINK', ?, %s, ?, ?, CURRENT_TIMESTAMP
                                 FROM opportunities o JOIN users u ON u.id = ?
                                 WHERE o.id = ?
                                 """.formatted(signed ? "CURRENT_TIMESTAMP" : "NULL"),

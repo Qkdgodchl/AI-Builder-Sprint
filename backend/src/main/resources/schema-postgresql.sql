@@ -155,9 +155,26 @@ CREATE TABLE IF NOT EXISTS warmth_events (
 
 CREATE TABLE IF NOT EXISTS clm_documents (
     id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    title VARCHAR(255) NULL,
+    commitment_id BIGINT NULL,
+    volunteer_id BIGINT NULL,
+    volunteer_title VARCHAR(255) NULL,
+    applicant_user_id BIGINT NULL,
+    applicant_name VARCHAR(100) NULL,
+    applicant_email VARCHAR(255) NULL,
+    applicant_phone VARCHAR(50) NULL,
+    modusign_document_id VARCHAR(255) NULL,
+    signing_url TEXT NULL,
+    signing_method VARCHAR(50) NULL,
+    status VARCHAR(50) NULL DEFAULT 'PENDING_SIGNATURE',
+    signed_at TIMESTAMP NULL,
+    last_event_type VARCHAR(100) NULL,
+    last_event_rank INT DEFAULT 0,
+    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMP NULL,
+    deleted_by VARCHAR(255) NULL
 );
 
 CREATE TABLE IF NOT EXISTS clm_document_files (
@@ -714,3 +731,17 @@ ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS version_no INT DEFAULT 
 ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS terms_json TEXT;
 ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS rendered_content TEXT;
 ALTER TABLE commitment_versions ADD COLUMN IF NOT EXISTS created_by BIGINT;
+
+ALTER TABLE clm_documents ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS commitment_id BIGINT;
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS volunteer_id BIGINT;
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS volunteer_title VARCHAR(255);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS applicant_user_id BIGINT;
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS applicant_name VARCHAR(100);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS applicant_email VARCHAR(255);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS modusign_document_id VARCHAR(255);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS signing_method VARCHAR(50);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS signed_at TIMESTAMP;
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS last_event_type VARCHAR(100);
+ALTER TABLE clm_documents ADD COLUMN IF NOT EXISTS last_event_rank INT DEFAULT 0;
+
