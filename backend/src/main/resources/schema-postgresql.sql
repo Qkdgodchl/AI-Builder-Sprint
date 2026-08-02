@@ -193,6 +193,8 @@ CREATE TABLE IF NOT EXISTS clm_document_files (
     content_type VARCHAR(100) NOT NULL,
     size_bytes BIGINT NOT NULL,
     sha256 VARCHAR(64) NOT NULL,
+    -- 배포 디스크는 재배포마다 비워지므로 파일 내용을 함께 보관한다.
+    content BYTEA NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL,
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,

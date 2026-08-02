@@ -8,7 +8,7 @@ import com.pixelcare.domain.clm.repository.ClmDocumentRepository;
 import com.pixelcare.global.auth.CurrentUser;
 import com.pixelcare.global.error.ApiException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.PathResource;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @Service
 public class ClmDocumentArchiveService {
 
-    public record DownloadedFile(PathResource resource, String filename, String contentType) {}
+    public record DownloadedFile(ByteArrayResource resource, String filename, String contentType) {}
 
     private static final String SIGNED_DOCUMENT = "SIGNED_DOCUMENT";
     private static final String AUDIT_TRAIL = "AUDIT_TRAIL";
@@ -83,11 +83,9 @@ public class ClmDocumentArchiveService {
         ClmDocumentFile file = fileRepository.findByIdAndIsDeletedFalse(fileId)
                 .filter(found -> found.getClmDocumentId().equals(documentId))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "CLM_FILE_NOT_FOUND", "보관된 전자서명 파일을 찾을 수 없습니다."));
-        Path target = archivePath.resolve(file.getStorageKey()).normalize();
-        if (!target.startsWith(archivePath) || !Files.isRegularFile(target)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "CLM_FILE_NOT_FOUND", "보관된 전자서명 파일을 찾을 수 없습니다.");
-        }
-        return new DownloadedFile(new PathResource(target), file.getOriginalName(), file.getContentType());
+        byte[] bytes = readBytes(file).orElseThrow(() ->
+                new ApiException(HttpStatus.NOT_FOUND, "CLM_FILE_NOT_FOUND", "보관된 전자서명 파일을 찾을 수 없습니다."));
+        return new DownloadedFile(new ByteArrayResource(bytes), file.getOriginalName(), file.getContentType());
     }
 
     /**
@@ -100,35 +98,44 @@ public class ClmDocumentArchiveService {
         return java.util.stream.Stream.of(SIGNED_DOCUMENT, "PLEDGE_DRAFT_PDF")
                 .flatMap(type -> files.stream().filter(f -> type.equals(f.getFileType())))
                 .findFirst()
-                .flatMap(file -> {
-                    Path target = archivePath.resolve(file.getStorageKey()).normalize();
-                    if (!target.startsWith(archivePath) || !Files.isRegularFile(target)) return Optional.empty();
-                    try {
-                        return Optional.of(new ArchivedPdf(
-                                Files.readAllBytes(target), file.getOriginalName(), file.getFileType()));
-                    } catch (Exception e) {
-                        return Optional.empty();
-                    }
-                });
+                .flatMap(file -> readBytes(file)
+                        .map(bytes -> new ArchivedPdf(bytes, file.getOriginalName(), file.getFileType())));
+    }
+
+    /**
+     * 보관된 내용을 꺼낸다.
+     * 데이터베이스에 담아 둔 내용을 먼저 쓰고, 그 전에 저장된 자료는 디스크에서 찾는다.
+     */
+    private Optional<byte[]> readBytes(ClmDocumentFile file) {
+        if (file.getContent() != null && file.getContent().length > 0) {
+            return Optional.of(file.getContent());
+        }
+        Path target = archivePath.resolve(file.getStorageKey()).normalize();
+        if (!target.startsWith(archivePath) || !Files.isRegularFile(target)) return Optional.empty();
+        try {
+            return Optional.of(Files.readAllBytes(target));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     public record ArchivedPdf(byte[] bytes, String filename, String fileType) {}
 
     private void store(ClmDocument document, String type, String suffix, byte[] bytes) {
         String key = document.getId() + "-" + UUID.randomUUID() + ".pdf";
-        Path target = archivePath.resolve(key).normalize();
         try {
-            Files.createDirectories(archivePath);
-            Files.write(target, bytes, StandardOpenOption.CREATE_NEW);
             String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
             String filename = "pixelcare-" + document.getId() + "-" + suffix;
             fileRepository.save(new ClmDocumentFile(
-                    document.getId(), type, key, filename, "application/pdf", bytes.length, hash
+                    document.getId(), type, key, filename, "application/pdf", bytes.length, hash, bytes
             ));
-        } catch (Exception e) {
+            // 디스크에도 함께 남긴다. 로컬에서 파일을 직접 열어 볼 때 쓰고,
+            // 여기서 실패하더라도 보관 자체는 데이터베이스에 끝나 있으므로 막지 않는다.
             try {
-                Files.deleteIfExists(target);
+                Files.createDirectories(archivePath);
+                Files.write(archivePath.resolve(key).normalize(), bytes, StandardOpenOption.CREATE_NEW);
             } catch (Exception ignored) {}
+        } catch (Exception e) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "CLM_ARCHIVE_FAILED", "완료 전자서명 파일 보관에 실패했습니다.");
         }
     }
