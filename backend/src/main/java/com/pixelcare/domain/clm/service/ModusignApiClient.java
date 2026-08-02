@@ -27,6 +27,9 @@ import java.util.Map;
 @Component
 public class ModusignApiClient {
 
+    /** 약정서 PDF에 찍히는 서명란 문구. 이 자리에 모두싸인 서명 필드를 얹는다. */
+    static final String SIGNATURE_ANCHOR_TEXT = PledgeContractPdfGenerator.SIGNATURE_ANCHOR_TEXT;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final String userEmail;
@@ -161,6 +164,52 @@ public class ModusignApiClient {
             System.err.println("모두싸인 API 네트워크 연결 실패: " + e.getMessage());
             throw gatewayError("모두싸인 문서 생성 요청에 실패했습니다: " + e.getMessage());
         }
+    }
+
+    /**
+     * 약정서 PDF의 "약정자 서명" 문구를 기준으로 서명란을 얹는다.
+     * 약정 종류에 따라 본문 길이가 달라져 서명란의 페이지·좌표가 움직이므로
+     * 고정 좌표 대신 문구(anchor)를 잡는다.
+     */
+    private List<Map<String, Object>> signatureFields() {
+        return List.of(Map.of(
+                "type", "SIGNATURE",
+                "dataLabel", SIGNATURE_ANCHOR_TEXT,
+                "required", true,
+                "signatureTypes", List.of("SIGN"),
+                "allowedGenerationMethods", List.of("SIGN_DRAWING"),
+                "position", Map.of("anchor", Map.of("text", SIGNATURE_ANCHOR_TEXT)),
+                "size", Map.of("width", 0.2, "height", 0.05)
+        ));
+    }
+
+    private ResponseEntity<String> createDocument(
+            String documentTitle,
+            FileUploadResult fileResult,
+            String role,
+            String applicantName,
+            String applicantEmail,
+            List<Map<String, Object>> fields
+    ) {
+        Map<String, Object> participant = new java.util.LinkedHashMap<>();
+        participant.put("role", role);
+        participant.put("name", applicantName);
+        participant.put("signingOrder", 1);
+        participant.put("signingMethod", Map.of("type", "SECURE_LINK", "value", applicantEmail));
+        if (fields != null) participant.put("fields", fields);
+
+        Map<String, Object> body = Map.of(
+                "title", documentTitle,
+                "file", Map.of("fileId", fileResult.fileId(), "token", fileResult.token()),
+                "participants", List.of(participant)
+        );
+
+        return restTemplate.exchange(
+                baseUrl + "/documents",
+                HttpMethod.POST,
+                new HttpEntity<>(body, authorizedHeaders()),
+                String.class
+        );
     }
 
     public SecureLinkResult createSecureLink(String documentId, String participantId) {
@@ -332,27 +381,19 @@ public class ModusignApiClient {
                     ? participantRole : "후원자";
 
             // 3. 문서 서명 요청 생성 (모두싸인 공식 루트 수준 JSON 구조)
-            Map<String, Object> participant = Map.of(
-                    "role", effectiveRole,
-                    "name", applicantName,
-                    "signingOrder", 1,
-                    "signingMethod", Map.of("type", "SECURE_LINK", "value", applicantEmail)
-            );
-            Map<String, Object> body = Map.of(
-                    "title", documentTitle,
-                    "file", Map.of(
-                            "fileId", fileResult.fileId(),
-                            "token", fileResult.token()
-                    ),
-                    "participants", List.of(participant)
-            );
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                    baseUrl + "/documents",
-                    HttpMethod.POST,
-                    new HttpEntity<>(body, authorizedHeaders()),
-                    String.class
-            );
+            //    서명 필드를 함께 보내야 서명 화면에 서명란이 생겨 직접 그려 넣을 수 있다.
+            //    이 필드를 빼면 문서만 보이고 서명할 자리가 없다.
+            ResponseEntity<String> response;
+            try {
+                response = createDocument(documentTitle, fileResult, effectiveRole, applicantName,
+                        applicantEmail, signatureFields());
+            } catch (RestClientResponseException fieldError) {
+                // 서명란 문구를 못 찾는 등 필드 배치가 거부되면, 최소한 서명 요청 자체는 살린다.
+                System.err.println("모두싸인 서명 필드 배치 실패, 필드 없이 재시도합니다: "
+                        + fieldError.getResponseBodyAsString());
+                response = createDocument(documentTitle, fileResult, effectiveRole, applicantName,
+                        applicantEmail, null);
+            }
             JsonNode root = parseSuccessfulBody(response, "MODUSIGN_FILE_DOCUMENT_CREATE_FAILED");
             String documentId = requiredText(root, "id", "모두싸인 응답에 문서 ID가 없습니다.");
             JsonNode participants = root.path("participants");

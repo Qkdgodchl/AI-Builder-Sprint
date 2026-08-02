@@ -18,6 +18,7 @@ import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.element.Text;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
+import com.itextpdf.layout.properties.VerticalAlignment;
 import com.pixelcare.domain.ai.dto.PledgeIntent;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +35,12 @@ import java.util.List;
  */
 @Service
 public class PledgeContractPdfGenerator {
+
+    /**
+     * 서명란 라벨. 모두싸인이 이 문구를 찾아 그 자리에 서명 필드를 얹으므로
+     * 문구를 바꾸면 서명란 위치도 함께 깨진다.
+     */
+    public static final String SIGNATURE_ANCHOR_TEXT = "약정자 서명";
 
     private static final DeviceRgb COLOR_PRIMARY = new DeviceRgb(0x26, 0x26, 0x4F); // Deep Navy
     private static final DeviceRgb COLOR_ACCENT  = new DeviceRgb(0x2E, 0xC4, 0xB6); // Mint Teal
@@ -58,7 +65,7 @@ public class PledgeContractPdfGenerator {
 
             // ── 문서 상단 타이틀 ──
             String titleText = resolveKoreanTitle(intent.pledgeType());
-            doc.add(new Paragraph("Pixel Care (픽셀 케어)")
+            doc.add(new Paragraph("잇다 ITDA")
                     .setFont(font).setFontSize(10)
                     .setFontColor(COLOR_ACCENT)
                     .setTextAlignment(TextAlignment.RIGHT));
@@ -69,7 +76,7 @@ public class PledgeContractPdfGenerator {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(10).setMarginBottom(4));
 
-            String docNumber = "문서관리번호: PC-CLM-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+            String docNumber = "문서관리번호: ITDA-CLM-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
                     + "-" + String.format("%04d", (int)(Math.random() * 9000) + 1000);
             doc.add(new Paragraph(docNumber + "  |  [전자서명법 제3조 규정 법적 증빙문서]")
                     .setFont(font).setFontSize(9)
@@ -190,22 +197,28 @@ public class PledgeContractPdfGenerator {
             Table sigTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
                     .setWidth(UnitValue.createPercentValue(100));
 
-            Cell applicantCell = new Cell().setPadding(12).setHeight(90)
+            Cell applicantCell = new Cell().setPadding(12)
                     .setBorder(new SolidBorder(COLOR_PRIMARY, 1));
             applicantCell.add(new Paragraph("[약정자 (기부자 / 봉사자)]").setFont(font).setFontSize(10).setFontColor(COLOR_PRIMARY));
             applicantCell.add(new Paragraph("성 명: " + safe(applicantName)).setFont(font).setFontSize(9.5f));
             applicantCell.add(new Paragraph("이메일: " + safe(applicantEmail)).setFont(font).setFontSize(9).setFontColor(ColorConstants.GRAY));
             applicantCell.add(new Paragraph("서명일: " + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일"))).setFont(font).setFontSize(9));
-            applicantCell.add(new Paragraph("(서명 / 모두싸인 전자인장) [서명완료]").setFont(font).setFontSize(9.5f).setFontColor(COLOR_ACCENT).setMarginTop(8));
+            applicantCell.add(new Paragraph("위 약정 내용을 확인하였으며 이에 동의하고 서명합니다.")
+                    .setFont(font).setFontSize(8.5f).setFontColor(ColorConstants.DARK_GRAY).setMarginTop(8));
+            applicantCell.add(signatureBox(font, SIGNATURE_ANCHOR_TEXT));
             sigTable.addCell(applicantCell);
 
-            Cell orgCell = new Cell().setPadding(12).setHeight(90)
+            // 기관 쪽은 서명란을 두지 않는다. 플랫폼이 발급한 문서라 직인은 전자검증으로 갈음한다.
+            Cell orgCell = new Cell().setPadding(12)
                     .setBorder(new SolidBorder(COLOR_PRIMARY, 1));
             orgCell.add(new Paragraph("[주관 / 수혜 기관]").setFont(font).setFontSize(10).setFontColor(COLOR_PRIMARY));
             orgCell.add(new Paragraph("기관명: " + safe(organizer)).setFont(font).setFontSize(9.5f));
-            orgCell.add(new Paragraph("플랫폼: 픽셀케어 (Pixel Care CLM)").setFont(font).setFontSize(9).setFontColor(ColorConstants.GRAY));
+            orgCell.add(new Paragraph("플랫폼: 잇다 (ITDA CLM)").setFont(font).setFontSize(9).setFontColor(ColorConstants.GRAY));
             orgCell.add(new Paragraph("발급일: " + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일"))).setFont(font).setFontSize(9));
-            orgCell.add(new Paragraph("(직인 생략 / 전자검증 완료)").setFont(font).setFontSize(9.5f).setFontColor(COLOR_PRIMARY).setMarginTop(8));
+            orgCell.add(new Paragraph("위 약정을 수령하고 이행할 것을 확약합니다.")
+                    .setFont(font).setFontSize(8.5f).setFontColor(ColorConstants.DARK_GRAY).setMarginTop(8));
+            orgCell.add(new Paragraph("(직인 생략 / 전자검증 완료)")
+                    .setFont(font).setFontSize(9).setFontColor(COLOR_PRIMARY).setMarginTop(6));
             sigTable.addCell(orgCell);
 
             doc.add(sigTable);
@@ -213,7 +226,7 @@ public class PledgeContractPdfGenerator {
             // 푸터
             doc.add(new Paragraph("").setBorderTop(new SolidBorder(COLOR_BORDER, 1)).setMarginTop(20));
             doc.add(new Paragraph(
-                    "본 문서는 픽셀케어 (Pixel Care) CLM 파이프라인과 Upstage Solar LLM을 통해 생성된 공식 법적 증빙 문서입니다.\n" +
+                    "본 문서는 잇다(ITDA) CLM 파이프라인과 Upstage Solar LLM을 통해 생성된 공식 법적 증빙 문서입니다.\n" +
                     docNumber + "  |  전자서명법 제3조 법적효력 보장")
                     .setFont(font).setFontSize(8)
                     .setFontColor(ColorConstants.GRAY)
@@ -251,6 +264,26 @@ public class PledgeContractPdfGenerator {
                 throw new RuntimeException("Failed to load PDF font", ex);
             }
         }
+    }
+
+    /**
+     * 서명을 실제로 받아 적을 빈 칸.
+     * 이 자리가 비어 있어야 모두싸인 전자인장이나 자필 서명이 들어갈 공간이 생긴다.
+     */
+    private Table signatureBox(PdfFont font, String label) {
+        Table box = new Table(1).setWidth(UnitValue.createPercentValue(100)).setMarginTop(6);
+        // 모두싸인은 이 문구를 '중심'으로 서명 필드를 얹는다.
+        // 그래서 문구를 칸 한가운데에 두어야 서명이 칸 안에 들어온다.
+        // 서명이 덮어써도 지저분해 보이지 않도록 옅은 회색으로 깔아 둔다.
+        Cell cell = new Cell().setHeight(58).setPadding(6)
+                .setBorder(new SolidBorder(COLOR_BORDER, 1))
+                .setVerticalAlignment(VerticalAlignment.MIDDLE);
+        cell.add(new Paragraph(label)
+                .setFont(font).setFontSize(8)
+                .setFontColor(COLOR_BORDER)
+                .setTextAlignment(TextAlignment.CENTER));
+        box.addCell(cell);
+        return box;
     }
 
     private void addTableRow(Table table, PdfFont font, String label, String value) {
