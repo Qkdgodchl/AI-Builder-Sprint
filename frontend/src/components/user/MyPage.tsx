@@ -102,16 +102,6 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
   const selectedClmDocumentId = selectedClmDocument?.id ?? null;
 
   useEffect(() => {
-<<<<<<< HEAD
-    if (!selectedClmDocument) {
-      setClmFiles([]);
-      return;
-    }
-    fetchClmDocumentFiles(selectedClmDocument.id)
-      .then(setClmFiles)
-      .catch((error) => console.error('전자서명 파일 조회 오류:', error));
-  }, [selectedClmDocument]);
-=======
     if (!selectedClmDocumentId) {
       setClmFiles([]);
       return;
@@ -157,7 +147,6 @@ export const MyPage: React.FC<MyPageProps> = ({ currentUser }) => {
       setRenewingCommitmentId('');
     }
   };
->>>>>>> origin/main
 
   const saveProfile = async (event: React.FormEvent) => {
     event.preventDefault();
