@@ -18,8 +18,8 @@ backend/.gradle/
 backend/build/
 backend/out/
 backend/bin/
-bin/
 *.jar
+!**/gradle-wrapper.jar
 *.war
 
 # Local environment / secrets
