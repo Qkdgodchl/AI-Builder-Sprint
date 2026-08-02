@@ -61,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
     { label: 'HOME', path: '/' },
     { label: 'VOLUNTEER / DONATION', path: '/volunteer' },
     { label: 'COMMUNITY', path: '/community' },
+    { label: 'CONNECT', path: '/connect' },
     { label: 'GOOD NEWS', path: '/news' },
     { label: 'MY PAGE', path: '/my-page' },
   ];
