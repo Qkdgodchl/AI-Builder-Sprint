@@ -66,19 +66,25 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
   const [region, setRegion] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const isManager = currentUser?.role === 'CENTER_MANAGER';
+  // role은 OPERATOR가 CENTER_MANAGER를 덮어쓰는 단일 축약값이라 겸직 계정에서 어긋난다.
+  const isManager = Boolean(currentUser?.roles?.includes('CENTER_MANAGER'));
   // 요청을 맡은 뒤 실제로 연 프로그램을 고르게 하려고 내 센터의 프로그램을 미리 받아 둔다.
   const [myOpportunities, setMyOpportunities] = useState<ManagedOpportunity[]>([]);
   const [linkingId, setLinkingId] = useState('');
   const [selectedOpportunity, setSelectedOpportunity] = useState('');
+  // 공개 전(DRAFT) 프로그램을 연결하면 요청자의 "개설된 프로그램 보기" 링크가 끊긴다.
+  const linkableOpportunities = myOpportunities.filter(
+    (opportunity) => opportunity.status === 'PUBLISHED',
+  );
 
   useEffect(() => {
     if (!isManager) return;
+    // 여러 센터를 맡은 관리자도 있으므로 첫 센터만이 아니라 전부 모아 온다.
     fetchManagedOrganizations()
       .then((organizations) =>
-        organizations.length ? fetchManagedOpportunities(organizations[0].id) : [],
+        Promise.all(organizations.map((organization) => fetchManagedOpportunities(organization.id))),
       )
-      .then(setMyOpportunities)
+      .then((groups) => setMyOpportunities(groups.flat()))
       .catch(() => setMyOpportunities([]));
   }, [isManager]);
 
@@ -320,9 +326,9 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
                 {linkingId === item.publicId && (
                   <div className="connect-link-panel">
                     <strong>어떤 프로그램으로 열었나요?</strong>
-                    {myOpportunities.length === 0 ? (
+                    {linkableOpportunities.length === 0 ? (
                       <p>
-                        아직 등록한 프로그램이 없습니다. 내 센터에서 프로그램을 먼저 등록해 주세요.
+                        아직 공개(PUBLISHED)된 프로그램이 없습니다. 내 센터에서 프로그램을 먼저 등록·공개해 주세요.
                       </p>
                     ) : (
                       <div className="connect-link-row">
@@ -331,7 +337,7 @@ export const ConnectPage: React.FC<ConnectPageProps> = ({
                           onChange={(event) => setSelectedOpportunity(event.target.value)}
                         >
                           <option value="">프로그램 선택</option>
-                          {myOpportunities.map((opportunity) => (
+                          {linkableOpportunities.map((opportunity) => (
                             <option key={opportunity.id} value={opportunity.id}>
                               {opportunity.title}
                             </option>

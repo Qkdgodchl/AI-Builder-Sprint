@@ -20,13 +20,16 @@ public class ConnectController {
 
     private final ConnectService connectService;
     private final ManagementService managementService;
+    private final com.pixelcare.domain.opportunity.service.OpportunityService opportunityService;
     private final AuthGuard authGuard;
 
     public ConnectController(ConnectService connectService,
                              ManagementService managementService,
+                             com.pixelcare.domain.opportunity.service.OpportunityService opportunityService,
                              AuthGuard authGuard) {
         this.connectService = connectService;
         this.managementService = managementService;
+        this.opportunityService = opportunityService;
         this.authGuard = authGuard;
     }
 
@@ -82,6 +85,24 @@ public class ConnectController {
                     "담당 센터가 있어야 요청을 맡을 수 있습니다.");
         }
         var organization = organizations.get(0);
+        if (body != null && body.opportunityId() != null) {
+            // 존재하지 않거나 내 센터 소유가 아니거나 공개 전인 프로그램을 연결하면
+            // 요청자가 받는 "개설된 프로그램 보기" 링크가 끊긴다.
+            var opportunity = opportunityService.managerDetail(user.id(), body.opportunityId());
+            if (!"PUBLISHED".equals(opportunity.status())) {
+                throw new ApiException(HttpStatus.CONFLICT, "OPPORTUNITY_NOT_PUBLISHED",
+                        "공개(PUBLISHED)된 프로그램만 연결할 수 있습니다.");
+            }
+            // 연결한 프로그램을 소유한 센터 이름으로 기록해야 안내가 정확하다.
+            if (!opportunity.organizationId().equals(organization.id())) {
+                var owning = organizations.stream()
+                        .filter(candidate -> candidate.id().equals(opportunity.organizationId()))
+                        .findFirst();
+                if (owning.isPresent()) {
+                    organization = owning.get();
+                }
+            }
+        }
         return ApiResponse.success(
                 connectService.handle(publicId, body, organization.id(), organization.name(), user),
                 "요청을 맡았습니다.");

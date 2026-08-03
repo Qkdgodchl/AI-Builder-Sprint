@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CenterActivityNotePanel } from './CenterActivityNotePanel';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionUser } from '../../types';
@@ -24,6 +24,11 @@ import {
   type ClmDocumentDto,
   type ClmDocumentFileDto,
 } from '../../services/clmApi';
+import {
+  fetchConnectRequests,
+  handleConnectRequest,
+  type ConnectRequestItem,
+} from '../../services/connectApi';
 
 interface MyCenterPageProps {
   currentUser: SessionUser;
@@ -48,7 +53,7 @@ interface ManagedCenter {
 
 type PostStatus = '공개 중' | '마감';
 type ApplicantStatus = '검토 대기' | '승인 완료';
-type CenterTab = 'posts' | 'applicants';
+type CenterTab = 'posts' | 'applicants' | 'connect';
 type PostManagerTab = 'edit' | 'applicants';
 
 interface CenterPost {
@@ -382,9 +387,16 @@ function CenterSignedDocumentPanel({ applicationPublicId }: { applicationPublicI
     fetchManagerApplicationClmDocuments(applicationPublicId)
       .then(async (items) => {
         const fileGroups = await Promise.all(items.map(async (document) => {
-          if (document.status !== 'SIGNED') return [];
-          const archived = await fetchClmDocumentFiles(document.id);
-          return archived.map((file) => ({ ...file, documentId: document.id }));
+          // 상태 동기화가 어긋나 있어도 보관된 증빙은 존재할 수 있으므로 항상 조회하고,
+          // 한 건의 실패가 목록 전체를 지우지 않게 문서 단위로 방어한다.
+          try {
+            const archived = await fetchClmDocumentFiles(document.id);
+            return archived
+              .filter((file) => file.fileType === 'SIGNED_DOCUMENT' || file.fileType === 'AUDIT_TRAIL')
+              .map((file) => ({ ...file, documentId: document.id }));
+          } catch {
+            return [];
+          }
         }));
         if (!active) return;
         setDocuments(items);
@@ -463,6 +475,175 @@ function CenterSignedDocumentPanel({ applicationPublicId }: { applicationPublicI
             </div>
           )}
         </>
+      )}
+    </section>
+  );
+}
+
+const CONNECT_STATUS_LABEL: Record<ConnectRequestItem['status'], string> = {
+  OPEN: '수락 대기',
+  REVIEWING: '진행 중',
+  FULFILLED: '프로그램 개설 완료',
+};
+
+/** 이웃이 역제안한 선행(CONNECT) 요청을 센터 업무 화면 안에서 바로 수락·연결한다. */
+function CenterConnectPanel({ organizationId }: { organizationId: number }) {
+  const [requests, setRequests] = useState<ConnectRequestItem[]>([]);
+  const [opportunities, setOpportunities] = useState<ManagedOpportunity[]>([]);
+  const [linkingId, setLinkingId] = useState('');
+  const [selectedOpportunity, setSelectedOpportunity] = useState('');
+  const [busyId, setBusyId] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(() => {
+    setError('');
+    fetchConnectRequests()
+      .then((items) =>
+        // 수락 대기 → 진행 중 → 완료 순으로, 같은 상태면 응원 많은 요청을 먼저 보여준다.
+        setRequests([...items].sort((a, b) => {
+          const rank = { OPEN: 0, REVIEWING: 1, FULFILLED: 2 } as const;
+          return rank[a.status] - rank[b.status] || b.supportCount - a.supportCount;
+        })),
+      )
+      .catch((reason) => {
+        setRequests([]);
+        setError(reason instanceof Error ? reason.message : '요청을 불러오지 못했습니다.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    fetchManagedOpportunities(organizationId)
+      .then((items) => setOpportunities(items.filter((item) => item.status === 'PUBLISHED')))
+      .catch(() => setOpportunities([]));
+  }, [organizationId]);
+
+  const act = async (publicId: string, opportunityId?: number) => {
+    setBusyId(publicId);
+    setError('');
+    try {
+      await handleConnectRequest(publicId, opportunityId ? { opportunityId } : {});
+      setLinkingId('');
+      setSelectedOpportunity('');
+      load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '요청 처리에 실패했습니다.');
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const openCount = requests.filter((item) => item.status === 'OPEN').length;
+
+  return (
+    <section className="center-signed-documents center-connect-panel">
+      <header>
+        <div><span>CONNECT</span><h3>온기 잇다 · 이웃이 요청한 선행</h3></div>
+        <strong>수락 대기 {openCount}건</strong>
+      </header>
+      {loading ? (
+        <p className="center-document-state">이웃들의 요청을 불러오는 중입니다…</p>
+      ) : error ? (
+        <p className="center-document-state error">{error}</p>
+      ) : requests.length === 0 ? (
+        <p className="center-document-state">아직 접수된 선행 요청이 없습니다.</p>
+      ) : (
+        <div className="connect-list">
+          {requests.map((item) => (
+            <article
+              key={item.publicId}
+              className={`connect-row${item.status === 'FULFILLED' ? ' status-fulfilled' : ''}`}
+            >
+              <div className="connect-row-main">
+                <div className="connect-row-labels">
+                  <span className="connect-badge">{item.category === 'VOLUNTEER' ? '봉사' : '기부'}</span>
+                  {item.origin === 'AI' && <span className="connect-badge is-ai">AI 대화에서</span>}
+                  <span className="connect-status">{CONNECT_STATUS_LABEL[item.status]}</span>
+                </div>
+                <h4>{item.title}</h4>
+                <p>{item.content}</p>
+                <div className="connect-row-meta">
+                  <strong>{item.requesterNickname}</strong>
+                  <span>·</span>
+                  <span>응원 {item.supportCount}</span>
+                  {item.region && (
+                    <>
+                      <span>·</span>
+                      <span>{item.region}</span>
+                    </>
+                  )}
+                  {item.handledOrganizationName && (
+                    <>
+                      <span>·</span>
+                      <span>{item.handledOrganizationName} 담당</span>
+                    </>
+                  )}
+                </div>
+                {linkingId === item.publicId && (
+                  <div className="connect-link-panel">
+                    <strong>어떤 프로그램으로 열었나요?</strong>
+                    {opportunities.length === 0 ? (
+                      <p>공개(PUBLISHED)된 프로그램이 없습니다. 모집글을 먼저 등록·공개해 주세요.</p>
+                    ) : (
+                      <div className="connect-link-row">
+                        <select
+                          value={selectedOpportunity}
+                          onChange={(event) => setSelectedOpportunity(event.target.value)}
+                        >
+                          <option value="">프로그램 선택</option>
+                          {opportunities.map((opportunity) => (
+                            <option key={opportunity.id} value={opportunity.id}>
+                              {opportunity.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          disabled={!selectedOpportunity || busyId === item.publicId}
+                          onClick={() => act(item.publicId, Number(selectedOpportunity))}
+                        >
+                          연결하고 완료로 표시
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="connect-row-reaction">
+                {item.canHandle && item.status === 'OPEN' && (
+                  <button
+                    type="button"
+                    className="connect-claim"
+                    disabled={busyId === item.publicId}
+                    onClick={() => act(item.publicId)}
+                  >
+                    {busyId === item.publicId ? '처리 중…' : '이 요청 맡기'}
+                  </button>
+                )}
+                {item.canHandle && item.status === 'REVIEWING' && (
+                  <button
+                    type="button"
+                    className="connect-claim"
+                    onClick={() => {
+                      setLinkingId(linkingId === item.publicId ? '' : item.publicId);
+                      setSelectedOpportunity('');
+                    }}
+                  >
+                    {linkingId === item.publicId ? '취소' : '프로그램 연결'}
+                  </button>
+                )}
+                {!item.canHandle && item.status === 'REVIEWING' && (
+                  <small className="connect-other-center">다른 센터가 맡음</small>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );
@@ -652,6 +833,14 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         legacyApplicant?.postId ?? (numericPostId && !Number.isNaN(numericPostId) ? numericPostId : null),
       );
       setApplicationPublicId(legacyApplicant?.publicId ?? subSection ?? null);
+      setViewingApplicant(null);
+      return;
+    }
+
+    if (section === 'connect') {
+      setActiveTab('connect');
+      setApplicationPostId(null);
+      setApplicationPublicId(null);
       setViewingApplicant(null);
       return;
     }
@@ -1462,14 +1651,25 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         >
           신청 관리
         </button>
+        <button
+          type="button"
+          className={activeTab === 'connect' ? 'active' : ''}
+          onClick={() => navigate(`/my-centers/${selectedCenter.id}/connect`)}
+        >
+          온기 잇다 요청
+        </button>
         <span>
           {activeTab === 'posts'
             ? `총 ${centerPosts.length}개 모집글`
-            : `총 ${centerApplicants.length}건 신청`}
+            : activeTab === 'connect'
+              ? '이웃이 역제안한 선행 요청'
+              : `총 ${centerApplicants.length}건 신청`}
         </span>
       </nav>
 
-      {activeTab === 'posts' ? (
+      {activeTab === 'connect' ? (
+        <CenterConnectPanel organizationId={selectedCenter.id} />
+      ) : activeTab === 'posts' ? (
         <div className="center-post-table" role="table" aria-label="센터 모집글 목록">
           <div className="center-post-table-head" role="row">
             <span role="columnheader">프로그램</span>
