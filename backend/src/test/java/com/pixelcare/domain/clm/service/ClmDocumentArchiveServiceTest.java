@@ -59,8 +59,11 @@ class ClmDocumentArchiveServiceTest {
         ClmDocumentFileRepository fileRepository = mock(ClmDocumentFileRepository.class);
         ClmDocumentAccessService accessService = mock(ClmDocumentAccessService.class);
         ModusignApiClient apiClient = mock(ModusignApiClient.class);
-        when(fileRepository.existsByClmDocumentIdAndFileTypeAndIsDeletedFalse(33L, "SIGNED_DOCUMENT"))
-                .thenReturn(true);
+        // 같은 서명 세션(modusign-1)의 체결본이 이미 보관돼 있는 상황.
+        when(fileRepository.findByClmDocumentIdAndIsDeletedFalseOrderByIdAsc(33L))
+                .thenReturn(java.util.List.of(new ClmDocumentFile(
+                        33L, "SIGNED_DOCUMENT", "key", "pixelcare-33-signed-document-modusign-1.pdf",
+                        "application/pdf", 10L, "a".repeat(64), new byte[]{1})));
         ClmDocument document = new ClmDocument(
                 8L, "봉사 모집글", 1L, "홍길동", "user@example.com", null,
                 "modusign-1", "participant-1", "template-1",
@@ -75,5 +78,35 @@ class ClmDocumentArchiveServiceTest {
 
         verifyNoInteractions(apiClient);
         verify(fileRepository, never()).save(any());
+    }
+
+    @Test
+    void reSignedSessionArchivesAgainUnderNewDocumentId() {
+        ClmDocumentFileRepository fileRepository = mock(ClmDocumentFileRepository.class);
+        ClmDocumentAccessService accessService = mock(ClmDocumentAccessService.class);
+        ModusignApiClient apiClient = mock(ModusignApiClient.class);
+        // 첫 세션(modusign-1) 체결본만 보관된 상태에서 재서명 세션(modusign-2)이 완료됐다.
+        when(fileRepository.findByClmDocumentIdAndIsDeletedFalseOrderByIdAsc(33L))
+                .thenReturn(java.util.List.of(new ClmDocumentFile(
+                        33L, "SIGNED_DOCUMENT", "key", "pixelcare-33-signed-document-modusign-1.pdf",
+                        "application/pdf", 10L, "a".repeat(64), new byte[]{1})));
+        when(apiClient.downloadCompletedDocumentFiles("modusign-2"))
+                .thenReturn(new ModusignApiClient.CompletedDocumentFiles(
+                        "signed-pdf-2".getBytes(StandardCharsets.UTF_8), null));
+        ClmDocument document = new ClmDocument(
+                8L, "봉사 모집글", 1L, "홍길동", "user@example.com", null,
+                "modusign-2", "participant-2", "template-1",
+                "https://sign.example", LocalDateTime.now().plusMinutes(10)
+        );
+        ReflectionTestUtils.setField(document, "id", 33L);
+        ClmDocumentArchiveService service = new ClmDocumentArchiveService(
+                fileRepository, accessService, apiClient, tempDir.toString()
+        );
+
+        service.archiveCompletedFiles(document);
+
+        ArgumentCaptor<ClmDocumentFile> captor = ArgumentCaptor.forClass(ClmDocumentFile.class);
+        verify(fileRepository).save(captor.capture());
+        assertThat(captor.getValue().getOriginalName()).endsWith("signed-document-modusign-2.pdf");
     }
 }

@@ -74,6 +74,22 @@ public class DevelopmentBootstrap implements CommandLineRunner {
                 seedRecurringCommitments(donorId, organizationId);
                 seedCommunityActivity(organizationId);
                 backfillParticipationDates();
+                repairStuckSignedDocuments();
+        }
+
+        /**
+         * 재서명 세션을 붙일 때 종결 이벤트 랭크를 지우지 않던 시절의 문서를 되살린다.
+         * 서명 완료 이벤트(rank 100)가 이미 도착한 문서는 상태도 SIGNED여야 맞다.
+         */
+        private void repairStuckSignedDocuments() {
+                jdbcTemplate.update("""
+                                UPDATE clm_documents
+                                SET status = 'SIGNED',
+                                    signed_at = COALESCE(signed_at, CURRENT_TIMESTAMP)
+                                WHERE last_event_type = 'document_all_signed'
+                                  AND last_event_rank >= 100
+                                  AND status <> 'SIGNED'
+                                """);
         }
 
         private record OpportunitySeed(

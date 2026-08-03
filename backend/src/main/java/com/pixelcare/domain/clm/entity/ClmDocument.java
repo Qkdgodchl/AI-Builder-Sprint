@@ -197,6 +197,15 @@ public class ClmDocument extends BaseTimeEntity {
         this.signingUrl = signingUrl;
         this.signingUrlExpiresAt = signingUrlExpiresAt;
         this.status = "PENDING_SIGNATURE";
+        // 새 서명 세션은 새 문서다. 이전 세션의 종결 이벤트(rank 100)가 남아 있으면
+        // applyModusignEvent가 이후 모든 이벤트를 버려서 영영 SIGNED로 돌아오지 못한다.
+        this.lastEventType = null;
+        this.lastEventRank = 0;
+        this.signedAt = null;
+        this.rejectedAt = null;
+        this.completionMessage = null;
+        this.completionMessageSource = null;
+        this.completionMessageCreatedAt = null;
     }
 
     public void updateSecureLink(String signingUrl, LocalDateTime expiresAt) {

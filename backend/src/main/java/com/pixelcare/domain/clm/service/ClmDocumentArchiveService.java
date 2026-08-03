@@ -49,14 +49,24 @@ public class ClmDocumentArchiveService {
 
     @Transactional
     public void archiveCompletedFiles(ClmDocument document) {
-        if (fileRepository.existsByClmDocumentIdAndFileTypeAndIsDeletedFalse(document.getId(), SIGNED_DOCUMENT)) {
+        // 재서명하면 모두싸인 문서 ID가 바뀐다. 문서 단위가 아니라 서명 세션 단위로 막아야
+        // 두 번째 체결본이 첫 세션 보관본에 가로막혀 영영 저장되지 않는 일이 없다.
+        String signedName = "signed-document-" + document.getModusignDocumentId() + ".pdf";
+        // store()가 파일명 앞에 "pixelcare-{id}-" 접두사를 붙이므로 뒷부분으로 대조한다.
+        boolean alreadyArchived = fileRepository
+                .findByClmDocumentIdAndIsDeletedFalseOrderByIdAsc(document.getId())
+                .stream()
+                .anyMatch(file -> SIGNED_DOCUMENT.equals(file.getFileType())
+                        && file.getOriginalName() != null
+                        && file.getOriginalName().endsWith(signedName));
+        if (alreadyArchived) {
             return;
         }
         ModusignApiClient.CompletedDocumentFiles files =
                 modusignApiClient.downloadCompletedDocumentFiles(document.getModusignDocumentId());
-        store(document, SIGNED_DOCUMENT, "signed-document.pdf", files.signedDocument());
+        store(document, SIGNED_DOCUMENT, signedName, files.signedDocument());
         if (files.auditTrail() != null && files.auditTrail().length > 0) {
-            store(document, AUDIT_TRAIL, "audit-trail.pdf", files.auditTrail());
+            store(document, AUDIT_TRAIL, "audit-trail-" + document.getModusignDocumentId() + ".pdf", files.auditTrail());
         }
     }
 
