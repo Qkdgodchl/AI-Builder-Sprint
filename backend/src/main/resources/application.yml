@@ -83,5 +83,8 @@ modusign:
     template-id: ${MODUSIGN_TEMPLATE_ID:}
     participant-role: ${MODUSIGN_PARTICIPANT_ROLE:신청자}
     redirect-url: ${MODUSIGN_REDIRECT_URL:http://127.0.0.1:5173/my-page}
+    # 무료 요금제 서명 건수 한도 초과 시 넘어갈 예비 계정. 비워두면 기존처럼 시뮬레이션 모드로 빠진다.
+    backup-email: ${MODUSIGN_BACKUP_USER_EMAIL:}
+    backup-key: ${MODUSIGN_BACKUP_API_KEY:}
   webhook:
     secret: ${MODUSIGN_WEBHOOK_SECRET:}

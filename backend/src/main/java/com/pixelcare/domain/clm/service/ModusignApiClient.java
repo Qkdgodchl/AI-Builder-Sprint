@@ -42,6 +42,15 @@ public class ModusignApiClient {
     private final String participantRole;
     private final String redirectUrl;
 
+    /**
+     * 무료 요금제는 서명 요청 건수 한도(월 30건 남짓)가 있다.
+     * 기본 계정이 한도에 걸리면 예비 계정으로 넘어가 실제 서명 흐름을 유지한다.
+     * 예비 계정마저 없거나 같이 한도에 걸린 경우에만 시뮬레이션 모드로 빠진다.
+     */
+    private String backupUserEmail = "";
+    private String backupApiKey = "";
+    private volatile boolean usingBackup = false;
+
     @Autowired
     public ModusignApiClient(
             ObjectMapper objectMapper,
@@ -50,9 +59,13 @@ public class ModusignApiClient {
             @Value("${modusign.api.base-url:https://api.modusign.co.kr}") String baseUrl,
             @Value("${modusign.api.template-id:}") String templateId,
             @Value("${modusign.api.participant-role:신청자}") String participantRole,
-            @Value("${modusign.api.redirect-url:http://127.0.0.1:5173/my-page}") String redirectUrl
+            @Value("${modusign.api.redirect-url:http://127.0.0.1:5173/my-page}") String redirectUrl,
+            @Value("${modusign.api.backup-email:}") String backupUserEmail,
+            @Value("${modusign.api.backup-key:}") String backupApiKey
     ) {
         this(timeoutBoundRestTemplate(), objectMapper, userEmail, apiKey, baseUrl, templateId, participantRole, redirectUrl);
+        this.backupUserEmail = backupUserEmail == null ? "" : backupUserEmail.trim();
+        this.backupApiKey = backupApiKey == null ? "" : backupApiKey.trim();
     }
 
     /**
@@ -92,12 +105,7 @@ public class ModusignApiClient {
     public String getDocumentStatus(String documentId) {
         validateConfiguration();
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
-                    baseUrl + "/documents/" + documentId,
-                    HttpMethod.GET,
-                    new HttpEntity<>(authorizedHeaders()),
-                    String.class
-            );
+            ResponseEntity<String> response = exchangeDocumentDetail(documentId);
             JsonNode document = parseSuccessfulBody(response, "MODUSIGN_DOCUMENT_LOOKUP_FAILED");
             return requiredText(document, "status", "모두싸인 응답에 문서 상태가 없습니다.");
         } catch (ApiException e) {
@@ -284,12 +292,7 @@ public class ModusignApiClient {
     public CompletedDocumentFiles downloadCompletedDocumentFiles(String documentId) {
         validateConfiguration();
         try {
-            ResponseEntity<String> detailResponse = restTemplate.exchange(
-                    baseUrl + "/documents/" + documentId,
-                    HttpMethod.GET,
-                    new HttpEntity<>(authorizedHeaders()),
-                    String.class
-            );
+            ResponseEntity<String> detailResponse = exchangeDocumentDetail(documentId);
             JsonNode document = parseSuccessfulBody(detailResponse, "MODUSIGN_DOCUMENT_LOOKUP_FAILED");
             if (!"COMPLETED".equals(document.path("status").asText())) {
                 throw new ApiException(
@@ -344,12 +347,48 @@ public class ModusignApiClient {
         }
     }
 
+    private boolean backupConfigured() {
+        return !backupUserEmail.isBlank() && !backupApiKey.isBlank();
+    }
+
+    private String activeEmail() {
+        return usingBackup ? backupUserEmail : userEmail;
+    }
+
+    private String activeKey() {
+        return usingBackup ? backupApiKey : apiKey;
+    }
+
     private HttpHeaders authorizedHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth(userEmail, apiKey, StandardCharsets.UTF_8);
+        headers.setBasicAuth(activeEmail(), activeKey(), StandardCharsets.UTF_8);
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         return headers;
+    }
+
+    /**
+     * 문서가 기본 계정과 예비 계정 중 어디서 만들어졌는지 모르므로,
+     * 활성 계정 조회가 인증·소유 문제(401/403/404)로 실패하면 다른 계정으로 한 번 더 조회한다.
+     */
+    private ResponseEntity<String> exchangeDocumentDetail(String documentId) {
+        String url = baseUrl + "/documents/" + documentId;
+        try {
+            return restTemplate.exchange(url, HttpMethod.GET,
+                    new HttpEntity<>(authorizedHeaders()), String.class);
+        } catch (HttpClientErrorException e) {
+            int code = e.getStatusCode().value();
+            if (backupConfigured() && (code == 401 || code == 403 || code == 404)) {
+                HttpHeaders other = new HttpHeaders();
+                other.setBasicAuth(usingBackup ? userEmail : backupUserEmail,
+                        usingBackup ? apiKey : backupApiKey, StandardCharsets.UTF_8);
+                other.setContentType(MediaType.APPLICATION_JSON);
+                other.setAccept(List.of(MediaType.APPLICATION_JSON));
+                return restTemplate.exchange(url, HttpMethod.GET,
+                        new HttpEntity<>(other), String.class);
+            }
+            throw e;
+        }
     }
 
     private HttpHeaders downloadHeaders() {
@@ -437,6 +476,12 @@ public class ModusignApiClient {
                 errStr += " " + resEx.getResponseBodyAsString();
             }
             if (errStr.contains("UsageLimitExceededException") || errStr.contains("Usage limit exceeded") || errStr.contains("limit exceeded") || errStr.contains("LIMIT_EXCEEDED")) {
+                // 기본 계정 한도 초과 → 예비 계정이 설정돼 있으면 실제 서명 흐름을 그쪽으로 이어 간다.
+                if (backupConfigured() && !usingBackup) {
+                    usingBackup = true;
+                    System.err.println("⚠️ 모두싸인 기본 계정 이용한도 초과 감지. 예비 계정으로 전환해 재시도합니다.");
+                    return uploadAndRequestSigning(pdfBytes, documentTitle, applicantName, applicantEmail);
+                }
                 System.err.println("⚠️ 모두싸인 API 계정 이용한도 초과 감지 (UsageLimitExceededException). [Smart Failover 시뮬레이션 모드로 전환합니다]");
                 String mockDocId = "MODU_SIGNED_" + System.currentTimeMillis();
                 String mockPartId = "PART_SIGNED_" + System.currentTimeMillis();
@@ -468,7 +513,7 @@ public class ModusignApiClient {
             byte[] multipartBody = out.toByteArray();
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setBasicAuth(userEmail, apiKey, StandardCharsets.UTF_8);
+            headers.setBasicAuth(activeEmail(), activeKey(), StandardCharsets.UTF_8);
             headers.setContentType(MediaType.parseMediaType("multipart/form-data; boundary=" + boundary));
             headers.setContentLength(multipartBody.length);
 
