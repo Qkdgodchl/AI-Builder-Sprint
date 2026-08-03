@@ -88,21 +88,21 @@ cd frontend && npm install && npm run dev
 ## 🎯 1. 기획 배경 및 문제 정의
 
 ### 👥 타겟 사용자
-- **일반 사용자 (`USER`)**: 나에게 꼭 맞는 봉사/기부 프로그램을 찾고, 선행 아이디어를 직접 역제안하고 싶은 봉사자 및 후원자.
-- **센터 관리자 (`CENTER_MANAGER`)**: 봉사/기부 프로그램을 개설하고 신청자 관리, 출석 승인 및 모집 현황을 관리하는 복지/봉사 기관 담당자.
-- **운영진 (`OPERATOR`)**: 센터 및 관리자 승인 검토, 허위/불법 게시물 소프트 삭제, 플랫폼 전체 감사 로그를 관리하는 플랫폼 운영 주체.
 
-### 🚨 문제 정의
-1. **파편화된 공고 & 탐색 피로도**: 흩어진 봉사 공고 속에서 성향(지역, 시간, 감정)에 맞는 활동을 찾기 어려움.
-2. **수동적 공급자 중심 구조**: 봉사자가 "원하는 봉사"를 직접 제안할 창구가 없어 센터 위주의 수동적 참여에 의존.
-3. **복잡한 약정 & 이탈**: 정기후원이나 장기 봉사 약정 체결 시 서류 작업과 갱신 절차가 복잡하여 도중 이탈률이 높음.
-4. **신뢰성 & 무결성 부족**: 허위 모집글 검증 수단 부재 및 작성된 약정서의 원본 무결성 증명 불가.
+| 역할 | 누구인가 |
+|---|---|
+| 일반 사용자 (`USER`) | 나에게 맞는 봉사 · 기부를 찾고, 원하는 선행을 직접 역제안하고 싶은 사람 |
+| 센터 관리자 (`CENTER_MANAGER`) | 프로그램을 개설하고 신청자와 서명 증빙을 관리하는 기관 담당자 |
+| 운영진 (`OPERATOR`) | 센터 · 관리자 승인과 게시물 관리, 감사 로그를 맡는 플랫폼 운영 주체 |
 
-### 💡 솔루션 및 기대 효과
-1. **Upstage Solar LLM 대화형 큐레이팅**: 자연어 몇 마디로 맞춤 봉사를 추천받고 약정 조건을 JSON으로 자동 구조화.
-2. **CONNECT (선행 역제안 생태계)**: 유저가 원하는 선행을 역제안하면 이웃 응원(`Support`)과 센터 수락(`Claim`)으로 정식 프로그램 개설.
-3. **CLM & 모두싸인 API 전자서명**: 카카오톡/이메일 전자서명, Webhook 실시간 동기화, 서명 완료 PDF SHA-256 감사추적 보관.
-4. **3단계 승인 권한 체계 & 신뢰성 검증**: 2단계 승인 체계, 소프트 삭제(`isDeleted = true`), 감사 로그(`AdminAuditLog`) 완비.
+### 🚨 문제 → 💡 해결
+
+| 문제 | 잇다의 해결 |
+|---|---|
+| 흩어진 공고, 탐색 피로 | Solar LLM 대화로 성향(지역 · 시간 · 감정)에 맞는 활동을 추천 |
+| 봉사자가 제안할 창구 부재 | CONNECT 역제안 — 이웃 응원을 모으면 센터가 수락해 정식 개설 |
+| 복잡한 약정 서류와 갱신 절차 | AI가 의향을 구조화해 약정서를 자동 생성, 전자서명 · 갱신까지 한 흐름 |
+| 약정 원본의 무결성 증명 불가 | 체결본을 SHA-256 해시로 보관하고 Document AI로 원본과 대조 검증 |
 
 ---
 
@@ -116,11 +116,14 @@ cd frontend && npm install && npm run dev
 | **Information Extract** | `information-extract` | 되읽은 약정서를 고정 스키마로 구조화 |
 
 ### 📍 API 사용 위치
-- **Solar 대화 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java`
-- **문서 AI 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageDocumentClient.java`
-- **대화 및 선행 큐레이팅**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiMateService.java`
-- **의향 파싱 & 스키마 구조화**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiConsultationService.java`
-- **체결본 대조 검증**: `backend/src/main/java/com/pixelcare/domain/clm/service/ClmDocumentVerificationService.java`
+
+| 역할 | 파일 |
+|---|---|
+| Solar 대화 클라이언트 | `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java` |
+| 문서 AI 클라이언트 | `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageDocumentClient.java` |
+| 대화 · 선행 큐레이팅 | `backend/src/main/java/com/pixelcare/domain/ai/service/AiMateService.java` |
+| 의향 파싱 · 스키마 구조화 | `backend/src/main/java/com/pixelcare/domain/ai/service/AiConsultationService.java` |
+| 체결본 대조 검증 | `backend/src/main/java/com/pixelcare/domain/clm/service/ClmDocumentVerificationService.java` |
 
 ### 🔍 체결본 대조 검증
 서명이 끝났다는 사실만으로는 **무엇에 서명했는지**를 증명하지 못합니다.
@@ -137,12 +140,13 @@ cd frontend && npm install && npm run dev
 - API: `POST /api/v1/clm/documents/{id}/verification`
 
 ### ⚙️ 프롬프트 및 설정
-- **프롬프트 페르소나**: 친근하고 따뜻한 픽셀 마스코트 `ITDA AI Mate` 페르소나 적용.
-- **JSON 스키마 extraction**: 사용자의 대화문에서 희망 지역, 활동 시간, 감정, 기부 주기, 금액, 답례품 희망 여부를 고정 JSON 파싱.
-- **외부 전송 동의 (Opt-in Consent)**: `externalAiConsentAt` 저장을 통해 사용자 동의 시에만 외부 LLM에 데이터 전송.
 
-### 🛡️ Smart Failover Engine (테스트·검증 산출물)
-- Upstage API 키 미설정 또는 네트워크 단락 시 외부 요청 없이 100% 정상 작동하는 내장 **Smart Failover Engine**을 구현하여 장애 상황에서도 안정적인 대화 서비스 제공 (`AiMateService.java`).
+| 설정 | 내용 |
+|---|---|
+| 프롬프트 페르소나 | 친근하고 따뜻한 마스코트 `ITDA AI Mate` |
+| JSON 스키마 추출 | 대화문에서 희망 지역 · 활동 시간 · 기부 주기 · 금액 · 답례품 희망 여부를 고정 스키마로 파싱 (temperature=0) |
+| 외부 전송 동의 | 사용자가 동의한 경우에만 외부 LLM에 전송, 동의 시각을 `externalAiConsentAt`으로 기록 |
+| Smart Failover | API 키 미설정 · 네트워크 장애 시 외부 요청 없이 동작하는 내장 폴백 (`AiMateService.java`) |
 
 ---
 
