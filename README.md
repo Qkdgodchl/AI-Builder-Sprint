@@ -116,14 +116,11 @@ cd frontend && npm install && npm run dev
 | **Information Extract** | `information-extract` | 되읽은 약정서를 고정 스키마로 구조화 |
 
 ### 📍 API 사용 위치
-
-| 역할 | 파일 |
-|---|---|
-| Solar 대화 클라이언트 | `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java` |
-| 문서 AI 클라이언트 | `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageDocumentClient.java` |
-| 대화 · 선행 큐레이팅 | `backend/src/main/java/com/pixelcare/domain/ai/service/AiMateService.java` |
-| 의향 파싱 · 스키마 구조화 | `backend/src/main/java/com/pixelcare/domain/ai/service/AiConsultationService.java` |
-| 체결본 대조 검증 | `backend/src/main/java/com/pixelcare/domain/clm/service/ClmDocumentVerificationService.java` |
+- **Solar 대화 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java`
+- **문서 AI 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageDocumentClient.java`
+- **대화 및 선행 큐레이팅**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiMateService.java`
+- **의향 파싱 & 스키마 구조화**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiConsultationService.java`
+- **체결본 대조 검증**: `backend/src/main/java/com/pixelcare/domain/clm/service/ClmDocumentVerificationService.java`
 
 ### 🔍 체결본 대조 검증
 서명이 끝났다는 사실만으로는 **무엇에 서명했는지**를 증명하지 못합니다.
