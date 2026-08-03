@@ -609,17 +609,22 @@ DRAFT → IN_REVIEW → REVISION_REQUESTED | APPROVED
 | [x] | [x] | [x] | POST | `/commitments/{publicId}/submit-review` | 약정 소유자 | 사용자 검토 완료 |
 | [x] | [ ] | [ ] | POST | `/commitments/{publicId}/renew` | 약정 소유자 | 월간·연간 활성 약정 갱신 |
 | [ ] | [ ] | [ ] | POST | `/commitments/{id}/documents` | 약정 소유자·센터 관리자 | 유형별 문서 생성 |
-| [ ] | [ ] | [ ] | GET | `/commitments/{id}/documents` | 약정 소유자·해당 센터 관리자 | 문서 목록 |
-| [ ] | [ ] | [ ] | GET | `/documents/{id}` | 문서 접근 권한자 | 문서 메타데이터 |
-| [ ] | [ ] | [ ] | GET | `/documents/{id}/preview` | 문서 접근 권한자 | 만료형 미리보기 URL |
-| [ ] | [ ] | [ ] | GET | `/documents/{id}/download` | 문서 접근 권한자 | 서명 완료 문서 다운로드 |
-| [ ] | [ ] | [ ] | POST | `/documents/{id}/validate` | 문서 접근 권한자 | Information Extract 재검증 |
+| [x] | [x] | [x] | GET | `/clm/documents/my` | USER | 내 CLM 문서 목록 |
+| [x] | [x] | [x] | GET | `/clm/documents/{id}` | 문서 접근 권한자 | 문서 메타데이터 |
+| [x] | [x] | [x] | GET | `/clm/documents/{id}/files` | 문서 접근 권한자 | 보관 파일 목록 (초안·체결본·감사추적) |
+| [x] | [x] | [x] | GET | `/clm/documents/{id}/files/{fileId}/download` | 문서 접근 권한자 | 서명 완료 문서 다운로드 |
+| [x] | [x] | [x] | POST | `/clm/documents/request-sign` | 약정 소유자 | 약정서 PDF 생성 및 모두싸인 서명 요청 |
+| [x] | [x] | [x] | POST | `/clm/documents/{id}/secure-link` | 약정 소유자 | 모두싸인 임베디드 서명 링크 발급 |
+| [x] | [x] | [x] | POST | `/clm/documents/{id}/verification` | 문서 접근 권한자 | Document Parse + Information Extract 체결본 대조 검증 |
+| [x] | [x] | [x] | GET | `/clm/documents/{id}/verification` | 문서 접근 권한자 | 최근 대조 검증 결과 조회 |
+| [x] | [x] | [x] | POST | `/webhooks/modusign` | 모두싸인 서버 | 서명 상태 웹훅 수신 (멱등 처리) |
 | [ ] | [ ] | [ ] | POST | `/manager/documents/{id}/request-revision` | 해당 센터 관리자 | 문서 수정 요청 |
 | [ ] | [ ] | [ ] | POST | `/manager/documents/{id}/cancel` | 해당 센터 관리자 | 문서 취소 |
 
 현재 MVP에서는 신청 생성 트랜잭션 안에서 약정 초안과 첫 버전, 동의 이력을 자동 생성한다.
 따라서 별도 `POST /applications/{applicationId}/commitments`는 아직 구현하지 않는다.
-전자서명·서명 완료 PDF 생성은 외부 연동 단계이므로 체크하지 않았다.
+전자서명·체결본 보관·대조 검증은 `/api/v1/clm/documents` 계열로 구현했다
+(약정서 PDF 생성 → 모두싸인 서명 요청 → 웹훅/폴링 상태 동기화 → 체결본·감사추적 보관 → Document Parse + Information Extract 대조 검증).
 
 약정 초안:
 
@@ -703,7 +708,7 @@ DB에는 파일 유형·경로·크기·SHA-256 해시를 기록한다. 임시 �
 - `MODUSIGN_API_KEY`: 서버 전용 API 키
 - `MODUSIGN_TEMPLATE_ID`: 신청 약정서 템플릿 ID
 - `MODUSIGN_PARTICIPANT_ROLE`: 템플릿에 설정한 참여자 역할과 정확히 같은 문자열
-- `MODUSIGN_REDIRECT_URL`: 서명 후 돌아올 픽셀케어 주소
+- `MODUSIGN_REDIRECT_URL`: 서명 후 돌아올 잇다 서비스 주소
 - `MODUSIGN_WEBHOOK_SECRET`: 모두싸인 Webhook 사용자 지정 헤더에 함께 등록할 비밀값
 
 서명 요청:

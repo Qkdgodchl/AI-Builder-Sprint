@@ -7,7 +7,7 @@
 ![Java](https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=flat-square&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Upstage Solar](https://img.shields.io/badge/AI-Upstage%20Solar%20LLM-purple?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Render-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
@@ -24,6 +24,52 @@
 | **데모 계정 (일반 사용자)** | `donor@pixelcare.demo` / `Donor123!` |
 
 > 💡 **백엔드 접속 안내**: 백엔드는 Render 무료 인스턴스로 접속이 없으면 절전 상태가 됩니다. 첫 요청 시 백엔드 상향까지 50초 남짓 걸릴 수 있습니다.
+
+---
+
+## 🚀 로컬 실행 가이드 (Local Setup)
+
+### 요구 사항
+- Java 17+ (배포 환경은 Java 21), Node.js 20+, Docker (PostgreSQL 컨테이너용)
+
+### 1) 환경변수 준비
+```bash
+cp .env.example .env
+```
+`.env.example`에 로컬 기본값이 채워져 있어 그대로 사용하면 됩니다. 주요 환경변수:
+
+| 변수 | 용도 | 로컬 기본값 |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` / `USERNAME` / `PASSWORD` | PostgreSQL 접속 정보 | `jdbc:postgresql://127.0.0.1:5432/pixelcare` / `pixelcare` / `pixelcare_local` |
+| `UPSTAGE_API_KEY` | Solar LLM · Document Parse · Information Extract | 비워두면 내장 Smart Failover 폴백으로 동작 |
+| `MODUSIGN_USER_EMAIL` / `MODUSIGN_API_KEY` / `MODUSIGN_TEMPLATE_ID` | 모두싸인 전자서명 연동 | 비워두면 전자서명 요청 단계만 비활성 |
+| `APP_BOOTSTRAP_ENABLED` | 데모 계정·시드 데이터 자동 생성 | `true` |
+
+### 2) 데이터베이스 기동
+```bash
+docker compose up -d postgres
+```
+
+### 3) 백엔드 실행 (http://localhost:8080)
+```bash
+cd backend && ./gradlew bootRun
+```
+
+### 4) 프론트엔드 실행 (http://localhost:5173)
+```bash
+cd frontend && npm install && npm run dev
+```
+
+첫 실행 시 데모 계정 3종(위 표 참조)과 시드 데이터가 자동 생성됩니다.
+프론트엔드는 별도 설정 없이 `http://localhost:8080` 백엔드를 바라봅니다 (`VITE_API_BASE_URL`로 변경 가능).
+
+### 실행/배포 환경 정보
+| 구분 | 환경 |
+|---|---|
+| 프론트엔드 배포 | Vercel (`frontend/vercel.json` SPA rewrite) |
+| 백엔드 배포 | Render (Docker, `backend/Dockerfile` — Java 21 + 한글 폰트 포함) |
+| 데이터베이스 | PostgreSQL 16 (Render / 로컬 Docker) |
+| 테스트 | `cd backend && ./gradlew test` (JUnit 5, 53개) |
 
 ---
 
@@ -85,7 +131,7 @@
 - API: `POST /api/v1/clm/documents/{id}/verification`
 
 ### ⚙️ 프롬프트 및 설정 (Prompt & Configuration)
-- **프롬프트 페르소나**: 친근하고 따뜻한 픽셀 마스코트 `Pixel AI Mate` 페르소나 적용.
+- **프롬프트 페르소나**: 친근하고 따뜻한 픽셀 마스코트 `ITDA AI Mate` 페르소나 적용.
 - **JSON 스키마 extraction**: 사용자의 대화문에서 희망 지역, 활동 시간, 감정, 기부 주기, 금액, 답례품 희망 여부를 고정 JSON 파싱.
 - **외부 전송 동의 (Opt-in Consent)**: `externalAiConsentAt` 저장을 통해 사용자 동의 시에만 외부 LLM에 데이터 전송.
 
@@ -115,7 +161,12 @@
 - **PDF & SHA-256 감사추적**: 완료 서명 PDF 생성 및 원본 무결성 검증용 SHA-256 해시 보관 (`ClmDocumentArchiveService`).
 - **약정 갱신 및 변경**: 정기후원 만료 전 갱신(`renewalDueAt`) 및 약정 조건 변경 요청(`CommitmentChangeRequest`) 관리.
 
-### 4. 🛡️ 3단계 계정 역할 & 역할별 가변 하단 탭 (Dynamic Navigation)
+### 4. 🏛️ 부산 고향사랑기부제 & 유산·문화유산 후원
+- **고향사랑기부 약정 (`HOMETOWN_DONATION`)**: 부산광역시(지자체 코드 `26000`) 고향사랑기부 흐름 구현 — AI 대화로 기부 의향 정리 → 답례품 선택(기장 미역·다시마 세트, 영도 고구마 앙금빵, 동백전 지역화폐 등) → 세액공제액 자동 산정(연 10만원 한도 전액 공제, `hometownTaxCredit`) → 전자서명 증빙.
+- **유형별 전용 약정서 서식**: "부산광역시 고향사랑기부금 납부 및 답례품 신청 약정서" 등 약정 유형별로 제목·조항·표가 다른 PDF를 자동 생성 (`PledgeContractPdfGenerator`).
+- **유산기부·문화유산 후원 (`LEGACY_DONATION` / `CULTURAL_HERITAGE_DONATION`)**: 민법 제1060조 유증 방식·지정 문화유산 대상 항목을 담은 약정서 생성, 유네스코·문화유산 후원 카탈로그 필터 제공.
+
+### 5. 🛡️ 3단계 계정 역할 & 역할별 가변 하단 탭 (Dynamic Navigation)
 - **일반 사용자 (`USER`)** — `[ 🏠 홈 | 🎁 선행하기 | 💬 커뮤니티 | 📜 내 기록 ]` (4대 탭)
 - **센터 관리자 (`CENTER_MANAGER`)** — `[ 🏠 홈 | 🎁 선행하기 | 💬 커뮤니티 | 📜 내 기록 | 🏢 센터 관리 ]` (5대 탭)
 - **운영진 (`OPERATOR`)** — `[ 🏠 홈 | 🎁 선행하기 | 💬 커뮤니티 | 📜 내 기록 | 🛡️ 운영 관리 ]` (5대 탭)
@@ -136,6 +187,7 @@ AI-Builder-Sprint/
 │   ├── DB_SCHEMA.md                   # 데이터베이스 스키마 명세서
 │   ├── SKILL.md                       # 디자인 시스템 스킬 지침
 │   ├── TEAM_CONVENTIONS.md            # 팀 협업 가이드라인
+│   ├── PITCH_NOTES.md                 # 발표 대본 및 Q&A 대비 노트
 │   └── workflow.md                    # 서비스 기획서
 │
 ├── backend/src/main/java/com/pixelcare/
@@ -193,7 +245,7 @@ AI-Builder-Sprint/
 
 | 이름 | 역할 (R&R) | 담당 업무 |
 | :---: | :---: | :--- |
-| **권윤재** | **Full Stack Developer** | • React 18 + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구축<br>• 3단계 계정 역할별 가변 하단 탭 내비게이션 라우팅 및 전단 UI 개발<br>• CONNECT(온기 잇다) 역제안 프론트엔드 및 백엔드 연동 |
+| **권윤재** | **Full Stack Developer** | • React 19 + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구축<br>• 3단계 계정 역할별 가변 하단 탭 내비게이션 라우팅 및 전단 UI 개발<br>• CONNECT(온기 잇다) 역제안 프론트엔드 및 백엔드 연동 |
 | **이영민** | **Full Stack Developer** | • Upstage Solar LLM 프롬프트 페르소나 설계 및 JSON 의향 파싱 엔진 구축<br>• 로컬 Smart Failover Engine 개발 및 외부 AI 전송 동의(Opt-in) 제어<br>• 센터 관리자 대시보드 및 실시간 플랫폼 통계 기능 개발 |
 | **전동훈** | **Full Stack Developer** | • Spring Boot 백엔드 아키텍처 설계 및 PostgreSQL Native Initialization 구축<br>• Upstage Solar LLM 연동, CLM 전자서명 및 모두싸인 Webhook 파이프라인 개발<br>• 3단계 권한 승인 워크플로우, 소프트 삭제 및 감사 로그 시스템 구축 |
 

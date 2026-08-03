@@ -22,7 +22,7 @@
 ## 🤖 2. AI 활용 & 에이전트 지침 체계
 
 ### 🔮 2.1 서비스 내부 AI 연동 파이프라인 (Upstage Solar LLM)
-- **Upstage Solar LLM 단일 집중 챗봇 (`Pixel AI Mate`)**:
+- **Upstage Solar LLM 단일 집중 챗봇 (`ITDA AI Mate`)**:
   - 메인 홈 중앙에 대화형 AI 챗봇 탑재. 사용자의 상황/감정에 맞는 **맞춤형 봉사 미션 및 기부 펀딩 추천 카드 생성**.
   - **Upstage API 연동**: Spring 기반 Upstage Solar 어댑터를 통합하여 실제 DB 후보만 개인화 추천.
 - **AI 약정 의사 구조화**:
@@ -60,7 +60,7 @@
 
 ### 🛡️ 3.2 코드 품질 & 오류 처리 (Code Quality & Robustness)
 - **Web Audio API**: 브라우저 자동재생 제한 정책(Autoplay Policy)을 예외 처리하는 사용자 인터랙션 기반 8-bit 사운드 엔진 (`src/js/soundFx.js`).
-- **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·PostgreSQL 백엔드를 분리하고, 인증된 REST API와 JPA로 상태를 영속화.
+- **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·PostgreSQL 백엔드를 분리하고, 인증된 REST API와 Spring Boot Native SQL Initialization(`schema-postgresql.sql`)으로 상태를 영속화.
 - **전자서명 견고성**: Webhook event ID 멱등 처리, 종결 상태 단조 전이, 실패 상태 기록, 완료 PDF·감사추적 자료 보관.
 
 ---
@@ -71,7 +71,7 @@
 [Module 1: 🤖 메인 AI 대화창] ➔ [Module 2: 🤝 봉사 & 기부 (하이브리드)] ➔ [Module 3: 📖 픽셀 일기장] ➔ [Module 4: 🏆 뱃지 & 온도계] ➔ [Module 5: 🏁 최종 통합]
 ```
 
-### Module 1. 🤖 메인 AI 대화창 (Pixel AI Mate Chatbot Module)
+### Module 1. 🤖 메인 AI 대화창 (ITDA AI Mate Chatbot Module)
 - 메인 홈 중앙에 귀여운 픽셀 AI 챗봇 대화창 UI 구현 (말풍선, AI 프로필 모션, 프롬프트 추천 칩).
 - Upstage Solar LLM 추천 연동 및 대화 응답 내 [바로 참가하기] 카드 출력.
 

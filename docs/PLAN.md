@@ -30,10 +30,10 @@
    - `UpstageApiClient.java`: Upstage Solar LLM (`solar-pro3`) HTTP 통신
    - `UpstageDocumentClient.java`: Upstage Document Parse & Information Extract API 통신
    - `AiMateService.java`: 자연어 대화 및 선행 큐레이팅
-   - `AiConsultationService.java`: 대화문에서 지역, 시간, 금액, 감정을 고정 JSON 스키마로 추출
+   - `AiConsultationService.java`: 대화문에서 약정 유형·수혜자·금액·주기·지역·답례품을 고정 JSON 스키마로 추출 (temperature=0)
    - `ClmDocumentVerificationService.java`: 서명 완료 PDF에서 Document AI로 텍스트/항목을 자동 추출하여 원본 약정 DB와 대조 검증 (무결성 증명)
-3. **프롬프트 페르소나**: `Pixel AI Mate` 친근한 마스코트 페르소나 및 JSON extraction 설정
-4. **Smart Failover Engine**: API 장애 시 외부 통신 없이 100% 가동되는 내장 로컬 폴백 엔진
+3. **프롬프트 페르소나**: `ITDA AI Mate` 친근한 마스코트 페르소나 및 JSON extraction 설정
+4. **Smart Failover Engine**: Solar LLM 장애 시 외부 통신 없이 100% 가동되는 내장 로컬 폴백 엔진 (문서 AI는 실패 시 결과를 지어내지 않고 명시적 오류로 반환)
 
 ---
 
@@ -71,5 +71,5 @@
 - **창의성**: VolunteerCatalog Editorial Bento Grid UI, 실시간 온기 온도계 UI(36.5°C ➔ 상승) 및 `warmth_events` 기록.
 - **AI 활용도**: Upstage Solar LLM 파이프라인, JSON 의향 파싱, 외부 전송 동의(Opt-in) 보관, Smart Failover Engine.
 - **완성도**: 3단계 계정 역할 분리 및 역할별 가변 탭 라우팅 (4대 탭 / 5대 탭).
-- **실용성**: CONNECT 선행 역제안, CLM 전자서명 갱신, SHA-256 PDF 감사추적, 소프트 삭제 & 감사 로그.
+- **실용성**: CONNECT 선행 역제안, CLM 전자서명 갱신, SHA-256 PDF 감사추적, 소프트 삭제 & 감사 로그, 부산 고향사랑기부제(답례품·세액공제) 및 유산·문화유산 후원 약정 지원.
 - **배포 및 운영**: Render 클라우드 프로덕션 배포 및 Spring Boot Native SQL Initialization (`schema-postgresql.sql`).

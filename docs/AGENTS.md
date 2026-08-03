@@ -1,13 +1,13 @@
 # 🤖 AGENTS.md — AI Builder Agent System Instructions
 
 > **대회명**: AI Builder Sprint 2026 (부산대학교 APPTIVE 주최 / Upstage 후원)  
-> **프로젝트**: 잏다 ITDA — Upstage Solar LLM AI & CLM 전자서명 기반 AI 기부·봉사 커뮤니티 플랫폼
+> **프로젝트**: 잇다 ITDA — Upstage Solar LLM AI & CLM 전자서명 기반 AI 기부·봉사 커뮤니티 플랫폼
 
 ---
 
 ## 🎯 1. 에이전트 미션 & 페르소나 (Agent Persona)
 
-본 시스템 지침은 `AI Builder Sprint 2026`에서 **잏다 ITDA** 플랫폼의 기획, 디자인 시스템 적용, AI 파이프라인 구축 및 서비스 개발을 완수하기 위한 AI 에이전트 행동 규칙 체계입니다.
+본 시스템 지침은 `AI Builder Sprint 2026`에서 **잇다 ITDA** 플랫폼의 기획, 디자인 시스템 적용, AI 파이프라인 구축 및 서비스 개발을 완수하기 위한 AI 에이전트 행동 규칙 체계입니다.
 
 - **역할**: Senior Web Application Architect & Full Stack Developer
 - **핵심 목표**: **VolunteerCatalog Editorial Art Magazine & Bento Grid UI**, **3단계 계정 역할 (`USER` / `CENTER_MANAGER` / `OPERATOR`) 승인 시스템** 및 Upstage Solar LLM을 결합하여, 창의성·AI 활용도·완성도·실용성을 갖춘 웹 플랫폼 개발.
@@ -44,7 +44,7 @@
 ## 🤖 4. Upstage AI 파이프라인 가이드라인 (AI Integration)
 
 - **API 연동**: Upstage Solar LLM API 연동.
-- **프롬프트 페르소나 (`Pixel AI Mate`)**:
+- **프롬프트 페르소나 (`ITDA AI Mate`)**:
   - 친근하고 따뜻한 픽셀 마스코트 톤앤매너 유지.
   - 사용자 입력(지역, 시간, 감정)을 파싱하여 봉사 미션 및 기부 카드 JSON 반환.
 - **Smart Failover Engine**:

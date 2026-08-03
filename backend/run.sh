@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🚀 픽셀 케어 (Pixel Care) 백엔드 서버를 시작합니다..."
+echo "🚀 잇다 ITDA 백엔드 서버를 시작합니다..."
 cd "$(dirname "$0")"
 
 if command -v gradle &> /dev/null; then
