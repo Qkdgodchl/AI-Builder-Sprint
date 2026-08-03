@@ -337,9 +337,9 @@ AI 코딩 에이전트(Claude Code)와 페어로 진행했습니다. 한국어 �
 
 | 이름 | 역할 | 담당 업무 |
 | :---: | :---: | :--- |
-| **권윤재** | **Full Stack Developer** | • React 19 + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구축<br>• 3단계 계정 역할별 가변 하단 탭 내비게이션 라우팅 및 전단 UI 개발<br>• CONNECT(온기 잇다) 역제안 프론트엔드 및 백엔드 연동 |
+| **권윤재** | **Full Stack Developer** | • React 19 + TypeScript 기반 Editorial Bento Grid 디자인 시스템 구축<br>• 3단계 계정 역할별 가변 하단 탭 내비게이션 라우팅 및 전단 UI 개발<br> • Spring Boot 백엔드 아키텍처 설계 및 PostgreSQL Native Initialization 구축, CLM 전자서명 및 모두싸인 Webhook 파이프라인 개발|
 | **이영민** | **Full Stack Developer** | • Upstage Solar LLM 프롬프트 페르소나 설계 및 JSON 의향 파싱 엔진 구축<br>• 로컬 Smart Failover Engine 개발 및 외부 AI 전송 동의(Opt-in) 제어<br>• 센터 관리자 대시보드 및 실시간 플랫폼 통계 기능 개발 |
-| **전동훈** | **Full Stack Developer** | • Spring Boot 백엔드 아키텍처 설계 및 PostgreSQL Native Initialization 구축<br>• Upstage Solar LLM 연동, CLM 전자서명 및 모두싸인 Webhook 파이프라인 개발<br>• 3단계 권한 승인 워크플로우, 소프트 삭제 및 감사 로그 시스템 구축 |
+| **전동훈** | **Full Stack Developer** | • CONNECT(온기 잇다) 역제안 프론트엔드 및 백엔드 연동 <br>•  Upstage Solar LLM 연동 <br>• 3단계 권한 승인 워크플로우, 소프트 삭제 및 감사 로그 시스템 구축 |
 
 ---
 
