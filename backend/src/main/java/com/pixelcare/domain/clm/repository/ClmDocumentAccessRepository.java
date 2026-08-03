@@ -28,6 +28,21 @@ public class ClmDocumentAccessRepository {
         return count != null && count > 0;
     }
 
+    /** 센터 대시보드의 약정 현황 카드에서 조직 전체 전자서명 문서를 한 번에 본다. */
+    public List<Long> findAccessibleDocumentIdsByOrganization(Long managerId, Long organizationId) {
+        return jdbcTemplate.queryForList("""
+                SELECT cd.id
+                FROM clm_documents cd
+                JOIN opportunities o ON o.id = cd.volunteer_id
+                JOIN organization_managers om ON om.organization_id = o.organization_id
+                WHERE o.organization_id = ?
+                  AND om.user_id = ?
+                  AND om.left_at IS NULL
+                  AND cd.is_deleted = FALSE
+                ORDER BY cd.id DESC
+                """, Long.class, organizationId, managerId);
+    }
+
     public List<Long> findAccessibleDocumentIds(Long managerId, String applicationPublicId) {
         return jdbcTemplate.queryForList("""
                 SELECT cd.id

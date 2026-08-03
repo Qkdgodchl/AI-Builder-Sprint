@@ -42,6 +42,17 @@ public class ManagerApplicationReviewController {
         );
     }
 
+    @GetMapping("/organizations/{organizationId}/clm-documents")
+    public ApiResponse<List<ClmDocumentResponseDto>> organizationClmDocuments(
+            HttpServletRequest request,
+            @PathVariable Long organizationId
+    ) {
+        CurrentUser manager = authGuard.requireRole(request, "CENTER_MANAGER");
+        return ApiResponse.success(
+                clmDocumentService.getOrganizationDocuments(organizationId, manager)
+        );
+    }
+
     @GetMapping("/opportunities/{opportunityId}/applications")
     public ApiResponse<List<ApplicationResponse>> list(
             HttpServletRequest request,

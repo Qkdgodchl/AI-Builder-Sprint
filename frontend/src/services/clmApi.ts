@@ -88,6 +88,14 @@ export const fetchManagerApplicationClmDocuments = (
     `/api/v1/manager/applications/${applicationPublicId}/clm-documents`,
   );
 
+/** 센터 대시보드의 약정 현황 카드에서 조직 전체 전자서명 문서를 조회한다. */
+export const fetchOrganizationClmDocuments = (
+  organizationId: number,
+): Promise<ClmDocumentDto[]> =>
+  apiRequest<ClmDocumentDto[]>(
+    `/api/v1/manager/organizations/${organizationId}/clm-documents`,
+  );
+
 /**
  * LLM 대화 기반 약정서 PDF 자동 생성 + 모두싸인 전자서명 요청
  * - consultationId: AI 상담 세션 ID

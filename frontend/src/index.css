@@ -3550,20 +3550,20 @@ body.theme-ai {
 .operator-document-level > div span,
 .operator-document-preview-heading span {
   color: var(--magazine-accent);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 900;
 }
 
 .operator-document-level h3,
 .operator-document-preview-heading h3 {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
 }
 
 .operator-document-level > p {
   padding: 22px 16px;
   color: #888888;
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
@@ -3593,13 +3593,13 @@ body.theme-ai {
 }
 
 .operator-document-level > button strong {
-  font-size: 9px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
 .operator-document-level > button span {
   color: #777777;
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .operator-document-preview-heading {
@@ -10360,4 +10360,114 @@ strong, small, em, span, label, button, a {
 @keyframes server-wake-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.72; transform: scale(1.05); }
+}
+
+/* ── 약정 현황 카드 클릭 & 전자서명 문서 패널 ── */
+.center-commitment-metrics > div.is-clickable {
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.center-commitment-metrics > div.is-clickable:hover {
+  background: #f1f1ef;
+}
+
+.center-commitment-metrics > div.is-clickable.is-open {
+  box-shadow: inset 0 -3px var(--magazine-accent);
+}
+
+.center-commitment-docs {
+  margin-top: 14px;
+  border: 1px solid var(--pc-dark);
+  background: #ffffff;
+}
+
+.center-commitment-docs > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pc-dark);
+}
+
+.center-commitment-docs > header strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.center-commitment-docs > header button {
+  border: 1px solid #d5d5d5;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.center-commitment-doc-list {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.center-commitment-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ececec;
+}
+
+.center-commitment-doc-row .doc-status {
+  flex: 0 0 auto;
+  min-width: 64px;
+  text-align: center;
+  border: 1px solid #d5d5d5;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #777777;
+}
+
+.center-commitment-doc-row .doc-status.signed {
+  border-color: #237a57;
+  color: #237a57;
+  background: #eef6f1;
+}
+
+.center-commitment-doc-row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.center-commitment-doc-row > div strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.center-commitment-doc-row > div small {
+  color: #777777;
+  font-size: 10px;
+}
+
+.center-commitment-doc-row > button {
+  flex: 0 0 auto;
+  border: 1px solid var(--pc-dark);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.center-commitment-doc-row > button:hover {
+  background: var(--pc-dark);
+  color: #ffffff;
 }

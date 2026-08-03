@@ -218,6 +218,20 @@ public class ClmDocumentService {
                 .toList();
     }
 
+    /**
+     * 조직 전체 문서 목록. 대시보드 카드 클릭용이라 문서 수가 많을 수 있어
+     * 외부 API를 타는 상태 동기화 없이 저장된 상태만 빠르게 돌려준다.
+     */
+    @Transactional(readOnly = true)
+    public List<ClmDocumentResponseDto> getOrganizationDocuments(Long organizationId, CurrentUser manager) {
+        return accessRepository.findAccessibleDocumentIdsByOrganization(manager.id(), organizationId)
+                .stream()
+                .map(id -> clmDocumentRepository.findByIdAndIsDeletedFalse(id).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(ClmDocumentResponseDto::fromEntity)
+                .toList();
+    }
+
     @Transactional
     public void applyWebhookEvent(String eventId, String modusignDocumentId, String eventType, String payload) {
         if (!webhookEventRepository.start("MODUSIGN", eventId, eventType, payload)) return;

@@ -20,6 +20,7 @@ import {
 import {
   fetchClmDocumentFiles,
   fetchManagerApplicationClmDocuments,
+  fetchOrganizationClmDocuments,
   loadClmDocumentFile,
   type ClmDocumentDto,
   type ClmDocumentFileDto,
@@ -480,6 +481,124 @@ function CenterSignedDocumentPanel({ applicationPublicId }: { applicationPublicI
   );
 }
 
+type CommitmentDocFilter = 'ALL' | 'SIGNED' | 'PENDING';
+
+const PENDING_DOC_STATUSES: Array<ClmDocumentDto['status']> = [
+  'PENDING_SIGNATURE',
+  'SIGNING',
+  'PARTIALLY_SIGNED',
+];
+
+const DOC_STATUS_LABEL: Record<ClmDocumentDto['status'], string> = {
+  PENDING_SIGNATURE: '서명 대기',
+  SIGNING: '서명 진행 중',
+  PARTIALLY_SIGNED: '일부 서명',
+  SIGNED: '서명 완료',
+  REJECTED: '서명 거절',
+  CANCELED: '요청 취소',
+  SIGNING_CANCELED: '서명 취소',
+};
+
+const COMMITMENT_FILTER_TITLE: Record<CommitmentDocFilter, string> = {
+  ALL: '전체 전자서명 문서',
+  SIGNED: '서명 완료 문서',
+  PENDING: '서명 대기 문서',
+};
+
+/** 약정 현황 카드를 눌렀을 때 해당 상태의 전자서명 문서를 바로 확인한다. */
+function CenterCommitmentDocumentsPanel({
+  organizationId,
+  filter,
+  onClose,
+}: {
+  organizationId: number;
+  filter: CommitmentDocFilter;
+  onClose: () => void;
+}) {
+  const [documents, setDocuments] = useState<ClmDocumentDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [openingId, setOpeningId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    fetchOrganizationClmDocuments(organizationId)
+      .then((items) => { if (active) setDocuments(items); })
+      .catch((reason) => active && setError(
+        reason instanceof Error ? reason.message : '전자서명 문서를 불러오지 못했습니다.',
+      ))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [organizationId]);
+
+  const filtered = documents.filter((document) =>
+    filter === 'ALL'
+      ? true
+      : filter === 'SIGNED'
+        ? document.status === 'SIGNED'
+        : PENDING_DOC_STATUSES.includes(document.status));
+
+  const openEvidence = async (document: ClmDocumentDto) => {
+    const popup = window.open('', '_blank');
+    setOpeningId(document.id);
+    try {
+      const files = await fetchClmDocumentFiles(document.id);
+      const target = files.find((file) => file.fileType === 'SIGNED_DOCUMENT') ?? files[0];
+      if (!target) throw new Error('보관된 PDF가 아직 없습니다. 서명이 완료되면 자동 보관됩니다.');
+      const url = await loadClmDocumentFile(document.id, target.id);
+      if (popup) popup.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (reason) {
+      popup?.close();
+      setError(reason instanceof Error ? reason.message : '파일을 열지 못했습니다.');
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  return (
+    <section className="center-commitment-docs">
+      <header>
+        <strong>{COMMITMENT_FILTER_TITLE[filter]} ({filtered.length}건)</strong>
+        <button type="button" onClick={onClose}>닫기 ✕</button>
+      </header>
+      {loading ? (
+        <p className="center-document-state">문서를 불러오는 중입니다…</p>
+      ) : error ? (
+        <p className="center-document-state error">{error}</p>
+      ) : filtered.length === 0 ? (
+        <p className="center-document-state">해당 상태의 문서가 없습니다.</p>
+      ) : (
+        <div className="center-commitment-doc-list">
+          {filtered.map((document) => (
+            <div key={document.id} className="center-commitment-doc-row">
+              <span className={`doc-status${document.status === 'SIGNED' ? ' signed' : ''}`}>
+                {DOC_STATUS_LABEL[document.status]}
+              </span>
+              <div>
+                <strong>{document.volunteerTitle}</strong>
+                <small>
+                  {document.applicantName} · {(document.signedAt ?? document.createdAt).slice(0, 10)}
+                </small>
+              </div>
+              <button
+                type="button"
+                onClick={() => openEvidence(document)}
+                disabled={openingId === document.id}
+              >
+                {openingId === document.id ? '여는 중…' : document.status === 'SIGNED' ? '체결 PDF' : '문서 보기'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 const CONNECT_STATUS_LABEL: Record<ConnectRequestItem['status'], string> = {
   OPEN: '수락 대기',
   REVIEWING: '진행 중',
@@ -657,6 +776,8 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
   const [selectedCenter, setSelectedCenter] = useState<ManagedCenter | null>(null);
   const [activeTab, setActiveTab] = useState<CenterTab>('posts');
   const [postManagerTab, setPostManagerTab] = useState<PostManagerTab>('edit');
+  // 약정 현황 카드를 눌러 해당 상태의 전자서명 문서를 펼쳐 본다. 같은 카드를 다시 누르면 닫힌다.
+  const [commitmentDocFilter, setCommitmentDocFilter] = useState<CommitmentDocFilter | null>(null);
   const [posts, setPosts] = useState<CenterPost[]>([]);
   const [applicants, setApplicants] = useState<CenterApplicant[]>([]);
   const [editingPost, setEditingPost] = useState<CenterPost | null>(null);
@@ -1626,20 +1747,53 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
           <h3>약정 현황 · 전자서명 증빙</h3>
         </div>
         <div className="center-commitment-metrics">
-          <div>
+          <div
+            className={`is-clickable${commitmentDocFilter === 'ALL' ? ' is-open' : ''}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setCommitmentDocFilter(commitmentDocFilter === 'ALL' ? null : 'ALL')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setCommitmentDocFilter(commitmentDocFilter === 'ALL' ? null : 'ALL');
+              }
+            }}
+          >
             <span>전체 약정</span>
             <strong>{selectedCenter.totalCommitments}<small>건</small></strong>
-            <p>취소를 제외한 누적 약정</p>
+            <p>취소를 제외한 누적 약정 · 눌러서 문서 보기</p>
           </div>
-          <div className="accent">
+          <div
+            className={`accent is-clickable${commitmentDocFilter === 'SIGNED' ? ' is-open' : ''}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setCommitmentDocFilter(commitmentDocFilter === 'SIGNED' ? null : 'SIGNED')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setCommitmentDocFilter(commitmentDocFilter === 'SIGNED' ? null : 'SIGNED');
+              }
+            }}
+          >
             <span>서명 완료</span>
             <strong>{selectedCenter.signedCommitments}<small>건</small></strong>
-            <p>모두싸인 증빙이 보관된 약정</p>
+            <p>모두싸인 증빙이 보관된 약정 · 눌러서 문서 보기</p>
           </div>
-          <div>
+          <div
+            className={`is-clickable${commitmentDocFilter === 'PENDING' ? ' is-open' : ''}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => setCommitmentDocFilter(commitmentDocFilter === 'PENDING' ? null : 'PENDING')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setCommitmentDocFilter(commitmentDocFilter === 'PENDING' ? null : 'PENDING');
+              }
+            }}
+          >
             <span>서명 대기</span>
             <strong>{selectedCenter.awaitingSignature}<small>건</small></strong>
-            <p>요청했으나 아직 미완료</p>
+            <p>요청했으나 아직 미완료 · 눌러서 문서 보기</p>
           </div>
           <div>
             <span>증빙된 약정액</span>
@@ -1663,6 +1817,13 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
             %
           </strong>
         </p>
+        {commitmentDocFilter && (
+          <CenterCommitmentDocumentsPanel
+            organizationId={selectedCenter.id}
+            filter={commitmentDocFilter}
+            onClose={() => setCommitmentDocFilter(null)}
+          />
+        )}
       </section>
 
       <nav className="center-management-tabs" aria-label="센터 관리 메뉴">
