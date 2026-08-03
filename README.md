@@ -29,7 +29,7 @@
 
 ## 📌 프로젝트 개요 및 한 줄 소개 (Project Summary)
 
-**잇다 ITDA**는 **VolunteerCatalog Editorial Bento Grid UI**와 **Upstage Solar LLM AI** 기술을 결합하여, 사용자의 선행 의향을 자연어로 파싱하고 봉사·기부 약정의 체결부터 갱신, 전자서명 보관, 그리고 원하는 선행을 역제안하고 센터가 프로그램을 개설하는 **CONNECT(온기 잇다)**까지 원스톱으로 제공하는 혁신적인 선행 커뮤니티 플랫폼입니다.
+**잇다 ITDA**는 **VolunteerCatalog Editorial Bento Grid UI**와 **Upstage Solar LLM AI** 기술을 결합하여, 사용자의 선행 의향(일반 봉사/기부, **고향사랑기부제**, **유산기부**, **문화유산 후원**)을 자연어로 파싱하고 봉사·기부 약정의 체결부터 갱신, 전자서명 보관, 그리고 원하는 선행을 역제안하고 센터가 프로그램을 개설하는 **CONNECT(온기 잇다)**까지 원스톱으로 제공하는 혁신적인 선행 커뮤니티 플랫폼입니다.
 
 ---
 
@@ -105,7 +105,11 @@
 - **AI 챗봇 연동 (`connectDraft`)**: `Pixel AI Mate` 대화 중 도출된 미션을 즉시 CONNECT 초안으로 자동 연결.
 - **이웃 응원 (`Support`) & 센터 수락 (`Claim`)**: 유저들의 응원을 모으면 센터 관리자(`CENTER_MANAGER`)가 수락하여 실제 모집 공고로 정식 개설.
 
-### 3. 📝 CLM 전자서명 & 모두싸인 API 연동
+### 3. 📝 CLM 전자서명 & 유형별 맞춤 약정 파이프라인 (모두싸인 API 연동)
+- **유형별 특화 기부·봉사 약정 지원**:
+  - 🌾 **고향사랑기부제 (`HOMETOWN_DONATION`)**: 지자체(부산광역시 등) 세액공제, 답례품(동백전 지역화폐 등) 자동 매칭 및 지자체 전용 약정서 생성.
+  - 🏛️ **유산기부 (`LEGACY_DONATION`) & 문화유산 후원 (`CULTURAL_HERITAGE_DONATION`)**: 유산 상속 및 문화재 보전을 위한 전용 CLM 전자서명 약정서 서식 지원.
+  - 🤝 **일반 봉사 & 기부 (`VOLUNTEER` / `DONATION`)**: 맞춤형 봉사 활동 및 정기/일시 기부 약정.
 - **약정서 자동 생성**: AI 큐레이팅 결과를 바탕으로 약정서(`Commitment`) 및 약정 버전(`CommitmentVersion`) 자동 생성.
 - **모두싸인 API & Webhook**: 전자서명 보안 링크 생성 및 카카오톡/이메일 서명 요청, 실시간 Webhook 상태 동기화.
 - **PDF & SHA-256 감사추적**: 완료 서명 PDF 생성 및 원본 무결성 검증용 SHA-256 해시 보관 (`ClmDocumentArchiveService`).
