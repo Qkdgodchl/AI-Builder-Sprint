@@ -57,12 +57,32 @@
 ## 🤖 2. AI 활용 증빙 (AI Integration & Implementation Proof)
 
 ### 🧠 사용 AI 모델 (AI Model)
-- **Upstage Solar LLM API (`solar-pro3`)**
+| API | 모델 | 계약 파이프라인에서 맡는 일 |
+| :--- | :--- | :--- |
+| **Solar LLM** | `solar-pro3` | 대화로 약정 의사를 정리하고, 체결 후 감사 인사를 씀 |
+| **Document Parse** | `document-parse` | 체결된 약정서 PDF에서 글자를 되읽음 |
+| **Information Extract** | `information-extract` | 되읽은 약정서를 고정 스키마로 구조화 |
 
 ### 📍 API 사용 위치 (Code Location)
-- **AI 클라이언트 모듈**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java`
+- **Solar 대화 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java`
+- **문서 AI 클라이언트**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageDocumentClient.java`
 - **대화 및 선행 큐레이팅**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiMateService.java`
 - **의향 파싱 & 스키마 구조화**: `backend/src/main/java/com/pixelcare/domain/ai/service/AiConsultationService.java`
+- **체결본 대조 검증**: `backend/src/main/java/com/pixelcare/domain/clm/service/ClmDocumentVerificationService.java`
+
+### 🔍 체결본 대조 검증 (Signed Document Verification)
+서명이 끝났다는 사실만으로는 **무엇에 서명했는지**를 증명하지 못합니다.
+잇다는 보관된 체결본을 다시 읽어, 신청할 때 정한 조건 그대로 서명됐는지 항목별로 대조합니다.
+
+```
+체결본 PDF → Document Parse(글자 추출) → Information Extract(항목 구조화)
+           → DB 약정 원본과 대조 → 항목별 일치/불일치 표시
+```
+
+- 대조 항목: 약정자 · 수혜기관 · 약정 금액 · 약정 주기
+- 표기 차이를 감안합니다. `"120,000 원"`은 숫자만 비교하고, `ANNUAL`은 약정서 표기인 `"연간 정기 후원"`과 맞춥니다.
+- 읽어내지 못하면 결과를 지어내지 않고 `UNREADABLE`로 남깁니다.
+- API: `POST /api/v1/clm/documents/{id}/verification`
 
 ### ⚙️ 프롬프트 및 설정 (Prompt & Configuration)
 - **프롬프트 페르소나**: 친근하고 따뜻한 픽셀 마스코트 `Pixel AI Mate` 페르소나 적용.
