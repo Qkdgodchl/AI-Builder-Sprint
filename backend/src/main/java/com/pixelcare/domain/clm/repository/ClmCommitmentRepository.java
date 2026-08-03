@@ -104,11 +104,8 @@ public class ClmCommitmentRepository {
                                 java.sql.Date.valueOf(effDate.plusMonths(1)), commitmentId);
                     }
                 }
-                jdbcTemplate.update("""
-                        UPDATE applications
-                        SET status = 'APPROVED', updated_at = CURRENT_TIMESTAMP
-                        WHERE id = (SELECT application_id FROM commitments WHERE id = ?)
-                        """, commitmentId);
+                // 서명 완료는 약정 체결까지다. 신청 승인은 센터 관리자의 검토 권한이므로
+                // 여기서 APPROVED로 바꾸지 않는다. (검토 대기 → 관리자 승인 흐름 유지)
             }
             case "REJECTED", "CANCELED" -> {
                 jdbcTemplate.update("""
