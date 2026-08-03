@@ -1,4 +1,4 @@
-# Pixel Care CLM REST API 명세서
+# 잇다 ITDA CLM REST API 명세서
 
 > 기준 기획: `CLM 기반 선행 플랫폼 최종 서비스 기획`
 >

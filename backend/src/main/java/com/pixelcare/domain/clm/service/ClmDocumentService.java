@@ -125,7 +125,7 @@ public class ClmDocumentService {
                 applicantName,
                 commitment.applicantEmail(),
                 commitment.title(),
-                commitment.organizer() != null ? commitment.organizer() : "픽셀케어 지정 기관"
+                commitment.organizer() != null ? commitment.organizer() : "잇다 지정 기관"
         );
 
         ModusignApiClient.ModusignRequestResult signResult = modusignApiClient.uploadAndRequestSigning(
@@ -357,7 +357,7 @@ public class ClmDocumentService {
 
         String organizerName = commitment.organizer() != null && !commitment.organizer().isBlank()
                 ? commitment.organizer()
-                : (intent.beneficiary() != null ? intent.beneficiary() : "픽셀케어 지정 기관");
+                : (intent.beneficiary() != null ? intent.beneficiary() : "잇다 지정 기관");
 
         intent = new PledgeIntent(
                 pledgeType,

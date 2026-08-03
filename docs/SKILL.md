@@ -1,11 +1,11 @@
 ---
 name: pixel-roadmap-design
-description: Master Synthesized Multi-Aesthetic Design System for Pixel Care platform. Standardized around the VolunteerCatalog Editorial Art Magazine & Bento Grid system across all tabs (Volunteer, Community, AI Mate, Roadmap).
+description: Master Synthesized Multi-Aesthetic Design System for ITDA platform. Standardized around the VolunteerCatalog Editorial Art Magazine & Bento Grid system across all tabs (Volunteer, Community, AI Mate, Roadmap).
 ---
 
-# Master Synthesized UI Design System (픽셀 케어 글로벌 표준 디자인 시스템)
+# Master Synthesized UI Design System (잇다 ITDA 글로벌 표준 디자인 시스템)
 
-본 디자인 스킬은 **픽셀 케어 (Pixel Care)** 플랫폼의 최고 디자인 가이드라인입니다. **봉사 & 기부 탭 (`VolunteerCatalog` & Editorial Art Magazine)**의 벤토 그리드 및 표 매거진 디자인 규격을 커뮤니티 탭을 비롯한 플랫폼 전체의 **공통 최고 표준(Master Standard)**으로 통일하여 적용합니다.
+본 디자인 스킬은 **잇다 ITDA** 플랫폼의 최고 디자인 가이드라인입니다. **봉사 & 기부 탭 (`VolunteerCatalog` & Editorial Art Magazine)**의 벤토 그리드 및 표 매거진 디자인 규격을 커뮤니티 탭을 비롯한 플랫폼 전체의 **공통 최고 표준(Master Standard)**으로 통일하여 적용합니다.
 
 ---
 

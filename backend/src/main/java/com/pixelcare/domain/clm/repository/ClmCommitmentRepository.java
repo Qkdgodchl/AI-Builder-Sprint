@@ -28,7 +28,7 @@ public class ClmCommitmentRepository {
                 SELECT c.id, c.public_id, c.opportunity_id, c.title, c.commitment_status,
                        c.pledge_frequency, c.pledge_amount, c.effective_from,
                        u.name AS applicant_name, u.email AS applicant_email,
-                       o.opportunity_type, COALESCE(org.name, '픽셀케어 지정 기관') AS organizer
+                       o.opportunity_type, COALESCE(org.name, '잇다 지정 기관') AS organizer
                 FROM commitments c
                 JOIN users u ON u.id = c.user_id
                 JOIN opportunities o ON o.id = c.opportunity_id
