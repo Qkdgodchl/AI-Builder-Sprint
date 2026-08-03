@@ -70,12 +70,14 @@ public class ModusignApiClient {
 
     /**
      * 모두싸인이 느려질 때 요청 스레드가 무한정 붙잡히지 않도록 상한을 둔다.
-     * 서명 완료 PDF와 감사추적 파일을 내려받는 호출이 있어 읽기 시간은 넉넉히 잡는다.
+     * 이 호출들은 DB 트랜잭션(=커넥션)을 잡은 채 기다리는 경우가 많아,
+     * 대기 상한이 길면 커넥션 풀이 통째로 마른다. 완료 PDF도 수백 KB 수준이라
+     * 10초면 충분하고, 실패하면 다음 조회에서 다시 시도된다.
      */
     private static RestTemplate timeoutBoundRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
-        factory.setReadTimeout(Duration.ofSeconds(30));
+        factory.setReadTimeout(Duration.ofSeconds(10));
         return new RestTemplate(factory);
     }
 
