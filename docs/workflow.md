@@ -60,7 +60,7 @@
 
 ### 🛡️ 3.2 코드 품질 & 오류 처리 (Code Quality & Robustness)
 - **Web Audio API**: 브라우저 자동재생 제한 정책(Autoplay Policy)을 예외 처리하는 사용자 인터랙션 기반 8-bit 사운드 엔진 (`src/js/soundFx.js`).
-- **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·MySQL 백엔드를 분리하고, 인증된 REST API와 Flyway로 상태를 영속화.
+- **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·PostgreSQL 백엔드를 분리하고, 인증된 REST API와 JPA로 상태를 영속화.
 - **전자서명 견고성**: Webhook event ID 멱등 처리, 종결 상태 단조 전이, 실패 상태 기록, 완료 PDF·감사추적 자료 보관.
 
 ---

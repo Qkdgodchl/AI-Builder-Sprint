@@ -65,13 +65,16 @@ backend/src/main/java/com/pixelcare/
 ├── config/                            # ⚙️ 부트스트랩 데이터 시딩
 │   └── DevelopmentBootstrap.java      # 데모 사용자, 센터, 모집글 자동 시딩
 │
-└── domain/                            # 🎯 기능 도메인 모듈
+└── domain/                            # 🍯 기능 도메인 모듈
     ├── ai/                            # 🤖 Upstage Solar LLM 연동, JSON 파싱, Smart Failover
     ├── clm/                           # 📝 CLM 약정서, 모두싸인 Webhook, PDF SHA-256 보관
     ├── user/                          # 📜 유저 프로필, 온기 온도계, warmth_events, 뱃지 도감
-    ├── management/                    # 🏢/🛡️ 센터 관리자/센터 승인, 센터 대시보드, 감사 로그
-    ├── application/                   # 🎁 봉사/기부 모집글 신청, 출석 처리, 약정 갱신
+    ├── management/                    # 🏢/🛡️ 센터 관리자/센터 승인, 대시보드, 감사 로그
+    ├── opportunity/                   # 🎁 봉사/기부 모집글 작성 및 게시
+    ├── application/                   # 📋 공고 신청, 출석 처리, 약정 갱신
+    ├── connect/                       # 🤝 CONNECT 선행 역제안 및 Support/Claim
     ├── community/                     # 💬 커뮤니티 후기, 댓글, 좋아요, 소프트 삭제(isDeleted)
+    ├── journal/                       # 📖 봉사 일지
     ├── news/                          # 📰 미담 뉴스(Good News) 큐레이팅
     ├── stats/                         # 📊 실시간 플랫폼 종합 통계 대시보드
     └── file/                          # 📁 증빙서류, 후기 사진, PDF 문서 파일 저장소
@@ -85,15 +88,20 @@ backend/src/main/java/com/pixelcare/
 frontend/src/
 ├── App.tsx                           # 3단계 역할별 하단 가변 탭 라우터
 ├── components/
-│   ├── common/                       # Header, NavigationBar, Modal, Toast
-│   ├── home/                         # 🏠 홈 (Upstage AI 픽셀 큐레이터 진입점)
-│   ├── volunteer/                    # 🎁 선행하기 (봉사/기부 카탈로그 & 신청)
-│   ├── connect/                      # 🤝 CONNECT (선행 아이디어 제안 & 응원/개설)
-│   ├── community/                    # 💬 커뮤니티 (선행 후기 & 동행 모집)
-│   ├── myrecords/                    # 📜 내 기록 (활동 이력, 온기 온도계, 뱃지 도감)
+│   ├── ai/                           # 🤖 Pixel AI Mate 솵터 (코마 AI 큐레이터)
+│   ├── auth/                         # 🔐 로그인 & 회원가입
 │   ├── center/                       # 🏢 센터 관리 (대시보드, 모집글 작성, 출석 승인)
+│   ├── common/                       # Header, NavigationBar, Modal, Toast
+│   ├── connect/                      # 🤝 CONNECT (선행 아이디어 제안 & 응원/개설)
+│   ├── diary/                        # 📖 봉사 일지
+│   ├── home/                         # 🏠 홈 (Upstage AI 픽셀 큐레이터 진입점)
+│   ├── news/                         # 📰 미담 뉴스
 │   ├── operator/                     # 🛡️ 운영 관리 (권한/센터 승인, 소프트 삭제, 감사로그)
-│   └── ai/                           # 🤖 Upstage AI 챗봇 (PixelAiMate)
-├── services/                         # REST API 모듈 (connectApi, userApi, clmApi, aiApi 등)
-└── types/                            # TypeScript 타입 명세서
+│   ├── roadmap/                      # 🗺️ 성장의 길 & 뱃지 도감
+│   ├── user/                         # 📜 내 기록 (활동 이력, 온기 온도계, 뱃지 도감)
+│   └── volunteer/                    # 🎁 선행하기 (봉사/기부 카탈로그 & 신청)
+├── services/                         # REST API 모듈 (connectApi, userApi, clmApi, aiApi 등 16개)
+├── hooks/                            # 커스텀 React Hook
+├── types/                            # TypeScript 타입 명세서
+└── utils/                            # 유틸리티 함수
 ```

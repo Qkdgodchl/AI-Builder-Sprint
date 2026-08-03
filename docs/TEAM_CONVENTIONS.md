@@ -52,4 +52,4 @@ docs: 해커톤 예선 제출물 체크리스트 기준 README.md 및 PLAN.md �
 1. DB 테이블/컬럼 변경 전 `main` 브랜치의 `schema-postgresql.sql` 및 Migration SQL을 최신 상태로 `git pull` 합니다.
 2. 엔티티(Entity) 변경과 스키마 SQL 수정은 반드시 같은 커밋/PR에 포함합니다.
 3. 컬럼 추가 시 기존 시스템 데이터가 손상되지 않도록 `ADD COLUMN IF NOT EXISTS` 및 기본값(`DEFAULT`)을 항상 포함합니다.
-4. 배포 환경(Render PostgreSQL)과 로컬 Docker MySQL 양쪽 환경에서 모두 빌드가 통과하는지 검증합니다.
+4. 배포 환경(Render PostgreSQL)과 로컬 Docker PostgreSQL 양쪽 환경에서 모두 빌드가 통과하는지 검증합니다.

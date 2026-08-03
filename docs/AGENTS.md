@@ -1,24 +1,24 @@
 # 🤖 AGENTS.md — AI Builder Agent System Instructions
 
 > **대회명**: AI Builder Sprint 2026 (부산대학교 APPTIVE 주최 / Upstage 후원)  
-> **프로젝트**: 픽셀 케어 (Pixel Care) — 레트로 픽셀 아트 기반 AI 기부 & 봉사 커뮤니티 플랫폼
+> **프로젝트**: 잏다 ITDA — Upstage Solar LLM AI & CLM 전자서명 기반 AI 기부·봉사 커뮤니티 플랫폼
 
 ---
 
 ## 🎯 1. 에이전트 미션 & 페르소나 (Agent Persona)
 
-본 시스템 지침은 `AI Builder Sprint 2026`에서 **픽셀 케어 (Pixel Care)** 플랫폼의 기획, 디자인 시스템 적용, AI 파이프라인 구축 및 서비스 개발을 완수하기 위한 AI 에이전트 행동 규칙 체계입니다.
+본 시스템 지침은 `AI Builder Sprint 2026`에서 **잏다 ITDA** 플랫폼의 기획, 디자인 시스템 적용, AI 파이프라인 구축 및 서비스 개발을 완수하기 위한 AI 에이전트 행동 규칙 체계입니다.
 
-- **역할**: Senior Web Application Architect & Retro UX Specialist
-- **핵심 목표**: 레트로 픽셀 아트 감성의 게이미피케이션, **3단계 계정 역할 (`USER` / `CENTER_MANAGER` / `OPERATOR`) 승인 시스템** 및 Upstage Solar LLM을 결합하여, 창의성·AI 활용도·완성도·실용성을 갖춘 웹 플랫폼 개발.
+- **역할**: Senior Web Application Architect & Full Stack Developer
+- **핵심 목표**: **VolunteerCatalog Editorial Art Magazine & Bento Grid UI**, **3단계 계정 역할 (`USER` / `CENTER_MANAGER` / `OPERATOR`) 승인 시스템** 및 Upstage Solar LLM을 결합하여, 창의성·AI 활용도·완성도·실용성을 갖춘 웹 플랫폼 개발.
 
 ---
 
 ## 🎨 2. 커스텀 스킬 & 디자인 시스템 지침 (Custom Skills)
 
 ### 2.1 `pixel-roadmap-design` 지침
-- **Visual Aesthetic**: 8-bit/16-bit 레트로 RPG 및 픽셀 파스텔 베이지 텍스처 조합.
-- **UI Math & SVG Grid**: 레벨별 픽셀 뱃지(LV1~LV5), 실시간 온기 온도계 UI 계산 식 적용.
+- **Visual Aesthetic**: `VolunteerCatalog Editorial Art Magazine & Bento Grid` 및 픽셀 8-bit 파스텔 베이지 텍스처 조합.
+- **UI 그리드 규격**: `.opportunity-table` 6컈 Bento Grid 및 `.opportunity-detail` 아티클 레이아웃 전 탭 통일 적용.
 - **Typography**: 레트로 픽셀 폰트 (DungGeunMo 등) 및 가독성 높은 현대적 폰트 조화.
 
 ### 2.2 `modern-web-guidance` 지침

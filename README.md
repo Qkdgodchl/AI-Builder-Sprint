@@ -122,25 +122,50 @@
 
 ```text
 AI-Builder-Sprint/
-├── AGENTS.md                          # AI 에이전트 시스템 지침 파일
 ├── README.md                          # 프로젝트 메인 설명서
+├── docker-compose.yml                 # 로컬 개발용 PostgreSQL Docker 설정
 ├── docs/                              # 상세 설계 및 명세 문서군
+│   ├── AGENTS.md                      # AI 에이전트 시스템 지침 파일
 │   ├── PLAN.md                        # 기획 및 로드맵
 │   ├── ARCHITECTURE.md                # 시스템 아키텍처 명세서
 │   ├── API_SPEC.md                    # REST API 명세서
-│   └── DB_SCHEMA.md                   # 데이터베이스 스키마 명세서
+│   ├── DB_SCHEMA.md                   # 데이터베이스 스키마 명세서
+│   ├── SKILL.md                       # 디자인 시스템 스킬 지침
+│   ├── TEAM_CONVENTIONS.md            # 팀 협업 가이드라인
+│   └── workflow.md                    # 서비스 기획서
 │
 ├── backend/src/main/java/com/pixelcare/
 │   ├── domain/ai/                     # 🤖 Upstage Solar LLM AI & Smart Failover
 │   ├── domain/clm/                    # 📝 CLM 약정서 & 모두싸인 Webhook / SHA-256
 │   ├── domain/user/                   # 📜 유저, 온기 온도계, 뱃지 도감
 │   ├── domain/management/             # 🏢/🛡️ 센터 관리자 & 운영진 승인/감사로그
-│   ├── domain/volunteer/              # 🎁 봉사/기부 공고 및 신청
-│   └── domain/community/              # 💬 커뮤니티 & 소프트 삭제
+│   ├── domain/opportunity/            # 🎁 봉사/기부 공고 관리
+│   ├── domain/application/            # 📋 공고 신청 & 출석 처리
+│   ├── domain/connect/                # 🤝 CONNECT 선행 역제안 & Support/Claim
+│   ├── domain/community/              # 💬 커뮤니티 후기 & 소프트 삭제
+│   ├── domain/journal/                # 📖 봉사 일지
+│   ├── domain/news/                   # 📰 미담 뉴스 큐레이팅
+│   ├── domain/stats/                  # 📊 실시간 플랫폼 통계
+│   └── domain/file/                   # 📁 파일 저장소
 │
 └── frontend/src/
     ├── components/                    # 탭별 React 컴포넌트
-    ├── services/                      # REST API & Web Audio 모듈
+    │   ├── ai/                        # 🤖 Pixel AI Mate 챗봇
+    │   ├── auth/                      # 🔐 로그인 & 회원가입
+    │   ├── center/                    # 🏢 센터 관리 대시보드
+    │   ├── common/                    # Header, NavigationBar, Modal 등
+    │   ├── connect/                   # 🤝 CONNECT 역제안 & 응원
+    │   ├── diary/                     # 📖 봉사 일지
+    │   ├── home/                      # 🏠 홈 (AI 큐레이터 진입점)
+    │   ├── news/                      # 📰 미담 뉴스
+    │   ├── operator/                  # 🛡️ 운영 관리
+    │   ├── roadmap/                   # 🗺️ 성장의 길 & 뱃지 도감
+    │   ├── user/                      # 📜 내 기록
+    │   └── volunteer/                 # 🎁 선행하기 (봉사/기부 카탈로그)
+    ├── services/                      # REST API 모듈 (16개 api 파일)
+    ├── hooks/                         # 커스텀 React Hook
+    ├── types/                         # TypeScript 타입 명세
+    ├── utils/                         # 유틸리티 함수
     └── App.tsx                        # 3단계 역할별 가변 탭 라우터
 ```
 
@@ -152,7 +177,7 @@ AI-Builder-Sprint/
 | :--- | :--- |
 | **Frontend** | React 18, TypeScript, Vite, Editorial Bento Grid CSS (Vercel Deployment) |
 | **Backend** | Java 21, Spring Boot 3.3.4, Spring Data JPA, JdbcTemplate (Render Cloud) |
-| **Database** | PostgreSQL (Render Deployment / Local Docker) |
+| **Database** | PostgreSQL (Render Deployment), PostgreSQL 16-alpine (Local Docker) |
 | **AI LLM** | Upstage Solar LLM API (`solar-pro3`) |
 | **E-Signature** | 모두싸인 (Modusign) Webhook API & PDF SHA-256 Archive |
 | **DB Migration** | Spring Boot Native SQL Initialization (`spring.sql.init.platform=postgresql`) |
