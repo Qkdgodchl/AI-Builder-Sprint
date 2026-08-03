@@ -11,7 +11,7 @@
 ![Upstage Solar](https://img.shields.io/badge/AI-Upstage%20Solar%20LLM-purple?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Render-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 
-**바로가기** · [배포 주소·데모 계정](#-배포-주소-및-라이브-데모-계정) · [로컬 실행](#-로컬-실행-가이드) · [AI 활용 증빙](#-2-ai-활용-증빙) · [핵심 기능](#-3-주요-핵심-기능) · [프로젝트 구조](#-4-프로젝트-구조) · [기술 스택](#-5-기술-스택) · [팀원](#-6-팀원-소개)
+**바로가기** · [배포 주소·데모 계정](#-배포-주소-및-라이브-데모-계정) · [로컬 실행](#-로컬-실행-가이드) · [AI 활용 증빙](#-2-ai-활용-증빙) · [핵심 기능](#-3-주요-핵심-기능) · [프로젝트 구조](#-4-프로젝트-구조) · [기술 스택](#-5-기술-스택) · [개발 AI 활용](#-6-개발-과정의-ai-활용) · [팀원](#-7-팀원-소개)
 
 ---
 
@@ -260,7 +260,20 @@ AI-Builder-Sprint/
 
 ---
 
-## 👥 6. 팀원 소개
+## 🤝 6. 개발 과정의 AI 활용
+
+서비스 안의 AI(Upstage)와 별개로, 개발 과정 자체를 AI 코딩 에이전트(Claude Code)와 함께 진행했습니다.
+
+| 구분 | 내용 |
+|---|---|
+| 에이전트 지침 | [`CLAUDE.md`](CLAUDE.md) · [`docs/AGENTS.md`](docs/AGENTS.md) — 프로젝트 규칙 · 페르소나 · 외부 API 폴백 원칙을 지침 파일로 두고 세션마다 일관되게 적용 |
+| 커스텀 스킬 | [`.agents/skills/pixel-roadmap-design`](.agents/skills/pixel-roadmap-design/SKILL.md) — 벤토 그리드 디자인 시스템을 스킬로 정의해 전 화면의 UI 규격 통일 |
+| 활용 방식 | 기획([`docs/workflow.md`](docs/workflow.md)) → 구현 → 테스트 → 문서 동기화 전 과정을 에이전트와 페어로 진행. 한국어 서술형 커밋 160여 개가 그 협업 기록 |
+| AI가 기여한 사례 | 배포 DB(PostgreSQL)에서만 터지던 MySQL 전용 SQL 수정, 트랜잭션 rollback-only 오염 진단, 커넥션 풀 고갈 원인 분석과 헬스체크 분리, 죽은 코드 감사 등 |
+
+---
+
+## 👥 7. 팀원 소개
 
 | 이름 | 역할 | 담당 업무 |
 | :---: | :---: | :--- |
