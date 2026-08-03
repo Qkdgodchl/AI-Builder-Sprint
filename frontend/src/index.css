@@ -10308,3 +10308,56 @@ strong, small, em, span, label, button, a {
   font-size: 10.5px;
   color: var(--pc-muted);
 }
+
+/* ── 서버 웨이크업 오버레이 (Render 콜드스타트 안내) ── */
+.server-wake-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(4px);
+}
+
+.server-wake-overlay img {
+  width: 104px;
+  height: auto;
+  animation: server-wake-pulse 1.6s ease-in-out infinite;
+}
+
+.server-wake-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 4px solid #e2e8f0;
+  border-top-color: #ff3b30;
+  animation: server-wake-spin 0.9s linear infinite;
+}
+
+.server-wake-overlay strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111111;
+}
+
+.server-wake-overlay p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #777777;
+}
+
+@keyframes server-wake-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes server-wake-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.72; transform: scale(1.05); }
+}

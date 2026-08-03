@@ -20,7 +20,7 @@ import { HomePage } from './components/home/HomePage';
 import { GoodNewsPage } from './components/news/GoodNewsPage';
 import { ConnectPage } from './components/connect/ConnectPage';
 import { playBeep } from './services/soundFx';
-import { logout as logoutApi } from './services/authApi';
+import { fetchMyProfile, logout as logoutApi } from './services/authApi';
 import { fetchPlatformStats, type PlatformStats } from './services/statsApi';
 import { SESSION_EXPIRED_EVENT } from './services/apiClient';
 import type { SessionUser } from './types';
@@ -46,6 +46,36 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(loadStoredUser);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAiDockOpen, setIsAiDockOpen] = useState(false);
+  // 무료 서버(Render)는 절전에서 깨어나는 데 1분 남짓 걸린다.
+  // 첫 응답을 받을 때까지 로고 오버레이를 보여줘서 빈 화면·에러처럼 보이지 않게 한다.
+  const [serverReady, setServerReady] = useState(false);
+  const [showWakeOverlay, setShowWakeOverlay] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    // 서버가 이미 깨어 있으면 오버레이가 깜빡이지 않도록 잠깐 기다렸다가 보여준다.
+    const delayTimer = window.setTimeout(() => {
+      if (!cancelled) setShowWakeOverlay(true);
+    }, 600);
+    const wakeServer = async () => {
+      for (let attempt = 0; attempt < 40 && !cancelled; attempt += 1) {
+        try {
+          const summary = await fetchPlatformStats();
+          if (!cancelled) setStats(summary);
+          break;
+        } catch {
+          await new Promise((resolve) => window.setTimeout(resolve, 3000));
+        }
+      }
+      // 실패가 계속돼도 화면을 영영 막지는 않는다.
+      if (!cancelled) setServerReady(true);
+    };
+    wakeServer();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(delayTimer);
+    };
+  }, []);
 
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
@@ -70,6 +100,33 @@ export function App() {
   useEffect(() => {
     reloadStats();
   }, [reloadStats, currentUser]);
+
+  // 센터 관리자 승인처럼 로그인 이후 역할이 바뀌어도 재로그인 없이 반영되도록
+  // 접속할 때마다 캐시된 세션의 역할을 서버 기준으로 맞춘다.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetchMyProfile()
+      .then((profile) => {
+        setCurrentUser((existing) => {
+          if (!existing) return existing;
+          const roles = profile.roles ?? [];
+          const role = roles.includes('OPERATOR')
+            ? 'OPERATOR'
+            : roles.includes('CENTER_MANAGER')
+              ? 'CENTER_MANAGER'
+              : 'USER';
+          if (existing.role === role && JSON.stringify(existing.roles ?? []) === JSON.stringify(roles)) {
+            return existing;
+          }
+          const updated: SessionUser = { ...existing, roles, role };
+          localStorage.setItem('pixel-care-user', JSON.stringify(updated));
+          return updated;
+        });
+      })
+      .catch(() => {
+        // 세션 만료 등은 기존 401 처리 흐름(SESSION_EXPIRED_EVENT)이 맡는다.
+      });
+  }, [currentUser?.id]);
 
   const triggerToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -160,6 +217,14 @@ export function App() {
 
   return (
     <div className="app-container">
+      {!serverReady && showWakeOverlay && (
+        <div className="server-wake-overlay" role="status" aria-live="polite">
+          <img src="/favicon.svg" alt="잇다 ITDA" />
+          <span className="server-wake-spinner" aria-hidden="true" />
+          <strong>잇다 서버와 연결하는 중입니다…</strong>
+          <p>절전 중이던 서버를 깨우고 있어요. 최대 1분 정도 걸릴 수 있어요.</p>
+        </div>
+      )}
       <Header
         stats={stats}
         currentUser={currentUser}
