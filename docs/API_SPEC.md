@@ -140,7 +140,7 @@ Idempotency-Key: commitment-72-version-1
 - Repository: `@DataJpaTest`
 - API 통합 테스트: `@SpringBootTest` + MockMvc
 - 외부 API: WireMock 또는 MockWebServer
-- 운영 DB 호환성 확인: Testcontainers MySQL
+- 운영 DB: PostgreSQL 16 (Render) — 배포 환경과 같은 문법만 사용
 - 인증: 테스트용 opaque Access Token 발급 헬퍼
 
 ### 2.2 API를 하나 만들 때마다 실행할 테스트
@@ -168,13 +168,13 @@ cd backend
 클래스 단위:
 
 ```bash
-./gradlew test --tests "com.pixelcare.auth.AuthControllerTest"
+./gradlew test --tests "com.pixelcare.domain.user.controller.AuthControllerTest"
 ```
 
 특정 메서드:
 
 ```bash
-./gradlew test --tests "com.pixelcare.auth.AuthControllerTest.signup_success"
+./gradlew test --tests "com.pixelcare.domain.user.controller.AuthControllerTest.signup_success"
 ```
 
 수동 확인 예시:
@@ -726,7 +726,7 @@ Idempotency-Key: commitment-72-version-1
     "email": "user@example.com",
     "phone": "01012345678"
   },
-  "returnUrl": "https://pixelcare.example.com/my-records/72"
+  "returnUrl": "https://itdafront.vercel.app/my-records/72"
 }
 ```
 

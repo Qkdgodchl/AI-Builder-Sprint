@@ -58,11 +58,12 @@ backend/src/main/java/com/pixelcare/
 ├── PixelCareApplication.java         # Spring Boot 메인 실행 파일
 │
 ├── global/                            # 🌐 전역 공통 시스템
-│   ├── config/                        # Spring Boot Config (Web, Security, Upstage)
+│   ├── config/                        # Spring Boot Config (WebConfig)
 │   ├── common/                        # ApiResponse<T> 표준 응답 래퍼, KeyExtractUtils
 │   └── error/                         # GlobalExceptionHandler 전역 예외 처리
 │
 ├── config/                            # ⚙️ 부트스트랩 데이터 시딩
+│   ├── DataLoader.java                # 봉사·기부 원천 데이터(volunteers) 시딩
 │   └── DevelopmentBootstrap.java      # 데모 사용자, 센터, 모집글 자동 시딩
 │
 └── domain/                            # 🍯 기능 도메인 모듈
@@ -88,10 +89,10 @@ backend/src/main/java/com/pixelcare/
 frontend/src/
 ├── App.tsx                           # 3단계 역할별 하단 가변 탭 라우터
 ├── components/
-│   ├── ai/                           # 🤖 Pixel AI Mate 솵터 (코마 AI 큐레이터)
+│   ├── ai/                           # 🤖 ITDA AI Mate (대화형 AI 큐레이터)
 │   ├── auth/                         # 🔐 로그인 & 회원가입
 │   ├── center/                       # 🏢 센터 관리 (대시보드, 모집글 작성, 출석 승인)
-│   ├── common/                       # Header, NavigationBar, Modal, Toast
+│   ├── common/                       # Header, Modal, Toast
 │   ├── connect/                      # 🤝 CONNECT (선행 아이디어 제안 & 응원/개설)
 │   ├── diary/                        # 📖 봉사 일지
 │   ├── home/                         # 🏠 홈 (Upstage AI 픽셀 큐레이터 진입점)
@@ -100,7 +101,7 @@ frontend/src/
 │   ├── roadmap/                      # 🗺️ 성장의 길 & 뱃지 도감
 │   ├── user/                         # 📜 내 기록 (활동 이력, 온기 온도계, 뱃지 도감)
 │   └── volunteer/                    # 🎁 선행하기 (봉사/기부 카탈로그 & 신청)
-├── services/                         # REST API 모듈 (connectApi, userApi, clmApi, aiApi 등 16개)
+├── services/                         # REST API 모듈 (connectApi, clmApi, aiApi 등 14개)
 ├── hooks/                            # 커스텀 React Hook
 ├── types/                            # TypeScript 타입 명세서
 └── utils/                            # 유틸리티 함수

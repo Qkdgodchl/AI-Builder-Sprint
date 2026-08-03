@@ -36,12 +36,11 @@
 ### 🛠️ 2.2 개발 프로세스 전반의 AI 에이전트 통합 (Agentic Development Workflow)
 - **에이전트 설정·지침 체계성 (`AGENTS.md` & Custom Skills)**:
   - `pixel-roadmap-design`: 레트로 픽셀 아트 UI/SVG 수학적 레이아웃 설계 지침 체계화.
-  - `modern-web-guidance`: 현대적 Web API, Web Audio API, CSS 애니메이션 표준 가이드라인 탑재.
   - AI 에이전트와 기획-디자인-코딩-테스트 전 과정을 동기화하여 개발 생산성 및 결과물 품질 극대화.
 
 ---
 
-## 🔄 3. 서비스 완성도 & 이용 흐름
+## 🔄 3. 서비스 이용 흐름
 
 ### 🗺️ 3.1 서비스 이용 흐름 (User Journey Flow)
 ```
@@ -49,7 +48,7 @@
 ```
 
 1. **메인 홈 중앙 AI 대화창**: "주말에 센텀시티 근처에서 할 수 있는 따뜻한 봉사 추천해줘" ➔ Solar LLM이 퀘스트 추천.
-2. **상단 메인 네비게이션 탭**:
+2. **하단 메인 네비게이션 탭**:
    - `[🤝 봉사 & 기부]`: 봉사·기부 프로그램 탐색과 CLM 약정 신청.
    - `[📖 픽셀 일기장 & 커뮤니티]`: 봉사 일기 작성, 날씨/감정 스티커, 응원 하트.
    - `[🗺️ 성장의 길 (로드맵)]`: S자 곡선 도로 & 픽셀 뱃지 도감.
@@ -59,7 +58,7 @@
    - **실시간 통계 바**: 총 누적 기부금(₩), 총 봉사시간(시간), 참여 영웅 수(명).
 
 ### 🛡️ 3.2 코드 품질 & 오류 처리 (Code Quality & Robustness)
-- **Web Audio API**: 브라우저 자동재생 제한 정책(Autoplay Policy)을 예외 처리하는 사용자 인터랙션 기반 8-bit 사운드 엔진 (`src/js/soundFx.js`).
+- **Web Audio API**: 브라우저 자동재생 제한 정책(Autoplay Policy)을 예외 처리하는 사용자 인터랙션 기반 8-bit 사운드 엔진 (`frontend/src/services/soundFx.ts`).
 - **모듈화 구조**: React·TypeScript 프론트와 Spring Boot·PostgreSQL 백엔드를 분리하고, 인증된 REST API와 Spring Boot Native SQL Initialization(`schema-postgresql.sql`)으로 상태를 영속화.
 - **전자서명 견고성**: Webhook event ID 멱등 처리, 종결 상태 단조 전이, 실패 상태 기록, 완료 PDF·감사추적 자료 보관.
 
@@ -89,12 +88,12 @@
 - 실시간 픽셀 온기 온도계 게이지 모션 및 상단 누적 통계 바 연동.
 
 ### Module 5. 🏁 최종 통합 & 푸시 (Final Integration Module)
-- Web Audio API 레트로 8-bit 사운드 (`src/js/soundFx.js`) 전 모듈 통합.
+- Web Audio API 레트로 8-bit 사운드 (`frontend/src/services/soundFx.ts`) 전 모듈 통합.
 - 대회 제출 규칙 `AGENTS.md` 작성 및 GitHub `main` 최종 커밋/푸시.
 
 ---
 
-## 🌍 5. 실용성 & 지역사회 기여 효과
+## 🌍 5. 지역사회 기여 효과
 
 ### 🏢 5.1 자체 봉사 프로그램 운영
 - 승인된 센터 관리자가 봉사 프로그램을 직접 등록하고 관리.

@@ -69,7 +69,7 @@ cd frontend && npm install && npm run dev
 | 프론트엔드 배포 | Vercel (`frontend/vercel.json` SPA rewrite) |
 | 백엔드 배포 | Render (Docker, `backend/Dockerfile` — Java 21 + 한글 폰트 포함) |
 | 데이터베이스 | PostgreSQL 16 (Render / 로컬 Docker) |
-| 테스트 | `cd backend && ./gradlew test` (JUnit 5, 53개) |
+| 테스트 | `cd backend && ./gradlew test` (JUnit 5, 55개) |
 
 ---
 
@@ -209,7 +209,7 @@ AI-Builder-Sprint/
     │   ├── ai/                        # 🤖 Pixel AI Mate 챗봇
     │   ├── auth/                      # 🔐 로그인 & 회원가입
     │   ├── center/                    # 🏢 센터 관리 대시보드
-    │   ├── common/                    # Header, NavigationBar, Modal 등
+    │   ├── common/                    # Header, Modal, Toast 등
     │   ├── connect/                   # 🤝 CONNECT 역제안 & 응원
     │   ├── diary/                     # 📖 봉사 일지
     │   ├── home/                      # 🏠 홈 (AI 큐레이터 진입점)
@@ -218,7 +218,7 @@ AI-Builder-Sprint/
     │   ├── roadmap/                   # 🗺️ 성장의 길 & 뱃지 도감
     │   ├── user/                      # 📜 내 기록
     │   └── volunteer/                 # 🎁 선행하기 (봉사/기부 카탈로그)
-    ├── services/                      # REST API 모듈 (16개 api 파일)
+    ├── services/                      # REST API 모듈 (14개 API 파일)
     ├── hooks/                         # 커스텀 React Hook
     ├── types/                         # TypeScript 타입 명세
     ├── utils/                         # 유틸리티 함수

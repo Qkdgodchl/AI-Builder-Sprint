@@ -68,8 +68,8 @@
 
 ## 🏆 5. 서비스 강점 및 기대 효과 (Strengths & Expected Impact)
 
-- **창의성**: VolunteerCatalog Editorial Bento Grid UI, 실시간 온기 온도계 UI(36.5°C ➔ 상승) 및 `warmth_events` 기록.
-- **AI 활용도**: Upstage Solar LLM 파이프라인, JSON 의향 파싱, 외부 전송 동의(Opt-in) 보관, Smart Failover Engine.
-- **완성도**: 3단계 계정 역할 분리 및 역할별 가변 탭 라우팅 (4대 탭 / 5대 탭).
-- **실용성**: CONNECT 선행 역제안, CLM 전자서명 갱신, SHA-256 PDF 감사추적, 소프트 삭제 & 감사 로그, 부산 고향사랑기부제(답례품·세액공제) 및 유산·문화유산 후원 약정 지원.
+- **차별화된 UI**: VolunteerCatalog Editorial Bento Grid UI, 실시간 온기 온도계 UI(36.5°C ➔ 상승) 및 `warmth_events` 기록.
+- **AI 파이프라인**: Upstage Solar LLM 파이프라인, JSON 의향 파싱, 외부 전송 동의(Opt-in) 보관, Smart Failover Engine.
+- **역할 기반 운영 구조**: 3단계 계정 역할 분리 및 역할별 가변 탭 라우팅 (4대 탭 / 5대 탭).
+- **실사용 흐름**: CONNECT 선행 역제안, CLM 전자서명 갱신, SHA-256 PDF 감사추적, 소프트 삭제 & 감사 로그, 부산 고향사랑기부제(답례품·세액공제) 및 유산·문화유산 후원 약정 지원.
 - **배포 및 운영**: Render 클라우드 프로덕션 배포 및 Spring Boot Native SQL Initialization (`schema-postgresql.sql`).

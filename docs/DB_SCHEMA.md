@@ -2,11 +2,13 @@
 
 > 문서 버전: `v1.3`
 >
-> 개발·운영 DB: MySQL 8.4 LTS
+> 개발·운영 DB: PostgreSQL 16 (Render / 로컬 Docker)
 >
-> 자동 테스트 DB: H2 또는 Testcontainers MySQL
+> 자동 테스트 DB: H2 인메모리
 >
-> 스키마 적용 도구: Flyway
+> 스키마 적용: Spring Boot Native SQL Initialization (`schema-postgresql.sql`) + JPA `ddl-auto: update`
+>
+> ⚠️ 아래 본문 중 MySQL 8.4·Flyway 관련 서술은 초기 설계 단계의 이력 기록이다. 현재 실행 스키마의 원천은 `backend/src/main/resources/schema-postgresql.sql`이며, Flyway는 비활성 상태다.
 
 ---
 
