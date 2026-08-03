@@ -21,7 +21,7 @@
 | **API 서버 (백엔드)** | `https://ai-builder-sprint.onrender.com` |
 | **데모 계정 (센터 관리자)** | `manager@pixelcare.demo` / `Manager123!` |
 | **데모 계정 (운영진)** | `operator@pixelcare.local` / `Operator123!` |
-| **데모 계정 (일반 사용자)** | `donor@pixelcare.demo` / `User123!` |
+| **데모 계정 (일반 사용자)** | `donor@pixelcare.demo` / `Donor123!` |
 
 > 💡 **백엔드 접속 안내**: 백엔드는 Render 무료 인스턴스로 접속이 없으면 절전 상태가 됩니다. 첫 요청 시 백엔드 상향까지 50초 남짓 걸릴 수 있습니다.
 
@@ -57,7 +57,7 @@
 ## 🤖 2. AI 활용 증빙 (AI Integration & Implementation Proof)
 
 ### 🧠 사용 AI 모델 (AI Model)
-- **Upstage Solar LLM API (`solar-1-mini-chat`)**
+- **Upstage Solar LLM API (`solar-pro3`)**
 
 ### 📍 API 사용 위치 (Code Location)
 - **AI 클라이언트 모듈**: `backend/src/main/java/com/pixelcare/domain/ai/service/UpstageApiClient.java`
@@ -132,8 +132,8 @@ AI-Builder-Sprint/
 | :--- | :--- |
 | **Frontend** | React 18, TypeScript, Vite, Editorial Bento Grid CSS (Vercel Deployment) |
 | **Backend** | Java 21, Spring Boot 3.3.4, Spring Data JPA, JdbcTemplate (Render Cloud) |
-| **Database** | PostgreSQL (Render Deployment), MySQL 8.4 LTS (Local Docker) |
-| **AI LLM** | Upstage Solar LLM API (`solar-1-mini-chat`) |
+| **Database** | PostgreSQL (Render Deployment / Local Docker) |
+| **AI LLM** | Upstage Solar LLM API (`solar-pro3`) |
 | **E-Signature** | 모두싸인 (Modusign) Webhook API & PDF SHA-256 Archive |
 | **DB Migration** | Spring Boot Native SQL Initialization (`spring.sql.init.platform=postgresql`) |
 | **Testing** | JUnit 5, Gradle Test Runner |
