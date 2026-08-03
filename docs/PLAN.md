@@ -23,11 +23,15 @@
 
 ## 🤖 2. AI 활용 증빙 및 구현 명세 (AI Implementation Proof)
 
-1. **사용 AI 모델**: Upstage Solar LLM (`solar-1-mini-chat`)
+1. **사용 AI 모델**:
+   - **Upstage Solar LLM**: `solar-pro3` (약정 의사 정리, 대화형 큐레이팅)
+   - **Upstage Document AI**: `document-parse` (약정서 PDF 글자 추출), `information-extract` (항목 구조화 및 체결본 대조 검증)
 2. **API 사용 위치**:
-   - `UpstageApiClient.java`: Upstage Solar LLM HTTP 통신
+   - `UpstageApiClient.java`: Upstage Solar LLM (`solar-pro3`) HTTP 통신
+   - `UpstageDocumentClient.java`: Upstage Document Parse & Information Extract API 통신
    - `AiMateService.java`: 자연어 대화 및 선행 큐레이팅
    - `AiConsultationService.java`: 대화문에서 지역, 시간, 금액, 감정을 고정 JSON 스키마로 추출
+   - `ClmDocumentVerificationService.java`: 서명 완료 PDF에서 Document AI로 텍스트/항목을 자동 추출하여 원본 약정 DB와 대조 검증 (무결성 증명)
 3. **프롬프트 페르소나**: `Pixel AI Mate` 친근한 마스코트 페르소나 및 JSON extraction 설정
 4. **Smart Failover Engine**: API 장애 시 외부 통신 없이 100% 가동되는 내장 로컬 폴백 엔진
 

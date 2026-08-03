@@ -6,7 +6,7 @@
 [![Vercel](https://img.shields.io/badge/Vercel-Live--Demo-000000?style=flat-square&logo=vercel&logoColor=white)](https://itdafront.vercel.app)
 ![Java](https://img.shields.io/badge/Java-21-007396?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![Upstage Solar](https://img.shields.io/badge/AI-Upstage%20Solar%20LLM-purple?style=flat-square)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Render-4169E1?style=flat-square&logo=postgresql&logoColor=white)
@@ -179,7 +179,7 @@ AI-Builder-Sprint/
 
 | 구분 | 사용 기술 명세 |
 | :--- | :--- |
-| **Frontend** | React 18, TypeScript, Vite, Editorial Bento Grid CSS (Vercel Deployment) |
+| **Frontend** | React 19.2.7, TypeScript, Vite, Editorial Bento Grid CSS (Vercel Deployment) |
 | **Backend** | Java 21, Spring Boot 3.3.4, Spring Data JPA, JdbcTemplate (Render Cloud) |
 | **Database** | PostgreSQL (Render Deployment), PostgreSQL 16-alpine (Local Docker) |
 | **AI LLM** | Upstage Solar LLM API (`solar-pro3`) |
