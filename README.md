@@ -194,6 +194,30 @@ cd frontend && npm install && npm run dev
 
 ## 📁 4. 프로젝트 구조
 
+### 🗺️ 시스템 아키텍처
+
+```mermaid
+flowchart LR
+    U["👥 사용자"] -- "① 요청" --> FE["Vercel<br/>React 19 SPA"]
+    FE -- "② REST /api/v1" --> BE
+
+    subgraph RENDER["Render · Docker"]
+        BE["Spring Boot"] -- "④ 읽기 · 쓰기" --> DB[("PostgreSQL 16")]
+    end
+
+    BE -- "③ AI 호출" --> UP["Upstage<br/>Solar LLM · 문서 AI"]
+    BE -- "⑤ 서명 요청" --> MS["모두싸인<br/>전자서명 API"]
+    MS -. "⑥ Webhook 회신" .-> BE
+
+    DEV["👤 개발자"] -- "push" --> GH["GitHub<br/>모노레포 main"]
+    GH -- "프론트 자동 빌드" --> FE
+    GH -- "Docker 자동 배포" --> BE
+```
+
+> 실선 = 동기 호출 · 점선 = Webhook 비동기 회신 · 번호 = 사용자 흐름 순서
+
+### 📂 디렉터리 구성
+
 ```text
 AI-Builder-Sprint/
 ├── README.md                          # 프로젝트 메인 설명서
