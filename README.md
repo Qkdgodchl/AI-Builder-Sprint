@@ -196,6 +196,13 @@ cd frontend && npm install && npm run dev
 
 ### 🗺️ 시스템 아키텍처
 
+<p align="center">
+  <img src="docs/images/architecture.png" alt="잇다 시스템 아키텍처 — 사용자 → Vercel(React SPA) → Spring Boot(Render·Docker) → PostgreSQL, Upstage AI 호출, 모두싸인 서명 요청과 Webhook 회신, GitHub 자동 배포" width="760" />
+</p>
+
+<details>
+<summary>텍스트 다이어그램으로 보기</summary>
+
 ```mermaid
 flowchart LR
     U["👥 사용자"] -- "① 요청" --> FE["Vercel<br/>React 19 SPA"]
@@ -214,7 +221,7 @@ flowchart LR
     GH -- "Docker 자동 배포" --> BE
 ```
 
-> 실선 = 동기 호출 · 점선 = Webhook 비동기 회신 · 번호 = 사용자 흐름 순서
+</details>
 
 ### 📂 디렉터리 구성
 
