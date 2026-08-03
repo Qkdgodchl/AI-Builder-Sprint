@@ -47,7 +47,13 @@ public class ClmDocumentArchiveService {
         this.archivePath = Path.of(storagePath).toAbsolutePath().normalize().resolve("clm");
     }
 
-    @Transactional
+    /**
+     * 독립 트랜잭션으로 돈다. 이 메서드는 상태 동기화 트랜잭션 안에서 호출되고
+     * 실패해도 호출부가 잡고 계속 가는데, 같은 트랜잭션에 묶여 있으면 예외가
+     * 프록시를 지나는 순간 rollback-only로 오염돼 커밋 시점에
+     * "Transaction silently rolled back"으로 터진다.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void archiveCompletedFiles(ClmDocument document) {
         // 재서명하면 모두싸인 문서 ID가 바뀐다. 문서 단위가 아니라 서명 세션 단위로 막아야
         // 두 번째 체결본이 첫 세션 보관본에 가로막혀 영영 저장되지 않는 일이 없다.
