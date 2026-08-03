@@ -720,8 +720,12 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         const opportunities = await fetchManagedOpportunities(selectedCenter.id);
         const mappedPosts = opportunities.map(mapOpportunity);
         setPosts(mappedPosts);
+        // 모집글 수만큼 동시 요청이 나가므로, 한 건이 실패해도
+        // 전체 신청자 목록이 통째로 0건이 되지 않게 건별로 방어한다.
         const applicationGroups = await Promise.all(
-          opportunities.map((opportunity) => fetchOpportunityApplications(opportunity.id)),
+          opportunities.map((opportunity) =>
+            fetchOpportunityApplications(opportunity.id).catch(() => []),
+          ),
         );
         setApplicants(applicationGroups.flat().map((application, index) =>
           mapApplication(application, index),
@@ -757,9 +761,16 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
     [applicants, editingPost],
   );
 
+  // 모집글 목록·신청 관리·온기 잇다 탭 전환은 같은 화면 안의 이동이므로 스크롤을 유지하고,
+  // 다른 센터로 들어가거나 모집글 관리 상세로 넘어갈 때만 맨 위로 올린다.
+  const scrollAnchorKey = useMemo(() => {
+    const [centerId, section, entityId] = route.split('/').filter(Boolean);
+    return `${centerId ?? ''}:${section === 'posts' ? entityId ?? '' : ''}`;
+  }, [route]);
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [route]);
+  }, [scrollAnchorKey]);
 
   useEffect(() => {
     const [centerId, section, entityId, subSection, applicantId] = route
