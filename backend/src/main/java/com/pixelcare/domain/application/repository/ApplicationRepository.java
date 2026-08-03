@@ -241,13 +241,13 @@ public class ApplicationRepository {
                 SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP
                 WHERE public_id = ? AND applicant_user_id = ?
                 """, publicId, userId);
+        // UPDATE ... JOIN은 MySQL 전용이라 배포(PostgreSQL)에서 문법 오류가 난다.
         jdbcTemplate.update("""
-                UPDATE commitments c
-                JOIN applications a ON a.id = c.application_id
-                SET c.commitment_status = 'CANCELLED',
-                    c.cancelled_at = CURRENT_TIMESTAMP,
-                    c.updated_at = CURRENT_TIMESTAMP
-                WHERE a.public_id = ?
+                UPDATE commitments
+                SET commitment_status = 'CANCELLED',
+                    cancelled_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE application_id = (SELECT id FROM applications WHERE public_id = ?)
                 """, publicId);
     }
 
@@ -265,10 +265,9 @@ public class ApplicationRepository {
             default -> "IN_REVIEW";
         };
         jdbcTemplate.update("""
-                UPDATE commitments c
-                JOIN applications a ON a.id = c.application_id
-                SET c.commitment_status = ?, c.updated_at = CURRENT_TIMESTAMP
-                WHERE a.public_id = ?
+                UPDATE commitments
+                SET commitment_status = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE application_id = (SELECT id FROM applications WHERE public_id = ?)
                 """, commitmentStatus, publicId);
     }
 
@@ -357,10 +356,9 @@ public class ApplicationRepository {
                 WHERE public_id = ? AND commitment_status IN ('DRAFT', 'REVISION_REQUESTED')
                 """, publicId);
         jdbcTemplate.update("""
-                UPDATE applications a
-                JOIN commitments c ON c.application_id = a.id
-                SET a.status = 'IN_REVIEW', a.updated_at = CURRENT_TIMESTAMP
-                WHERE c.public_id = ?
+                UPDATE applications
+                SET status = 'IN_REVIEW', updated_at = CURRENT_TIMESTAMP
+                WHERE id = (SELECT application_id FROM commitments WHERE public_id = ?)
                 """, publicId);
     }
 

@@ -4744,17 +4744,17 @@ body.theme-ai {
   align-items: center;
   gap: 7px;
   color: var(--pc-dark);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.4px;
 }
 
 .center-editor-form .field-required {
   border-radius: 999px;
-  padding: 3px 7px;
+  padding: 3px 8px;
   background: #f3dcd1;
   color: #b5502f;
-  font-size: 8px;
+  font-size: 10px;
   font-style: normal;
   font-weight: 800;
   letter-spacing: 0;
@@ -4763,7 +4763,7 @@ body.theme-ai {
 /* 입력 아래 보조 설명. 라벨만으로 부족한 형식·용도를 알려준다. */
 .center-editor-form label > small {
   color: var(--pc-muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.6;
 }
 
@@ -4777,7 +4777,7 @@ body.theme-ai {
   background: #ffffff;
   color: var(--pc-dark);
   font: inherit;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -4810,7 +4810,7 @@ body.theme-ai {
 .center-editor-fieldset legend {
   padding: 0 8px;
   color: var(--pc-dark);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.4px;
 }
@@ -4819,7 +4819,7 @@ body.theme-ai {
   display: block;
   margin-top: 12px;
   color: var(--pc-muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .center-editor-warning {
