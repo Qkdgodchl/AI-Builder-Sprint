@@ -722,14 +722,32 @@ export const MyCenterPage: React.FC<MyCenterPageProps> = ({ currentUser }) => {
         setPosts(mappedPosts);
         // 모집글 수만큼 동시 요청이 나가므로, 한 건이 실패해도
         // 전체 신청자 목록이 통째로 0건이 되지 않게 건별로 방어한다.
+        // 배포·네트워크가 잠깐 출렁인 순간일 수 있어 실패 건은 한 번 재시도하고,
+        // 그래도 못 가져온 건 조용히 0건으로 두는 대신 안내를 남긴다.
         const applicationGroups = await Promise.all(
-          opportunities.map((opportunity) =>
-            fetchOpportunityApplications(opportunity.id).catch(() => []),
-          ),
+          opportunities.map(async (opportunity) => {
+            try {
+              return await fetchOpportunityApplications(opportunity.id);
+            } catch {
+              await new Promise((resolve) => window.setTimeout(resolve, 1500));
+              try {
+                return await fetchOpportunityApplications(opportunity.id);
+              } catch {
+                return null;
+              }
+            }
+          }),
         );
-        setApplicants(applicationGroups.flat().map((application, index) =>
-          mapApplication(application, index),
-        ));
+        const failedCount = applicationGroups.filter((group) => group === null).length;
+        if (failedCount > 0) {
+          setNotice(`신청자 정보 ${failedCount}건을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.`);
+        }
+        setApplicants(
+          applicationGroups
+            .filter((group): group is ApplicationResponse[] => group !== null)
+            .flat()
+            .map((application, index) => mapApplication(application, index)),
+        );
       } catch (error) {
         setNotice(error instanceof Error ? error.message : '센터 운영 데이터를 불러오지 못했습니다.');
       }
